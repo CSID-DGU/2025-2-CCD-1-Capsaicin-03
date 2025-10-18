@@ -1,68 +1,75 @@
+@font-face {
+  font-family: 'memomentKkukkuk';
+  src: url('/fonts/memomentKkukkkuk.ttf') format('truetype');
+  font-style: normal;
+  font-style: normal;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* 타이포그래피 */
+  --font-family-primary: 'memomentKkukkuk';
+  /* 색상 (피그마 기준) */
+  --color-main: #F9E65C; /* Main 컬러 */
+  --color-second: #5DADE2; /* Second 컬러 */
+  --color-third: #58D68D; /* Third 컬러 */
+  --color-fourth: #FF914D; /* Fourth 컬러 */
+  
+  --color-text-dark: #4F4F4F;
+  --color-text-light: #FFFFFF;
+  --color-background-light: #F8F9FA;
+  --color-background-white: #FFFFFF;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+body {
+  font-family: var(--font-family-primary); 
+  color: var(--color-text-dark);         
+  background-color: var(--color-background-light);
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
+/* 앱 컨테이너 (16:9 반응형 비율 유지) */
+#root {
   display: flex;
-  place-items: center;
-  min-width: 320px;
+  justify-content: center;
+  align-items: center;
   min-height: 100vh;
+  padding: 20px; /* 앱 주변 여백 */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.app-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;     
+  max-width: 640px;                              
+
+  background-color: var(--color-main);        
+  position: relative;
+  overflow: hidden;                          
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;                       
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
+/* 스크롤바 디자인 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-button:hover {
-  border-color: #646cff;
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-second); /* 스크롤바 색상 (Second 컬러 사용) */
+  border-radius: 10px;
 }
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+::-webkit-scrollbar-track {
+  background-color: #f0f0f0;
 }
