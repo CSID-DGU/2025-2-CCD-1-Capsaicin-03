@@ -29,13 +29,13 @@ const router = createBrowserRouter([
         element: <GuestLayout />,
         children: [
           { path: 'login', element: <Login /> },
-          { path: 'setup', element: <ProfileSetup /> },
         ],
       },
       // --- 2. 로그인 한 사용자 ---
       {
         element: <PrivateRoute />,
         children: [
+          { path: 'setup', element: <ProfileSetup /> },
           { path: 'stories', element: <StoryList /> },
           { path: 'story/:storyId', element: <StoryPage /> },
           {
