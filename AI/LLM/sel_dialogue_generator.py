@@ -22,6 +22,16 @@ from emotion_classifier import emotion_classify
 
 # client = OpenAI()
 # 입력받은 키로 OpenAI 클라이언트 생성
+# API 키 입력받기
+# api_key = input("Enter your OPENAI_API_KEY: ").strip()
+
+# # 메인 돌릴때는 주석 처리
+# # 환경 변수로 저장 → 이후 다른 모듈에서도 자동 사용 가능
+# os.environ["OPENAI_API_KEY"] = api_key
+# # 클라이언트 생성
+# client = OpenAI(api_key=api_key)
+
+# 파일내에서 돌릴 때 주석처리
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 llm = ChatOpenAI(model="gpt-4.1-mini", api_key=os.environ["OPENAI_API_KEY"], temperature=0.7)
@@ -81,9 +91,148 @@ def second_ai(story_name: str, child_utterance: str):
     ai_reply = completion.choices[0].message.content.strip()
 
     # 결과 반환
-    return f"{ai_reply}"
+    return f"{ai_reply}", emotion
+
+def ask_experience(story_name: str, child_utterance: str):
+    """
+    아이 발화를 기반으로 감정 분석 + 공감 + 감정 되묻기 (intro와 자연스럽게 이어지도록 수정)
+    """
+    persona = SEL_CHARACTERS.get(story_name)
+    if not persona:
+        raise ValueError(f"{story_name}은(는) 등록되지 않은 동화책입니다.")
+
+    character_name = persona["character_name"]
+    scene = persona["scene"]
+    sel_skill = persona["sel_skill"]
+
+    # 2️⃣ 자연스러운 호응이 되도록 프롬프트 개선
+    empathic_prompt = f"""
+    당신은 한국 전래동화 속 인물 '{character_name}'입니다.
+    현재 장면: {scene}
+    SEL 역량: {sel_skill}
+
+    너는 {character_name}이야.
+    
+    아이는 이렇게 말했어요:
+    "{child_utterance}"
+
+    이 대답을 들은 {character_name}은 아이에게 유사한 경험이 있는지 질문을 던집니다.
+
+    다음 규칙을 지켜서 대답하세요:
+    1. 아이의 말에 자연스럽게 이어지도록 반응합니다.
+    2. 먼저 공감 한 문장 ("그랬구나", "그럴 수 있지" 등)
+    3. 아이에게 경험이 있는지 물어봅니다.
+    4. 전체는 2문장 이하로 간결하고 따뜻하게 표현
+    5. 어린이에게 말하듯 쉬운 어투로 이야기
+    """
+
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 감정적으로 따뜻한 동화 속 캐릭터로 아이와 대화한다."},
+            {"role": "user", "content": empathic_prompt}
+        ],
+    )
+
+    ai_reply = completion.choices[0].message.content.strip()
+
+    # print(ai_reply)
+    # 결과 반환
+    return ai_reply
+
+# ask_experience("콩쥐팥쥐", "나한테만 일을 시키니까")
 
 
+def give_advice(story_name:str, child_utterance:str):
+    """
+    아이 발화를 기반으로 감정 분석 + 공감 + 감정 되묻기 (intro와 자연스럽게 이어지도록 수정)
+    """
+    persona = SEL_CHARACTERS.get(story_name)
+    if not persona:
+        raise ValueError(f"{story_name}은(는) 등록되지 않은 동화책입니다.")
+
+    character_name = persona["character_name"]
+    scene = persona["scene"]
+    sel_skill = persona["sel_skill"]
+
+    # 2️⃣ 자연스러운 호응이 되도록 프롬프트 개선
+    empathic_prompt = f"""
+    당신은 한국 전래동화 속 인물 '{character_name}'입니다.
+    현재 장면: {scene}
+    SEL 역량: {sel_skill}
+
+    너는 {character_name}이야.
+    
+    아이는 자신의 경험을 이렇게 말했어요:
+    "{child_utterance}"
+
+    이 대답을 들은 {character_name}은 아이에게 구체적 행동 전략을 제공합니다.
+
+    다음 규칙을 지켜서 대답하세요:
+    1. 아이의 말에 자연스럽게 이어지도록 반응합니다.
+    2. 먼저 아이의 경험에 공감하는 한 문장 ("그랬구나", "그럴 수 있지" 등)
+    3. 아이에게 그런 경험이 있을 때 할 수 있는 행동을 제안합니다.("심호흡 3번 하기" 등)
+    4. 이때 아이에게 전달하는 행동 전략은 {sel_skill}와 관련이 있어야 합니다.
+    5. 전체는 2문장 이하로 간결하고 따뜻하게 표현
+    6. 어린이에게 말하듯 쉬운 어투로 이야기
+    """
+
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 감정적으로 따뜻한 동화 속 캐릭터로 아이와 대화한다."},
+            {"role": "user", "content": empathic_prompt}
+        ],
+    )
+    
+    ai_reply = completion.choices[0].message.content.strip()
+    
+    # print(ai_reply)
+
+    # 결과 반환
+    return ai_reply
+
+# give_advice("콩쥐팥쥐", "엄마가 나한테만 자꾸 책 읽으라고 해. 동생한테는 안 그러는데")
+
+
+def action_card(story_name: str, child_utterance: str):
+    persona = SEL_CHARACTERS.get(story_name)
+    if not persona:
+        raise ValueError(f"{story_name}은(는) 등록되지 않은 동화책입니다.")
+
+    character_name = persona["character_name"]
+    scene = persona["scene"]
+    sel_skill = persona["sel_skill"]
+
+    # 2️⃣ 자연스러운 호응이 되도록 프롬프트 개선
+    empathic_prompt = f"""
+
+    아이의 경험을 바탕으로 행동 전략을 명사형으로 제공합니다. 
+
+    다음 규칙을 지켜서 대답하세요:
+    1. 아이의 말{child_utterance}에 자연스럽게 이어지도록 반응합니다.
+    2. 아이에게 {sel_skill}와 관련된 행동 카드를 제공합니다.(ex: 오늘의 행동카드는 "너의 감정 표현하기"야.)
+    3. 제공된 행동 카드를 아이가 잘 실천할 수 있도록 하는 문장을 추가합니다.
+    4. 대화를 마무리 하는 문장을 추가합니다.
+    5. 전체는 문장은 간결하고 따뜻하게 표현
+    6. 어린이에게 말하듯 쉬운 어투로 이야기
+    """
+
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "너는 감정적으로 따뜻한 동화 속 캐릭터로 아이와 대화한다."},
+            {"role": "user", "content": empathic_prompt}
+        ],
+    )
+
+    ai_reply = completion.choices[0].message.content.strip()
+
+    # print(ai_reply)
+    # 결과 반환
+    return ai_reply
+
+# action_card("콩쥐팥쥐", "네")
 
 def generate_sel_dialogue(story_name: str, child_age: int, child_utterance: str):
     """
