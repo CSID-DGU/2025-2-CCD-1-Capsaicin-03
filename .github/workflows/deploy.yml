@@ -2,13 +2,12 @@ name: Backend CI/CD
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches:
+      - "main"            # main 브랜치 푸시 시 -> dev 환경 배포
     paths:
       - "Backend/**"
-  pull_request:
-    branches: [ "main", "dev" ]
-    paths:
-      - "Backend/**"
+  release:
+    types: "published"  # 릴리즈 'Published'(발행)시 -> prod 환경 배포
 
 jobs:
   build-and-deploy:
@@ -16,7 +15,7 @@ jobs:
     permissions:
       contents: read
 
-    steps:
+    steps:    
       # 1️⃣ 코드 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,33 +43,45 @@ jobs:
         run: chmod +x gradlew
         working-directory: Backend
 
-      # 5️⃣ Gradle 빌드 (.env 주입 + 테스트 제외)
+      # 5️⃣ 환경 감지 (dev / prod)
+      - name: Detect environment
+        id: env-detect
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "port=8081" >> $GITHUB_OUTPUT
+            echo "container=namurok-prod" >> $GITHUB_OUTPUT
+          else
+            echo "env=dev" >> $GITHUB_OUTPUT
+            echo "tag=dev" >> $GITHUB_OUTPUT
+            echo "port=8080" >> $GITHUB_OUTPUT
+            echo "container=namurok-dev" >> $GITHUB_OUTPUT
+          fi
+
+      # 6️⃣ Gradle 빌드 (테스트 제외)
       - name: Build with Gradle
         working-directory: Backend
-        run: |
-          echo "${{ secrets.ENV_FILE }}" > .env
-          set -a
-          . .env
-          set +a
-          ./gradlew clean build -x test
+        run: ./gradlew clean build -x test
 
-      # 6️⃣ Docker Hub 로그인
+      # 7️⃣ Docker Hub 로그인
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 7️⃣ Docker 이미지 빌드 및 푸시
+      # 8️⃣ Docker 이미지 빌드 및 푸시
       - name: Build and Push Docker Image
         run: |
           IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-murok
-          docker build -t $IMAGE_NAME:latest ./Backend
-          docker push $IMAGE_NAME:latest
+          TAG=${{ steps.env-detect.outputs.tag }}
 
-      # 8️⃣ EC2로 배포 (push일 때만)
+          docker build -t $IMAGE_NAME:$TAG ./Backend
+          docker push $IMAGE_NAME:$TAG
+
+      # 9️⃣ EC2 배포
       - name: Deploy to EC2
-        if: github.event_name == 'push'
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -78,20 +89,23 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-murok
-            CONTAINER_NAME=awesome_driscoll
-
-            echo "${{ secrets.ENV_FILE }}" > .env
+            TAG=${{ steps.env-detect.outputs.tag }}
+            PORT=${{ steps.env-detect.outputs.port }}
+            CONTAINER_NAME=${{ steps.env-detect.outputs.container }}
+            ENV_FILE="${{ steps.env-detect.outputs.env == 'prod' && secrets.ENV_FILE_PROD || secrets.ENV_FILE_DEV }}"
 
             sudo docker stop $CONTAINER_NAME || true
             sudo docker rm $CONTAINER_NAME || true
 
-            sudo docker pull $IMAGE_NAME:latest
-
-            sudo docker run -d -p 8080:8080 \
+            echo "$ENV_FILE" > .env
+            sudo docker pull $IMAGE_NAME:$TAG
+            sudo docker run -d -p $PORT:8080 \
               --env-file .env \
               --name $CONTAINER_NAME \
-              $IMAGE_NAME:latest
-
+              $IMAGE_NAME:$TAG
             rm .env
 
-            echo "✅ 배포 완료!"
+            # 사용되지 않는 도커 이미지 정리
+            sudo docker image prune -f
+
+            echo "✅ 배포 완료: $CONTAINER_NAME (${PORT})"
