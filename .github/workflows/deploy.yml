@@ -6,6 +6,7 @@ on:
       - "main"            # main 브랜치 푸시 시 -> dev 환경 배포
     paths:
       - "Backend/**"
+      - ".github/workflows/**"
   release:
     types: "published"  # 릴리즈 'Published'(발행)시 -> prod 환경 배포
 
