@@ -1,5 +1,6 @@
 package com.example.namurokmurok.global.config;
 
+import com.example.namurokmurok.global.security.jwt.JwtAuthenticationEntryPoint;
 import com.example.namurokmurok.global.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -30,6 +32,11 @@ public class SecurityConfig {
                                 "/swagger-ui/**"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+
+                // 예외 발생 시 JSON으로 반환
+                .exceptionHandling(exception ->
+                        exception.authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
