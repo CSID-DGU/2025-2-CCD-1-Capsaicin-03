@@ -6,6 +6,7 @@ import com.example.namurokmurok.domain.user.service.UserService;
 import com.example.namurokmurok.global.common.response.ApiResponse;
 import com.example.namurokmurok.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +24,7 @@ public class UserController {
             description = "현재 로그인한 부모 사용자가 아이 프로필을 등록합니다.")
     public ApiResponse<ChildResponseDto> registerChild(
             @AuthenticationPrincipal CustomUserDetails userPrincipal,
-            @RequestBody ChildRequestDto requestDto
+            @Valid @RequestBody ChildRequestDto requestDto
     ) {
         ChildResponseDto response = userService.registerChild(userPrincipal.getSub(), requestDto);
         return ApiResponse.success(response);
