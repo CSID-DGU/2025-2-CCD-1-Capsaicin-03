@@ -89,6 +89,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-murok
             TAG=${{ steps.env-detect.outputs.tag }}
             PORT=${{ steps.env-detect.outputs.port }}
