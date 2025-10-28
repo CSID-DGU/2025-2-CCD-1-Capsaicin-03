@@ -18,9 +18,10 @@ public enum ErrorCode {
     INVALID_JWT_SECRET(HttpStatus.INTERNAL_SERVER_ERROR, "JWT 시크릿 키가 유효하지 않습니다."),
     MISSING_SECRET_KEY(HttpStatus.INTERNAL_SERVER_ERROR, "SUPABASE_JWT_SECRET이 설정되지 않았습니다."),
     INVALID_JWT_SIGNATURE(HttpStatus.UNAUTHORIZED, "JWT 서명이 유효하지 않습니다."),
-    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "JWT 토큰이 만료되었습니다.");
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "JWT 토큰이 만료되었습니다."),
 
-
+    CHILD_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "이미 등록된 아이가 있습니다.")
+    ;
 
     private final HttpStatus status;
     private final String message;
