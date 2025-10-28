@@ -1,5 +1,6 @@
 package com.example.namurokmurok.global.security.jwt;
 
+import com.example.namurokmurok.domain.user.service.UserService;
 import com.example.namurokmurok.global.security.CustomUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,9 +28,11 @@ import java.util.Map;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final SupabaseJwtValidator validator;
+    private final UserService userService;
 
-    public JwtAuthenticationFilter(SupabaseJwtValidator validator) {
+    public JwtAuthenticationFilter(SupabaseJwtValidator validator, UserService userService) {
         this.validator = validator;
+        this.userService = userService;
     }
 
     @Override
@@ -53,6 +56,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String email = (String) claims.get("email");
             String sub = (String) claims.get("sub");
             String username = (String) ((Map)claims.get("user_metadata")).get("full_name");
+
+            userService.saveUser(sub, email, username);
 
             if (email != null && sub != null) {
                 // CustomUserDetails 생성 및 인증 객체 구성
