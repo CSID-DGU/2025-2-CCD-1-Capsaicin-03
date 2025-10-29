@@ -24,10 +24,10 @@ public class Story {
     private String title;
 
     @Column(name = "thumbnail_img_url" ,nullable = false)
-    private String thumbnailImglUrl;
+    private String thumbnailImgUrl;
 
     @Column(name = "thumbnail_audio_url" ,nullable = false)
-    private String thumbnaiAudio_lUrl;
+    private String thumbnailAudioUrl;
 
     @Column(name = "category" ,nullable = false)
     @Enumerated(EnumType.STRING)
