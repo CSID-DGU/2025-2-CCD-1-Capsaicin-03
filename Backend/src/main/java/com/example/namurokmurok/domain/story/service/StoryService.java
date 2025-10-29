@@ -6,6 +6,8 @@ import com.example.namurokmurok.domain.story.dto.StorySummaryResponseDto;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
+import com.example.namurokmurok.global.exception.CustomException;
+import com.example.namurokmurok.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,12 @@ public class StoryService {
 
     public StoryListResponseDto getStoriesByCategory(SelCategory category) {
         List<Story> stories = storyRepository.findAllByCategory(category);
+
+        try {
+            category = SelCategory.valueOf(category.getCode().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_CATEGORY);
+        }
 
         List<StorySummaryResponseDto> storyList = stories.stream()
                 .map(story -> StorySummaryResponseDto.builder()
