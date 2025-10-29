@@ -1,9 +1,8 @@
 package com.example.namurokmurok.domain.story.service;
 
-import com.example.namurokmurok.domain.story.dto.CategoryInfoResponseDto;
-import com.example.namurokmurok.domain.story.dto.StoryListResponseDto;
-import com.example.namurokmurok.domain.story.dto.StorySummaryResponseDto;
+import com.example.namurokmurok.domain.story.dto.*;
 import com.example.namurokmurok.domain.story.entity.Story;
+import com.example.namurokmurok.domain.story.entity.StoryPage;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.global.exception.CustomException;
@@ -11,6 +10,7 @@ import com.example.namurokmurok.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,6 +40,28 @@ public class StoryService {
         return StoryListResponseDto.builder()
                 .category(new CategoryInfoResponseDto(category.getCode(), category.getName()))
                 .stories(storyList)
+                .build();
+    }
+
+    public StoryInfoResponseDto getStoryDetail(Long storyId) {
+        Story story = storyRepository.findByIdWithPages(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
+        List<PageInfoResponseDto> pageDtos = story.getPages().stream()
+                .sorted(Comparator.comparingInt(StoryPage::getPageNumber))
+                .map(p -> PageInfoResponseDto.builder()
+                        .page_number(p.getPageNumber())
+                        .textContent(p.getTextContent())
+                        .imageUrl(p.getImgUrl())
+                        .audioUrl(p.getAudioUrl())
+                        .build())
+                .collect(Collectors.toList());
+
+        return StoryInfoResponseDto.builder()
+                .id(story.getId())
+                .title(story.getTitle())
+                .totalPages(pageDtos.size())
+                .pages(pageDtos)
                 .build();
     }
 }
