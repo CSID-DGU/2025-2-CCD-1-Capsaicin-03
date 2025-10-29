@@ -8,6 +8,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,4 +35,8 @@ public class Story {
     @Column(name = "category" ,nullable = false)
     @Enumerated(EnumType.STRING)
     private SelCategory category;
+
+    @OneToMany(mappedBy = "story")
+    @OrderBy("pageNumber ASC")
+    private List<StoryPage> pages = new ArrayList<>();
 }

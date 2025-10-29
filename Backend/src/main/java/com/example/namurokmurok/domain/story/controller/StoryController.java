@@ -1,5 +1,6 @@
 package com.example.namurokmurok.domain.story.controller;
 
+import com.example.namurokmurok.domain.story.dto.StoryInfoResponseDto;
 import com.example.namurokmurok.domain.story.dto.StoryListResponseDto;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import com.example.namurokmurok.domain.story.service.StoryService;
@@ -8,10 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/stories")
@@ -29,4 +27,16 @@ public class StoryController {
         StoryListResponseDto response = storyService.getStoriesByCategory(category);
         return ApiResponse.success(response);
     }
+
+    @GetMapping("/{story-id}")
+    @Operation(summary = "동화 상세 조회",
+            description = "story-id에 해당하는 동화의 상세 정보를 조회합니다.")
+    public ApiResponse<StoryInfoResponseDto> getStoryDetail(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId) {
+
+        StoryInfoResponseDto response = storyService.getStoryDetail(storyId);
+        return ApiResponse.success(response);
+    }
+
 }
