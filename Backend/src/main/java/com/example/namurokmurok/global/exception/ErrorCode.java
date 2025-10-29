@@ -20,7 +20,12 @@ public enum ErrorCode {
     INVALID_JWT_SIGNATURE(HttpStatus.UNAUTHORIZED, "JWT 서명이 유효하지 않습니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "JWT 토큰이 만료되었습니다."),
 
-    CHILD_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "이미 등록된 아이가 있습니다.")
+    // child 관련
+    CHILD_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "이미 등록된 아이가 있습니다."),
+
+    // story 관련
+    INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "잘못된 카테고리입니다."),
+    STORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 동화 입니다."),
     ;
 
     private final HttpStatus status;
