@@ -4,6 +4,7 @@ import com.example.namurokmurok.domain.story.dto.*;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.entity.StoryPage;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
+import com.example.namurokmurok.domain.story.repository.StoryPageRepository;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.global.exception.CustomException;
 import com.example.namurokmurok.global.exception.ErrorCode;
@@ -18,7 +19,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StoryService {
     private final StoryRepository storyRepository;
+    private final StoryPageRepository storyPageRepository;
 
+    // 카테고리별 동화 목록 조회
     public StoryListResponseDto getStoriesByCategory(SelCategory category) {
         List<Story> stories = storyRepository.findAllByCategory(category);
 
@@ -43,6 +46,7 @@ public class StoryService {
                 .build();
     }
 
+    // 동화 상세 조회
     public StoryInfoResponseDto getStoryDetail(Long storyId) {
         Story story = storyRepository.findByIdWithPages(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
@@ -62,6 +66,21 @@ public class StoryService {
                 .title(story.getTitle())
                 .total_pages(pageDtos.size())
                 .pages(pageDtos)
+                .build();
+    }
+
+    // 동화별 대화 장면 조회
+    public DialogueSceneResponseDto getDialogueScene(Long storyId) {
+        StoryPage  dialogueScene = storyPageRepository.findByStoryIdAndIsDialogueSceneTrue(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_PAGE_NOT_FOUND));
+
+        return DialogueSceneResponseDto.builder()
+                .id(dialogueScene.getId())
+                .story_id(storyId)
+                .page_number(dialogueScene.getPageNumber())
+                .text_content(dialogueScene.getTextContent())
+                .img_url(dialogueScene.getImgUrl())
+                .audio_url(dialogueScene.getAudioUrl())
                 .build();
     }
 }
