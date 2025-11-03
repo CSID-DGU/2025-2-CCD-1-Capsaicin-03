@@ -42,4 +42,7 @@ public class Story {
 
     @OneToMany(mappedBy = "story")
     private List<IntroQuestion> introQuestions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "story")
+    private List<ActionCard> actionCards = new ArrayList<>();
 }
