@@ -1,5 +1,6 @@
 package com.example.namurokmurok.domain.story.controller;
 
+import com.example.namurokmurok.domain.story.dto.DialogueSceneResponseDto;
 import com.example.namurokmurok.domain.story.dto.StoryInfoResponseDto;
 import com.example.namurokmurok.domain.story.dto.StoryListResponseDto;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
@@ -36,6 +37,17 @@ public class StoryController {
             @PathVariable("story-id") Long storyId) {
 
         StoryInfoResponseDto response = storyService.getStoryDetail(storyId);
+        return ApiResponse.success(response);
+    }
+
+    @GetMapping("/{story-id}/scene")
+    @Operation(summary = "동화별 대화 장면 조회",
+            description = "story-id에 해당하는 대화 장면 정보를 조회합니다.")
+    public ApiResponse<DialogueSceneResponseDto> getDialogueScene(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId) {
+
+        DialogueSceneResponseDto response = storyService.getDialogueScene(storyId);
         return ApiResponse.success(response);
     }
 
