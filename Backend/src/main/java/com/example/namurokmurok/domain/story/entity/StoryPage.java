@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @NoArgsConstructor
@@ -16,7 +17,7 @@ public class StoryPage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
 
     @Column(name = "page_number" ,nullable = false)
     private int pageNumber;
@@ -29,6 +30,10 @@ public class StoryPage {
 
     @Column(name = "img_url" ,nullable = false)
     private String imgUrl;
+
+    @Column(name = "is_dialogue_scene", nullable = false)
+    @ColumnDefault("false")
+    private boolean isDialogueScene = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "story_id", nullable = false)
