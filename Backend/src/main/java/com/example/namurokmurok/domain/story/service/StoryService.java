@@ -1,10 +1,12 @@
 package com.example.namurokmurok.domain.story.service;
 
 import com.example.namurokmurok.domain.story.dto.*;
+import com.example.namurokmurok.domain.story.entity.ActionCard;
 import com.example.namurokmurok.domain.story.entity.IntroQuestion;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.entity.StoryPage;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
+import com.example.namurokmurok.domain.story.repository.ActionCardRepository;
 import com.example.namurokmurok.domain.story.repository.IntroQuestionRepository;
 import com.example.namurokmurok.domain.story.repository.StoryPageRepository;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
@@ -23,6 +25,7 @@ public class StoryService {
     private final StoryRepository storyRepository;
     private final StoryPageRepository storyPageRepository;
     private final IntroQuestionRepository introQuestionRepository;
+    private final ActionCardRepository actionCardRepository;
 
     // 카테고리별 동화 목록 조회
     public StoryListResponseDto getStoriesByCategory(SelCategory category) {
@@ -93,7 +96,7 @@ public class StoryService {
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
 
         IntroQuestion introQuestion = introQuestionRepository.findByStoryId(storyId)
-                .orElseThrow(() -> new CustomException(ErrorCode.INTRO_QUESTION_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.INTRO_QUESTION_NOT_FOUND));
 
         return IntroQuestionResponseDto.builder()
                 .id(introQuestion.getId())
@@ -103,4 +106,21 @@ public class StoryService {
                 .audio_url(introQuestion.getAudioUrl())
                 .build();
         }
+
+    // 행동 카드 조회
+    public ActionCardResponseDto getActionCard(Long storyId) {
+        storyRepository.findById(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
+        ActionCard actionCard = actionCardRepository.findByStoryId(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.ACTION_CARD_NOT_FOUND));
+
+        return ActionCardResponseDto.builder()
+                .id(actionCard.getId())
+                .story_id(storyId)
+                .title(actionCard.getTitle())
+                .content(actionCard.getContent())
+                .img_url(actionCard.getImgUrl())
+                .build();
+    }
 }

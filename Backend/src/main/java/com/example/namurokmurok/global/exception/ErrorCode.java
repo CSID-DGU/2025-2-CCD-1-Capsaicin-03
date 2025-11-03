@@ -27,7 +27,8 @@ public enum ErrorCode {
     INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "잘못된 카테고리입니다."),
     STORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 동화 입니다."),
     DIALOGUE_PAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "대화 장면이 존재하지 않습니다."),
-    INTRO_QUESTION_FOUND(HttpStatus.NOT_FOUND, "인트로 질문이 존재하지 않습니다"),
+    INTRO_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "인트로 질문이 존재하지 않습니다"),
+    ACTION_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "행동 카드가 존재하지 않습니다"),
     ;
 
     private final HttpStatus status;
