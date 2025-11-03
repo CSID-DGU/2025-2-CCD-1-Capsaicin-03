@@ -1,6 +1,7 @@
 package com.example.namurokmurok.domain.story.controller;
 
 import com.example.namurokmurok.domain.story.dto.DialogueSceneResponseDto;
+import com.example.namurokmurok.domain.story.dto.IntroQuestionResponseDto;
 import com.example.namurokmurok.domain.story.dto.StoryInfoResponseDto;
 import com.example.namurokmurok.domain.story.dto.StoryListResponseDto;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
@@ -51,4 +52,14 @@ public class StoryController {
         return ApiResponse.success(response);
     }
 
+    @GetMapping("/{story-id}/intro-question")
+    @Operation(summary = "동화별 인트로 질문 조회",
+            description = "story-id에 해당하는 인트로 질문 정보를 조회합니다.")
+    public ApiResponse<IntroQuestionResponseDto> getIntroQuestion(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId) {
+
+        IntroQuestionResponseDto response = storyService.getIntroQuestion(storyId);
+        return ApiResponse.success(response);
+    }
 }
