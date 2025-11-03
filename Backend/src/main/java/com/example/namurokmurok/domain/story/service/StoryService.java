@@ -32,8 +32,8 @@ public class StoryService {
                 .map(story -> StorySummaryResponseDto.builder()
                         .id(story.getId())
                         .title(story.getTitle())
-                        .thumbnailImgUrl(story.getThumbnailImgUrl())
-                        .thumbnailAudioUrl(story.getThumbnailAudioUrl())
+                        .thumbnail_img_url(story.getThumbnailImgUrl())
+                        .thumbnail_audio_url(story.getThumbnailAudioUrl())
                         .build())
                 .collect(Collectors.toList());
 
@@ -51,16 +51,16 @@ public class StoryService {
                 .sorted(Comparator.comparingInt(StoryPage::getPageNumber))
                 .map(p -> PageInfoResponseDto.builder()
                         .page_number(p.getPageNumber())
-                        .textContent(p.getTextContent())
-                        .imageUrl(p.getImgUrl())
-                        .audioUrl(p.getAudioUrl())
+                        .text_content(p.getTextContent())
+                        .image_url(p.getImgUrl())
+                        .audio_url(p.getAudioUrl())
                         .build())
                 .collect(Collectors.toList());
 
         return StoryInfoResponseDto.builder()
                 .id(story.getId())
                 .title(story.getTitle())
-                .totalPages(pageDtos.size())
+                .total_pages(pageDtos.size())
                 .pages(pageDtos)
                 .build();
     }
