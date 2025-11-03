@@ -1,9 +1,6 @@
 package com.example.namurokmurok.domain.story.controller;
 
-import com.example.namurokmurok.domain.story.dto.DialogueSceneResponseDto;
-import com.example.namurokmurok.domain.story.dto.IntroQuestionResponseDto;
-import com.example.namurokmurok.domain.story.dto.StoryInfoResponseDto;
-import com.example.namurokmurok.domain.story.dto.StoryListResponseDto;
+import com.example.namurokmurok.domain.story.dto.*;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import com.example.namurokmurok.domain.story.service.StoryService;
 import com.example.namurokmurok.global.common.response.ApiResponse;
@@ -60,6 +57,17 @@ public class StoryController {
             @PathVariable("story-id") Long storyId) {
 
         IntroQuestionResponseDto response = storyService.getIntroQuestion(storyId);
+        return ApiResponse.success(response);
+    }
+
+    @GetMapping("/{story-id}/action-card")
+    @Operation(summary = "동화별 행동카드 정보 조회",
+            description = "story-id에 해당하는 행동 카드 정보를 조회합니다.")
+    public ApiResponse<ActionCardResponseDto> getActionCard(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId) {
+
+        ActionCardResponseDto response = storyService.getActionCard(storyId);
         return ApiResponse.success(response);
     }
 }
