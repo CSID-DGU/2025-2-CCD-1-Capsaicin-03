@@ -3,7 +3,7 @@ package com.example.namurokmurok.domain.story.entity;
 
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+        import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,4 +39,7 @@ public class Story {
     @OneToMany(mappedBy = "story")
     @OrderBy("pageNumber ASC")
     private List<StoryPage> pages = new ArrayList<>();
+
+    @OneToMany(mappedBy = "story")
+    private List<IntroQuestion> introQuestions = new ArrayList<>();
 }
