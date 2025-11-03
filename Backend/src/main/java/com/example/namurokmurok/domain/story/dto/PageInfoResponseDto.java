@@ -13,11 +13,11 @@ public class PageInfoResponseDto {
     private int page_number;
 
     @Schema(description = "장면 text 내용", example = "옛날 옛적, 마음씨 고약한 형 놀부가 살았어요.")
-    private String textContent;
+    private String text_content;
 
     @Schema(description = "장면 이미지 URL", example = "https://example.com/image.jpg")
-    private String imageUrl;
+    private String image_url;
 
     @Schema(description = "장면 음성 URL", example = "https://example.com/audio.mp3")
-    private String audioUrl;
+    private String audio_url;
 }
