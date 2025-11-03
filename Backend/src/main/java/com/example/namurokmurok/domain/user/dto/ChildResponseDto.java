@@ -8,5 +8,5 @@ import lombok.Getter;
 @AllArgsConstructor
 public class ChildResponseDto {
     @Schema(description = "아이 ID", example = "1")
-    private Long childId;
+    private long id;
 }

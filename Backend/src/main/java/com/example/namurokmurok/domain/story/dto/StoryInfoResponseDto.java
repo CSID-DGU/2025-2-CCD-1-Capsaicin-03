@@ -18,7 +18,7 @@ public class StoryInfoResponseDto {
     private String title;
 
     @Schema(description = "총 페이지 수", example = "20")
-    private int totalPages;
+    private int total_pages;
 
     @Schema(description = "장면 정보")
     private List<PageInfoResponseDto> pages;
