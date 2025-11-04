@@ -1,5 +1,5 @@
 # 1. JDK 17 환경 이미지 사용
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk-jammy
 
 # 2. JAR 파일 복사
 ARG JAR_FILE=build/libs/*.jar
