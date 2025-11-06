@@ -29,9 +29,6 @@ public class Story {
     @Column(name = "thumbnail_img_url" ,nullable = false)
     private String thumbnailImgUrl;
 
-    @Column(name = "thumbnail_audio_url" ,nullable = false)
-    private String thumbnailAudioUrl;
-
     @Column(name = "category" ,nullable = false)
     @Enumerated(EnumType.STRING)
     private SelCategory category;

@@ -42,7 +42,6 @@ public class StoryService {
                         .id(story.getId())
                         .title(story.getTitle())
                         .thumbnail_img_url(story.getThumbnailImgUrl())
-                        .thumbnail_audio_url(story.getThumbnailAudioUrl())
                         .build())
                 .collect(Collectors.toList());
 
