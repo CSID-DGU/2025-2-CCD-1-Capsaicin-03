@@ -9,7 +9,7 @@ import java.util.List;
 
 
 @Entity
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Getter
 @Builder
@@ -35,8 +35,9 @@ public class User {
     @Column(name = "inactive_date", nullable = true)
     private LocalDateTime inactiveDate;
 
-    @Column(name = "create_at", nullable = false)
-    private LocalDateTime createAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Child> children = new ArrayList<>();
