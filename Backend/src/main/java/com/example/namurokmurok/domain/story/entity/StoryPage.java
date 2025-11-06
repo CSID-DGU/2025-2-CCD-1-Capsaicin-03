@@ -22,7 +22,7 @@ public class StoryPage {
     @Column(name = "page_number" ,nullable = false)
     private int pageNumber;
 
-    @Column(name = "text_content" ,nullable = false)
+    @Column(name = "text_content" ,nullable = true) //표지는 text 미제공
     private String textContent;
 
     @Column(name = "audio_url" ,nullable = false)
