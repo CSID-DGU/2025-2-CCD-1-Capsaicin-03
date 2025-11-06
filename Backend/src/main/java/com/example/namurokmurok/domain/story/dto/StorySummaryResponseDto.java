@@ -17,7 +17,4 @@ public class StorySummaryResponseDto {
 
     @Schema(description = "썸네일 이미지 URL", example = "https://example.com/image.jpg")
     private String thumbnail_img_url;
-
-    @Schema(description = "썸네일 오디오 URL", example = "https://example.com/audio.mp3")
-    private String thumbnail_audio_url;
 }
