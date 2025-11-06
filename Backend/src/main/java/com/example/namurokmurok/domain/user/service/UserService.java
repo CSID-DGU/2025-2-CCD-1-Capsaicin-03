@@ -57,7 +57,7 @@ public class UserService {
         childRepository.save(child);
         user.addChild(child);
 
-        return new ChildResponseDto(child.getUser().getId());
+        return new ChildResponseDto(child.getId());
     }
 
 }
