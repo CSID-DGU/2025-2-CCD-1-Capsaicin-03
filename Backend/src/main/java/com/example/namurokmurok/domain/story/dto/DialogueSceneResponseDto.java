@@ -19,6 +19,9 @@ public class DialogueSceneResponseDto {
     @Schema(description = "페이지 넘버", example = "21")
     private int page_number;
 
+    @Schema(description = "학습 목표", example = "목표 물질보다 마음의 유산이 더 소중함을 느끼며, 자신이 소중히 여기는 감정을 인식하기")
+    private String learning_goal;
+
     @Schema(description = "장면 text 내용", example = "옛날 옛적, 마음씨 고약한 형 놀부가 살았어요.")
     private String text_content;
 
@@ -28,3 +31,5 @@ public class DialogueSceneResponseDto {
     @Schema(description = "장면 음성 URL", example = "https://example.com/audio.mp3")
     private String audio_url;
 }
+
+

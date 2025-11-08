@@ -76,6 +76,9 @@ public class StoryService {
 
     // 동화별 대화 장면 조회
     public DialogueSceneResponseDto getDialogueScene(Long storyId) {
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
         StoryPage  dialogueScene = storyPageRepository.findByStoryIdAndIsDialogueSceneTrue(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DIALOGUE_PAGE_NOT_FOUND));
 
@@ -83,6 +86,7 @@ public class StoryService {
                 .id(dialogueScene.getId())
                 .story_id(storyId)
                 .page_number(dialogueScene.getPageNumber())
+                .learning_goal(story.getLearningGoal())
                 .text_content(dialogueScene.getTextContent())
                 .img_url(dialogueScene.getImgUrl())
                 .audio_url(dialogueScene.getAudioUrl())
