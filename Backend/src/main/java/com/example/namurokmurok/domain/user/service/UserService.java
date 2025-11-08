@@ -50,7 +50,7 @@ public class UserService {
 
         Child child = Child.builder()
                 .name(requestDto.getName())
-                .birth(requestDto.getBirth())
+                .birthYear(requestDto.getBirthYear())
                 .user(user)
                 .build();
 
