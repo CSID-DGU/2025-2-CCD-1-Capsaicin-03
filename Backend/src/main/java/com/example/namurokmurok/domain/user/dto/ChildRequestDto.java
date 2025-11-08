@@ -18,7 +18,7 @@ public class ChildRequestDto {
     @Schema(description = "아이 이름", example = "홍길동")
     private String name;
 
-    @NotNull(message = "생년월일은 필수입니다.")
-    @Schema(description = "아이 생년월일", example = "2022-01-01")
-    private LocalDate birth;
+    @NotNull(message = "출생연도는 필수입니다.")
+    @Schema(description = "아이 출생연도", example = "2022")
+    private Integer birthYear;
 }
