@@ -23,7 +23,7 @@ public class Child {
     @Column(name = "name" ,nullable = false)
     private String name;
 
-    @Column(name = "birth_year", columnDefinition = "YEAR")
+    @Column(name = "birth_year", columnDefinition = "YEAR", nullable = false)
     private Integer birthYear;
 
     @ManyToOne(fetch = FetchType.LAZY)
