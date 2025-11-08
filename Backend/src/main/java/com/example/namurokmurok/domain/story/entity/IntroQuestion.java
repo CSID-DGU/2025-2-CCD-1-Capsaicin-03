@@ -18,7 +18,7 @@ public class IntroQuestion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "text_content" ,nullable = false)
+    @Column(name = "text_content" ,columnDefinition = "TEXT", nullable = false)
     private String textContent;
 
     @Column(name = "audio_url" ,nullable = false)
