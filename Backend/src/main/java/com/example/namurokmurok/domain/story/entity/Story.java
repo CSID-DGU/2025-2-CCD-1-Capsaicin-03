@@ -33,6 +33,9 @@ public class Story {
     @Enumerated(EnumType.STRING)
     private SelCategory category;
 
+    @Column(name = "learning_goal", columnDefinition = "TEXT", nullable = false)
+    private String learningGoal;
+
     @OneToMany(mappedBy = "story")
     @OrderBy("pageNumber ASC")
     private List<StoryPage> pages = new ArrayList<>();
