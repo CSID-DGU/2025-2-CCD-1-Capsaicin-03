@@ -23,8 +23,8 @@ public class Child {
     @Column(name = "name" ,nullable = false)
     private String name;
 
-    @Column(name = "birth" ,nullable = false)
-    private LocalDate birth;
+    @Column(name = "birth_year", columnDefinition = "YEAR")
+    private Integer birthYear;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
