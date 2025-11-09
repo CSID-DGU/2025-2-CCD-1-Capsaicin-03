@@ -66,7 +66,32 @@ class DialogueAgent:
             턴 처리 결과 dict
         """
         stage = session.current_stage
+        
+        # stt_result 검증
+        if stt_result is None:
+            logger.error("❌ stt_result가 None입니다!")
+            raise ValueError("stt_result가 None입니다")
+        
+        if not hasattr(stt_result, 'text'):
+            logger.error(f"❌ stt_result에 'text' 속성이 없습니다. 타입: {type(stt_result)}")
+            raise ValueError(f"stt_result에 'text' 속성이 없습니다")
+        
         child_text = stt_result.text
+        logger.info(f"🔍 execute_stage_turn: stt_result.text='{child_text}' (길이: {len(child_text) if child_text else 0})")
+        logger.info(f"🔍 execute_stage_turn: stt_result 타입={type(stt_result)}")
+        
+        # Pydantic v2에서는 model_dump() 사용, v1에서는 dict() 사용
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+                logger.info(f"🔍 execute_stage_turn: stt_result.model_dump()={stt_dict}")
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+                logger.info(f"🔍 execute_stage_turn: stt_result.dict()={stt_dict}")
+            else:
+                logger.warning(f"⚠️ stt_result에 dict() 또는 model_dump() 메서드가 없습니다")
+        except Exception as e:
+            logger.error(f"❌ stt_result 직렬화 실패: {e}")
         
         logger.info(f"Stage {stage.value} 턴 실행 시작")
         
@@ -79,19 +104,19 @@ class DialogueAgent:
         
         # 2. Stage별 Tool 실행 및 대화 생성
         if stage == Stage.S1_EMOTION_LABELING:
-            return self._execute_s1(request, session, child_text)
+            return self._execute_s1(request, session, child_text, stt_result)
         
         elif stage == Stage.S2_ASK_EXPERIENCE:
-            return self._execute_s2(request, session, child_text)
+            return self._execute_s2(request, session, child_text, stt_result)
         
         elif stage == Stage.S3_ACTION_SUGGESTION:
-            return self._execute_s3(request, session, child_text)
+            return self._execute_s3(request, session, child_text, stt_result)
         
         elif stage == Stage.S4_LESSON_CONNECTION:
-            return self._execute_s4(request, session, child_text)
+            return self._execute_s4(request, session, child_text, stt_result)
         
         elif stage == Stage.S5_ACTION_CARD:
-            return self._execute_s5(request, session, child_text)
+            return self._execute_s5(request, session, child_text, stt_result)
         
         else:
             logger.error(f"알 수 없는 Stage: {stage}")
@@ -99,7 +124,7 @@ class DialogueAgent:
     
     # S1
     def _execute_s1(
-        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str
+        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S1: 감정 라벨링"""
         logger.info("S1 실행: 감정 라벨링")
@@ -131,8 +156,28 @@ class DialogueAgent:
             instruction=f"{request.child_name}이는 어떤 기분이 들었을 것 같아?"
         )
         
+        # stt_result 직렬화
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+            else:
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+        except Exception as e:
+            logger.error(f"❌ _execute_s1: stt_result 직렬화 실패: {e}")
+            stt_dict = {
+                "text": getattr(stt_result, 'text', ''),
+                "confidence": getattr(stt_result, 'confidence', 1.0),
+                "language": getattr(stt_result, 'language', 'ko')
+            }
+        
         return {
-            "stt_result": stt_result.dict(),
+            "stt_result": stt_dict,
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "emotion_detected": emotion_result.dict(),
             "ai_response": ai_response.dict(),
@@ -141,10 +186,44 @@ class DialogueAgent:
 
     ##################################### S2 #####################################
     def _execute_s2(
-        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str
+        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S2: 원인 탐색"""
         logger.info("S2 실행: 경험 탐색")
+        
+        # stt_result 검증 및 로깅
+        if stt_result is None:
+            logger.error("❌ _execute_s2: stt_result가 None입니다!")
+            raise ValueError("stt_result가 None입니다")
+        
+        logger.info(f"🔍 _execute_s2: 받은 stt_result.text='{stt_result.text}' (길이: {len(stt_result.text) if stt_result.text else 0})")
+        logger.info(f"🔍 _execute_s2: 받은 child_text='{child_text}' (길이: {len(child_text) if child_text else 0})")
+        
+        # stt_result 직렬화 (Pydantic v2는 model_dump(), v1은 dict())
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+                logger.info(f"🔍 _execute_s2: stt_result.model_dump()={stt_dict}")
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+                logger.info(f"🔍 _execute_s2: stt_result.dict()={stt_dict}")
+            else:
+                # 수동으로 dict 생성
+                stt_dict = {
+                    "text": stt_result.text,
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+                logger.warning(f"⚠️ _execute_s2: 수동으로 stt_dict 생성={stt_dict}")
+        except Exception as e:
+            logger.error(f"❌ _execute_s2: stt_result 직렬화 실패: {e}")
+            # 수동으로 dict 생성
+            stt_dict = {
+                "text": getattr(stt_result, 'text', ''),
+                "confidence": getattr(stt_result, 'confidence', 1.0),
+                "language": getattr(stt_result, 'language', 'ko')
+            }
+            logger.warning(f"⚠️ _execute_s2: 예외 처리 후 수동으로 stt_dict 생성={stt_dict}")
         
         # 1. 컨텍스트 (S1에서 파악한 감정)
         context = self.context_manager.build_context_for_prompt(
@@ -166,16 +245,23 @@ class DialogueAgent:
             instruction="비슷한 경험이 있어?"
         )
         
-        return {
-            "stt_result": stt_result.dict(),
+        result_dict = {
+            "stt_result": stt_dict,
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "ai_response": ai_response.dict(),
             "action_items": action_items.dict()
         }
+        
+        # 반환 전 최종 확인
+        result_stt = result_dict.get("stt_result", {})
+        result_text = result_stt.get("text", "") if isinstance(result_stt, dict) else ""
+        logger.info(f"🔍 _execute_s2: 반환할 result_dict['stt_result']['text']='{result_text}' (길이: {len(result_text)})")
+        
+        return result_dict
     
     ##################################### S3 #####################################
     def _execute_s3(
-        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str
+        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S3: 대안 제시"""
         logger.info("S3 실행: 대안 제시")
@@ -209,8 +295,28 @@ class DialogueAgent:
             instruction="어떤 방법을 해볼까?"
         )
         
+        # stt_result 직렬화
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+            else:
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+        except Exception as e:
+            logger.error(f"❌ _execute_s3: stt_result 직렬화 실패: {e}")
+            stt_dict = {
+                "text": getattr(stt_result, 'text', ''),
+                "confidence": getattr(stt_result, 'confidence', 1.0),
+                "language": getattr(stt_result, 'language', 'ko')
+            }
+        
         return {
-            "stt_result": stt_result.dict(),
+            "stt_result": stt_dict,
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "ai_response": ai_response.dict(),
             "action_items": action_items.dict(),
@@ -218,7 +324,7 @@ class DialogueAgent:
         }
     
     def _execute_s4(
-        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str
+        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S4: 교훈 연결"""
         logger.info("S4 실행: 교훈 연결")
@@ -244,15 +350,35 @@ class DialogueAgent:
             instruction="알겠지?"
         )
         
+        # stt_result 직렬화
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+            else:
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+        except Exception as e:
+            logger.error(f"❌ _execute_s4: stt_result 직렬화 실패: {e}")
+            stt_dict = {
+                "text": getattr(stt_result, 'text', ''),
+                "confidence": getattr(stt_result, 'confidence', 1.0),
+                "language": getattr(stt_result, 'language', 'ko')
+            }
+        
         return {
-            "stt_result": stt_result.dict(),
+            "stt_result": stt_dict,
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "ai_response": ai_response.dict(),
             "action_items": action_items.dict()
         }
     
     def _execute_s5(
-        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str
+        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S5: 행동카드 생성"""
         logger.info("S5 실행: 행동카드 생성")
@@ -298,8 +424,28 @@ class DialogueAgent:
             instruction="행동카드가 만들어졌어요!"
         )
         
+        # stt_result 직렬화
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+            else:
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+        except Exception as e:
+            logger.error(f"❌ _execute_s5: stt_result 직렬화 실패: {e}")
+            stt_dict = {
+                "text": getattr(stt_result, 'text', ''),
+                "confidence": getattr(stt_result, 'confidence', 1.0),
+                "language": getattr(stt_result, 'language', 'ko')
+            }
+        
         return {
-            "stt_result": stt_result.dict(),
+            "stt_result": stt_dict,
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "ai_response": ai_response.dict(),
             "action_items": action_items.dict(),
@@ -468,8 +614,4 @@ class DialogueAgent:
         # 규칙 기반 + LLM 보조
         # 일단 규칙 기반만 (Orchestrator에서 처리)
         return {"success": True, "reason": "Orchestrator에서 판단"}
-
-
-# 변수명 오류 수정을 위한 임시 객체
-stt_result = STTResult(text="", confidence=0.0)
 
