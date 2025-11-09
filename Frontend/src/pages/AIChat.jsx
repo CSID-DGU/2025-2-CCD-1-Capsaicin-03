@@ -22,6 +22,7 @@ const AIChat = () => {
     const [isFetchingQuestion, setIsFetchingQuestion] = useState(false);
     const [cardData, setCardData] = useState(null);
     const [isResponding, setIsResponding] = useState(false);
+    const [isAIAudioPlaying, setIsAIAudioPlaying] = useState(false);
 
     useEffect(() => {
         if (location.pathname.includes('/intro')) setChatStep('intro');
@@ -101,7 +102,15 @@ const AIChat = () => {
         try {
             const questionData = await fetchIntroQuestion(storyId);
             const questionAudio = new Audio(questionData.audio_url);
-            questionAudio.play().catch(e => console.error("오디오 재생 실패:", e));
+
+            setIsAIAudioPlaying(true);
+            questionAudio.onended = () => {
+                setIsAIAudioPlaying(false);
+            };
+            questionAudio.play().catch(e => {
+                console.error("오디오 재생 실패:", e);
+                setIsAIAudioPlaying(false); 
+            });
             questionAudioRef.current = questionAudio;
             setSceneData(questionData);
             navigate(`/chat/${storyId}/dialogue`);
@@ -173,7 +182,8 @@ const AIChat = () => {
     }
 
     // -------------------------  AI 대화 -------------------------
-    if (chatStep === 'dialogue') {
+    if (chatStep === 'dialogue') {
+        const isMicDisabled = isResponding || isAIAudioPlaying;
         return (
             <div style={styles.dialogueContainer}>
                 <TopHomeButton />
@@ -185,17 +195,22 @@ const AIChat = () => {
                         <p>{sceneData.text_content}</p>
                     </div>
                     <button 
-                        style={styles.micButton}
+                        style={{
+                            ...styles.micButton,
+                            backgroundColor: isMicDisabled ? '#AAAAAA' : 'var(--color-fourth)',
+                            cursor: isMicDisabled ? 'not-allowed' : 'pointer',
+                        }}
                         onMouseDown={startRecording} //웹
                         onMouseUp={stopRecording}    
                         onTouchStart={startRecording} //모바일
                         onTouchEnd={stopRecording}  
-                        disabled={isResponding}
+                        disabled={isMicDisabled}
                     >
                         <img src={micIcon} alt ="마이크" style={styles.micIcon} />
                     </button>
                     <p style={styles.dialogueGuidanceText}>
-                        {isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!'}
+                        {isAIAudioPlaying ? 'AI가 이야기 중이에요. 조금만 기다려줘!' :
+                         (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!')}
                     </p>
                     {recordedAudioURL && (
                     <div style={{marginTop: '10px'}}>
