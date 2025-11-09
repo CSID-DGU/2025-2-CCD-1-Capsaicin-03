@@ -1,96 +1,103 @@
 // src/pages/StoryList.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { fetchStoriesByCategory } from '../api/storyApi.js';
 
 const categories = [
-  '내 마음 살펴보기',
-  '마음 차분히 다루기',
-  '다른 마음 이해하기',
-  '함께 이야기하고 듣기',
-  '생각하고 바르게 선택하기'
-];
-
-const allStories = [
-  // 1. 내 마음 살펴보기
-  { id: '1-1', title: '콩쥐 팥쥐', category: '내 마음 살펴보기', image: '/images/story-thumbnails/1-1.png' },
-  { id: '1-2', title: '가난한 유산', category: '내 마음 살펴보기', image: '/images/story-thumbnails/1-2.png' },
-  // 2. 마음 차분히 다루기
-  { id: '2-1', title: '삼년 고개', category: '마음 차분히 다루기', image: '/images/story-thumbnails/2-1.png' },
-  { id: '2-2', title: '나무 도령', category: '마음 차분히 다루기', image: '/images/story-thumbnails/2-2.png' },
-  // 3. 다른 마음 이해하기
-  { id: '3-1', title: '선녀와 나무꾼', category: '다른 마음 이해하기', image: '/images/story-thumbnails/3-1.png' },
-  { id: '3-2', title: '해님 달님', category: '다른 마음 이해하기', image: '/images/story-thumbnails/3-2.png' },
-  // 4. 함께 이야기하고 듣기
-  { id: '4-1', title: '사이 좋은 형제', category: '함께 이야기하고 듣기', image: '/images/story-thumbnails/4-1.png' },
-  { id: '4-2', title: '혹부리 영감님', category: '함께 이야기하고 듣기', image: '/images/story-thumbnails/4-2.png' },
-  // 5. 생각하고 바르게 선택하기
-  { id: '5-1', title: '버릇 고친 임금님', category: '생각하고 바르게 선택하기', image: '/images/story-thumbnails/5-1.png' },
-  { id: '5-2', title: '효자와 불효자', category: '생각하고 바르게 선택하기', image: '/images/story-thumbnails/5-2.png' },
+  { code: 'SA', name: '내 마음 살펴보기' },
+  { code: 'SM', name: '마음 차분히 다루기' },
+  { code: 'SOA', name: '다른 마음 이해하기' },
+  { code: 'RS', name: '함께 이야기하고 듣기' },
+  { code: 'RDM', name: '생각하고 바르게 선택하기' }
 ];
 
 
 const StoryList = () => {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState(categories[0]);
+  const [activeCategory, setActiveCategory] = useState(categories[0].code);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [stories, setStories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const loadStories = async () => {
+      setIsLoading(true); 
+      setError(null);     
+      setStories([]);     
+
+      try {
+        const data = await fetchStoriesByCategory(activeCategory);
+        setStories(data.stories); 
+      } catch (err) {
+        setError(err.message);
+        console.error(err);
+      } finally {
+        setIsLoading(false); 
+      }
+    };
+
+    loadStories(); 
+
+  }, [activeCategory]); 
+
+  
   const handleStorySelect = (storyId) => {
     navigate(`/story/${storyId}`);
   };
 
-  const filteredStories = allStories.filter(story => story.category === activeCategory);
-
   return (
     <div style={styles.container}>
-      {isModalOpen && <ParentPinModal onClose={() => setIsModalOpen(false)} />}
-
       <header style={styles.header}>
         <button style={styles.parentButton} onClick={() => setIsModalOpen(true)}>
           부모 페이지
         </button>
       </header>
 
-      {/* ✨ categoryNav와 storyGrid를 감싸는 새로운 div 추가 */}
       <div style={styles.contentWrapper}>
         <nav style={styles.categoryNav}>
           {categories.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              key={cat.code} 
+              onClick={() => setActiveCategory(cat.code)}
               style={{
                 ...styles.categoryButton,
-                ...(activeCategory === cat ? styles.activeCategory : {})
+                ...(activeCategory === cat.code ? styles.activeCategory : {})
               }}
             >
-              {cat}
+              {cat.name} 
             </button>
           ))}
         </nav>
 
         <main style={styles.storyGrid}>
-          {filteredStories.map((story) => (
+          {isLoading && <p style={styles.loadingText}>동화 목록을 불러오는 중...</p>}
+          {error && <p style={styles.errorText}>오류가 발생했습니다: {error}</p>}
+          {!isLoading && !error && stories.map((story) => (
             <div
-              key={story.id}
-              onClick={() => handleStorySelect(story.id)}
+              key={story.id} 
+              onClick={() => handleStorySelect(story.id)} 
               style={styles.storyCard}
             >
               <div style={styles.storyImageContainer}>
-                <img src={story.image} alt={story.title} style={styles.storyImage} />
+                <img src={story.thumbnail_img_url} alt={story.title} style={styles.storyImage} />
               </div>
               <div style={styles.storyInfo}>
                 <p style={styles.storyTitle}>{story.title}</p>
               </div>
             </div>
           ))}
+          {!isLoading && !error && stories.length === 0 && (
+            <p style={styles.loadingText}>이 카테고리에는 동화가 없습니다.</p>
+          )}
         </main>
       </div>
     </div>
   );
 };
 
-// --- ✨ Styles 수정 ---
+// ---  Styles  ---
 const styles = {
   container: {
     height: '100%',
