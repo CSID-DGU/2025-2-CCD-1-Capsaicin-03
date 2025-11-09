@@ -1,168 +1,53 @@
-import React, { useState, useEffect, useRef } from 'react'; // ✨ useRef import
+// src/pages/StoryPage.jsx
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-
-// 개발용 API 스위치 (나중에 API 연동 시 false로 변경)
-const USE_MOCK_API = true;
-
-// API 응답과 똑같이 생긴 Mock 데이터 생성
-const mockApiResponse = {
-  "success": true,
-  "message": "요청이 성공적으로 처리되었습니다. (Mock Data)",
-  "data": {
-    "id": 1,
-    "title": "콩쥐 팥쥐",
-    "total_pages": 3,
-    "pages": [
-      {
-        "page_number": 1,
-        "text_content": "옛날 옛적, 마음씨 고약한 팥쥐와~... (1페이지 Mock)",
-        "image_url": "/test_image.png",
-        "audio_url": "/iteach4u_53980_삼년 고개.mp3"
-      },
-      {
-        "page_number": 2,
-        "text_content": "팥쥐는 콩쥐를 구박했어요~... (2페이지 Mock)",
-        "image_url": "/test_image.png",
-        "audio_url": "/iteach4u_53980_삼년 고개.mp3"
-      },
-      {
-        "page_number": 3,
-        "text_content": "하지만 콩쥐는 착한 마음씨로~... (3페이지 Mock)",
-        "image_url": "https://cdn.example.com/images/book-001/page_3.jpg",
-        "audio_url": "https://cdn.example.com/audio/book-001/page_3.mp3"
-      }
-    ]
-  }
-};
-
+import { useStory } from '../hooks/useStory.js';
+import { useAudioPlayback } from '../hooks/useAudioPlayback.js';
+import homeIcon from '../assets/home_icon.svg';
 
 const StoryPage = () => {
   const { storyId } = useParams();
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
-  const [storyData, setStoryData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    isLoading,
+    error,
+    storyData,
+    currentPageData,
+    page, 
+    totalPages,
+    isLastPage,
+    goToNextPage,
+    goToPrevPage
+  } = useStory(storyId);
+
+  useAudioPlayback(
+    currentPageData?.audio_url, 
+    !isLoading && !error,       
+    page                       
+  );
   
-  const audioRef = useRef(new Audio());
-  
-  useEffect(() => {
-    const fetchStory = async () => {
-      setIsLoading(true);
-      setError(null);
-      setStoryData(null);
-      setPage(1);
-      
-      try {
-        const response = await fetch(`/api/stories/${storyId}`);
-        if (!response.ok) {
-          throw new Error('동화를 불러오는데 실패했습니다.');
-        }
-        const result = await response.json();
-        
-        if (result.success) {
-          setStoryData(result.data);
-        } else {
-          throw new Error(result.message || '동화 데이터를 찾을 수 없습니다.');
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const fetchMockStory = () => {
-      setIsLoading(true);
-      setError(null);
-      setStoryData(null);
-      setPage(1);
-
-      // 실제 API처럼 약간의 딜레이(0.5초)를 줌
-      setTimeout(() => {
-        if (mockApiResponse.success) {
-          setStoryData(mockApiResponse.data);
-        } else {
-          setError(mockApiResponse.message);
-        }
-        setIsLoading(false);
-      }, 500);
-    };
-
-
-    // 스위치(USE_MOCK_API) 값에 따라 분기 처리
-    if (USE_MOCK_API) {
-      fetchMockStory(); 
-    } else {
-      fetchStory(); 
-    }
-
-    // 스토리가 바뀌거나 컴포넌트가 사라질 때 오디오 정리
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
-    };
-  }, [storyId]); // storyId가 바뀔 때마다 다시 호출
-
-  // 오디오 자동재생을 위한 useEffect
-  useEffect(() => {
-    if (!storyData || !audioRef.current) return; 
-
-    // 페이지 넘길 때 일단 정지
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-
-    const currentAudioUrl = storyData.pages[page - 1]?.audio_url;
-
-    if (currentAudioUrl) {
-      audioRef.current.src = currentAudioUrl; // 새 오디오 소스
-      audioRef.current.volume = 1.0; 
-      
-      // 자동재생 시도
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.warn("오디오 자동재생이 차단되었습니다:", error);
-        });
-      }
-    } else {
-      audioRef.current.src = ''; // 이 페이지에 오디오 없으면 비움
-    }
-    
-  }, [page, storyData]); // page나 storyData가 바뀔 때마다 실행
-
-
-  //로딩 및 에러 처리
+  // (로딩 및 에러 처리)
   if (isLoading) {
     return <div style={{...styles.container, ...styles.loadingError}}>로딩 중...</div>;
   }
   if (error) {
     return <div style={{...styles.container, ...styles.loadingError}}>오류: {error}</div>;
   }
-  if (!storyData) {
-    return <div style={{...styles.container, ...styles.loadingError}}>존재하지 않는 동화입니다.</div>;
+  if (!storyData || !currentPageData) {
+    return <div style={{...styles.container, ...styles.loadingError}}>동화 데이터를 불러오는 중...</div>;
   }
 
-  const totalPages = storyData.total_pages; 
-  const isLastPage = page === totalPages;
-  const currentPageData = storyData.pages[page - 1]; 
-
-  const goToNextPage = () => {
-    if (page < totalPages) setPage(prev => prev + 1);
-  };
-  const goToPrevPage = () => {
-    if (page > 1) setPage(prev => prev - 1);
-  };
   const goToChatIntro = () => {
-    navigate(`/chat/${storyId}/intro`);
+    navigate(`/chat/${storyId}/goal`);
   };
-  
-  // currentPageData가 없는 경우(로딩 중 예외처리)
-  if (!currentPageData) {
-    return <div style={{...styles.container, ...styles.loadingError}}>페이지 로딩 중...</div>;
-  }
+
+  const getPageIndicator = () => {
+    if (page === 0) {
+        return "커버 페이지"; // 0페이지일 때
+    }
+    // 1페이지 이상일 때 "페이지 1/21"
+    return `페이지 ${page}/${totalPages}`; 
+  };
 
   return (
     <div style={styles.container}>
@@ -173,16 +58,18 @@ const StoryPage = () => {
           style={styles.storyImage} 
         />
         <button onClick={() => navigate('/stories')} style={styles.homeButton}>
-          <img src="/home_icon.svg" style={styles.homeIcon} />
+          <img src={homeIcon} style={styles.homeIcon} />
         </button>
       </div>
       <div style={styles.textSection}>
         <header style={styles.header}>
           <div style={styles.pageInfo}>
-            <span>페이지 {page}/{totalPages}</span>
+            {page > 0 && (
+              <span>페이지 {page}/{totalPages}</span>
+            )}
           </div>
         </header>
-        <main style={styles.storyContent}>
+        <main style={page === 0 ? styles.coverContent : styles.storyContent}>
           <p>{currentPageData.text_content}</p>
           {isLastPage && (
             <div style={styles.actionContainer}>
@@ -193,7 +80,7 @@ const StoryPage = () => {
           )}
         </main>
       </div>
-      {page > 1 && (
+      {page > 0 && (
         <button onClick={goToPrevPage} style={{ ...styles.navButton, ...styles.prevButton }}>&lt;</button>
       )}
       {!isLastPage && (
@@ -203,13 +90,13 @@ const StoryPage = () => {
   );
 };
 
-// --- Styles ---
+// --- Styles (동일) ---
 const styles = {
     container: {
         display: 'flex',
         height: '100%',
         width: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--color-main)',
     },
     loadingError: { 
         justifyContent: 'center',
@@ -223,21 +110,20 @@ const styles = {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        margin: '15px',
-        borderRadius: '15px',
+        margin: '0',
         position: 'relative',
+        overflow: 'hidden'
     },
     storyImage: { 
         width: '100%',
         height: '100%',
-        objectFit: 'contain', 
-        borderRadius: '15px'
+        objectFit: 'cover'
     },
     textSection: {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        padding: '15px',
+        padding: '10px 20px',
         boxSizing: 'border-box'
     },
     header: {
@@ -249,7 +135,7 @@ const styles = {
     homeButton: {
         position: 'absolute',
         top: '10px',
-        left: '5px',
+        left: '10px',
         background: 'var(--color-fourth)', 
         border: '3px solid var(--color-text-dark)',
         borderRadius: '50%',
@@ -263,7 +149,6 @@ const styles = {
         padding: 0,
         boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
     },
-
     homeIcon: {
         width: '60%',
         height: '60%',
@@ -272,17 +157,28 @@ const styles = {
     pageInfo: {
         display: 'flex',
         alignItems: 'center',
-        gap: '15px',
+        gap: '10px',
         fontSize: '1.0rem', 
         color: 'var(--color-text-dark)'
     },
     storyContent: {
         flexGrow: 1,
         overflowY: 'auto',
+        fontSize: '1.0rem',
+        lineHeight: '1.7',
+        color: 'var(--color-text-dark)',
+        whiteSpace: 'pre-line',
+        wordBreak: 'keep-all'
+    },
+    coverContent: {
+        flexGrow: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center', 
+        alignItems: 'center',    
         padding: '20px',
-        fontSize: '1.3rem', 
-        lineHeight: '1.8',
-        color: 'var(--color-text-dark)'
+        fontSize: '2.7rem',
+        color: 'var(--color-text-dark)',
     },
     actionContainer: {
         textAlign: 'center',
@@ -319,10 +215,10 @@ const styles = {
         boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
     },
     prevButton: {
-        left: '20px',
+        left: '10px',
     },
     nextButton: {
-        right: '20px',
+        right: '10px',
     }
 };
 
