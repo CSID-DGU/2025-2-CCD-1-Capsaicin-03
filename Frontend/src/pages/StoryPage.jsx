@@ -41,14 +41,6 @@ const StoryPage = () => {
     navigate(`/chat/${storyId}/goal`);
   };
 
-  const getPageIndicator = () => {
-    if (page === 0) {
-        return "커버 페이지"; // 0페이지일 때
-    }
-    // 1페이지 이상일 때 "페이지 1/21"
-    return `페이지 ${page}/${totalPages}`; 
-  };
-
   return (
     <div style={styles.container}>
       <div style={styles.imageSection}>
@@ -62,13 +54,11 @@ const StoryPage = () => {
         </button>
       </div>
       <div style={styles.textSection}>
-        <header style={styles.header}>
-          <div style={styles.pageInfo}>
+        <div style={styles.pageInfo}>
             {page > 0 && (
               <span>페이지 {page}/{totalPages}</span>
             )}
-          </div>
-        </header>
+        </div>
         <main style={page === 0 ? styles.coverContent : styles.storyContent}>
           <p>{currentPageData.text_content}</p>
           {isLastPage && (
@@ -126,12 +116,6 @@ const styles = {
         padding: '10px 20px',
         boxSizing: 'border-box'
     },
-    header: {
-        display: 'flex',
-        justifyContent: 'flex-end', 
-        alignItems: 'center',
-        padding: '10px',
-    },
     homeButton: {
         position: 'absolute',
         top: '10px',
@@ -156,6 +140,7 @@ const styles = {
     },
     pageInfo: {
         display: 'flex',
+        justifyContent: 'flex-end',
         alignItems: 'center',
         gap: '10px',
         fontSize: '1.0rem', 
