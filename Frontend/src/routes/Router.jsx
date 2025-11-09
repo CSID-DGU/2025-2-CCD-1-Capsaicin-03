@@ -12,6 +12,7 @@ import Login from '../pages/Login.jsx';
 import ProfileSetup from '../pages/ProfileSetup.jsx';
 import StoryList from '../pages/StoryList.jsx';
 import StoryPage from '../pages/StoryPage.jsx';
+import LearningGoal from '../pages/LearningGoal.jsx';
 import AIChat from '../pages/AIChat.jsx';
 import Parents from '../pages/Parents.jsx';
 import FeedbackListPage from '../pages/FeedbackListPage.jsx';
@@ -41,31 +42,32 @@ const router = createBrowserRouter([
           {
             path: 'chat/:storyId',
             children: [
+              { path: 'goal', element: <LearningGoal /> },
               { path: 'intro', element: <AIChat /> },
               { path: 'dialogue', element: <AIChat /> },
               { path: 'card', element: <AIChat /> },
             ],
           },
-          // ✨ 부모 관련 페이지 경로 설정
+          // 부모 관련 페이지 경로 설정
           {
-            path: 'parents', // 부모 페이지 메인 ('/parents')
+            path: 'parents', // 부모 페이지 메인
             element: <Parents />,
           },
           {
-            path: 'parents/feedback', // 피드백 목록 ('/parents/feedback')
+            path: 'parents/feedback', // 피드백 목록
             element: <FeedbackListPage />,
           },
           {
-            // 특정 피드백 상세 보기 ('/parents/feedback/heungbu-nolbu')
+            // 특정 피드백 상세 보기
             path: 'parents/feedback/:storyId',
             element: <FeedbackDetailPage />,
           },
           {
-            path: 'parents/chat', // 대화 목록 ('/parents/chat')
+            path: 'parents/chat', // 대화 목록
             element: <ChatListPage />,
           },
           {
-            // 특정 대화 상세 보기 ('/parents/chat/heungbu-nolbu')
+            // 특정 대화 상세 보기
             path: 'parents/chat/:storyId',
             element: <ChatDetailPage />,
           },
