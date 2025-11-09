@@ -144,7 +144,6 @@ class ContextManagerTool:
     
     def build_context_for_prompt(
         self,
-        story_name: str,
         session: DialogueSession,
         stage: Stage
     ) -> Dict:
@@ -159,7 +158,7 @@ class ContextManagerTool:
         Returns:
             컨텍스트 dict
         """
-        story_context = self.get_story_context(story_name)
+        story_context = self.get_story_context(session.story_name)
         
         context = {
             "story": story_context,

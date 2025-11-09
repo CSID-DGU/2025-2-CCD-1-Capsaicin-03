@@ -47,17 +47,16 @@ class EmotionLabel(str, Enum):
 class DialogueTurnRequest(BaseModel):
     """대화 턴 처리 요청"""
     session_id: str = Field(..., description="세션 고유 ID")
-    turn_number: int = Field(..., ge=1, description="현재 턴 번호 (1부터 시작)")
     stage: Stage = Field(..., description="현재 Stage (S1~S5)")
     
     # 동화 컨텍스트
-    story_name: str = Field(..., description="동화 제목 (예: 콩쥐팥쥐)")
-    story_theme: str = Field(..., description="동화 주제 (예: 분노조절)")
+    # story_name: str = Field(..., description="동화 제목 (예: 콩쥐팥쥐)")
+    # story_theme: str = Field(..., description="동화 주제 (예: 분노조절)")
     safe_tags: List[str] = Field(default=[], description="SAFE 원칙 태그")
     
     # 아동 정보
-    child_name: str = Field(..., min_length=1, max_length=20, description="아동 이름")
-    child_age: Optional[int] = Field(None, ge=4, le=10, description="아동 나이")
+    # child_name: str = Field(..., min_length=1, max_length=20, description="아동 이름")
+    # child_age: Optional[int] = Field(None, ge=4, le=10, description="아동 나이")
     
     # 음성 데이터
     audio_file: Optional[str] = Field(None, description="Base64 인코딩된 오디오 또는 S3 URL")
@@ -69,12 +68,12 @@ class DialogueTurnRequest(BaseModel):
         description="이전 대화 턴들 [{'role': 'ai'|'child', 'content': str, 'stage': str}]"
     )
     
-    @validator("story_name")
-    def validate_story_name(cls, v):
-        # 등록된 동화인지 확인 (나중에 SEL_CHARACTERS와 연동)
-        if not v.strip():
-            raise ValueError("story_name은 비어있을 수 없습니다")
-        return v.strip()
+    # @validator("story_name")
+    # def validate_story_name(cls, v):
+    #     # 등록된 동화인지 확인 (나중에 SEL_CHARACTERS와 연동)
+    #     if not v.strip():
+    #         raise ValueError("story_name은 비어있을 수 없습니다")
+    #     return v.strip()
     
     @validator("audio_file")
     def validate_audio(cls, v, values):
@@ -112,6 +111,14 @@ class AISpeech(BaseModel):
     text: str = Field(..., description="AI 응답 텍스트")
     tts_url: Optional[str] = Field(None, description="TTS 오디오 URL")
     duration_ms: Optional[int] = Field(None, description="오디오 길이 (밀리초)")
+    
+    def to_response_dict(self) -> Dict:
+        """응답 형식으로 변환 (tts_url -> tts_audio)"""
+        return {
+            "text": self.text,
+            "tts_audio": self.tts_url,  # tts_url을 tts_audio로 매핑
+            "duration_ms": self.duration_ms
+        }
 
 
 class ActionItems(BaseModel):
@@ -132,37 +139,56 @@ class ActionCard(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
+class TurnResult(BaseModel):
+    """턴 처리 결과 (응답 형식)"""
+    stt_result: STTResult
+    safety_check: SafetyCheckResult
+    ai_response: Dict = Field(..., description="AI 응답 (text, tts_audio, duration_ms)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "stt_result": {
+                    "text": "",
+                    "confidence": 0,
+                    "language": "ko"
+                },
+                "safety_check": {
+                    "is_safe": True,
+                    "flagged_categories": [],
+                    "message": None
+                },
+                "ai_response": {
+                    "text": "그랬구나, 정말 속상했겠구나.",
+                    "tts_audio": None,
+                    "duration_ms": None
+                }
+            }
+        }
+
+
 class DialogueTurnResponse(BaseModel):
     """대화 턴 처리 응답"""
     success: bool = Field(..., description="처리 성공 여부")
     session_id: str
-    turn_number: int
-    stage: Stage
+    stage: str = Field(..., description="현재 Stage (S1~S5)")
     
     # 처리 결과
-    result: Dict = Field(
-        ...,
-        description="""
-        단계별 결과 포함:
-        {
-            "stt_result": STTResult,
-            "safety_check": SafetyCheckResult,
-            "emotion_detected": EmotionResult (S1만),
-            "ai_response": AISpeech,
-            "action_items": ActionItems,
-            "action_card": ActionCard (S5만)
-        }
-        """
-    )
+    result: TurnResult = Field(..., description="턴 처리 결과")
     
     # 상태 관리
-    next_stage: Stage = Field(..., description="다음 Stage (현재 유지 or 전환)")
+    next_stage: str = Field(..., description="다음 Stage (S1~S5)")
     fallback_triggered: bool = Field(default=False, description="Fallback 전략 사용 여부")
     retry_count: int = Field(default=0, description="현재 Stage 재시도 횟수")
     
     # 메타데이터
     processing_time_ms: int = Field(..., description="처리 시간 (밀리초)")
     timestamp: datetime = Field(default_factory=datetime.now)
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class ErrorResponse(BaseModel):

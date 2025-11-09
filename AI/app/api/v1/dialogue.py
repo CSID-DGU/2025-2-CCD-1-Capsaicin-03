@@ -10,7 +10,7 @@ import uuid
 
 from app.models.schemas import (
     DialogueTurnRequest, DialogueTurnResponse, ErrorResponse,
-    DialogueSession, Stage, STTResult
+    DialogueSession, Stage, STTResult, TurnResult, SafetyCheckResult
 )
 from app.core.orchestrator import StageOrchestrator
 from app.core.agent import DialogueAgent
@@ -32,12 +32,11 @@ redis_service = get_redis_service()
 @router.post("/turn", response_model=DialogueTurnResponse)
 async def process_dialogue_turn(
     session_id: str = Form(...),
-    turn_number: int = Form(...),
     stage: Stage = Form(...),
-    story_name: str = Form(...),
-    story_theme: str = Form(""),
-    child_name: str = Form(...),
-    child_age: Optional[int] = Form(None),
+    # story_name: str = Form(...),
+    # story_theme: str = Form(""),
+    # child_name: str = Form(...),
+    # child_age: Optional[int] = Form(None),
     child_text: str = Form(...)
 ):
     """
@@ -47,12 +46,11 @@ async def process_dialogue_turn(
     
     Args:
         session_id: 세션 ID
-        turn_number: 턴 번호
         stage: 현재 Stage (S1~S5)
-        story_name: 동화 제목
-        story_theme: 동화 주제
-        child_name: 아동 이름
-        child_age: 아동 나이
+        # story_name: 동화 제목
+        # story_theme: 동화 주제
+        # child_name: 아동 이름
+        # child_age: 아동 나이
         child_text: 아동 발화 텍스트 (STT 변환된 텍스트)
     
     Returns:
@@ -63,7 +61,7 @@ async def process_dialogue_turn(
     try:
         logger.info(
             f"대화 턴 처리 시작: session={session_id}, "
-            f"turn={turn_number}, stage={stage.value}"
+            f"stage={stage.value}"
         )
         
         # 1. 세션 조회 또는 생성
@@ -72,10 +70,9 @@ async def process_dialogue_turn(
             # 새 세션 생성
             session = DialogueSession(
                 session_id=session_id,
-                child_name=child_name,
-                story_name=story_name,
-                current_stage=stage,
-                current_turn=turn_number
+                # child_name=child_name,
+                # story_name=story_name,
+                current_stage=stage
             )
             context_manager.save_session(session)
             logger.info(f"새 세션 생성: {session_id}, Stage: {stage.value}")
@@ -134,12 +131,11 @@ async def process_dialogue_turn(
         # 3. Request 객체 구성 (세션의 current_stage 사용)
         request = DialogueTurnRequest(
             session_id=session_id,
-            turn_number=turn_number,
             stage=session.current_stage,  # 세션의 current_stage 사용
-            story_name=story_name,
-            story_theme=story_theme,
-            child_name=child_name,
-            child_age=child_age,
+            story_name=session.story_name,
+            # story_theme=session.story_theme,
+            child_name=session.child_name,
+            # child_age=session.child_age,
             audio_file=None,
             previous_turns=[]  # 필요시 DB에서 조회
         )
@@ -196,13 +192,101 @@ async def process_dialogue_turn(
         # 8. 응답 구성
         processing_time = int((time.time() - start_time) * 1000)
         
+        # turn_result에서 필요한 데이터 추출 및 변환
+        stt_result_raw = turn_result.get("stt_result")
+        safety_check_raw = turn_result.get("safety_check", {})
+        ai_response_raw = turn_result.get("ai_response", {})
+        
+        # stt_result 처리 (None일 수 있음)
+        if stt_result_raw is None:
+            stt_result_dict = {
+                "text": "",
+                "confidence": 0.0,
+                "language": "ko"
+            }
+        elif isinstance(stt_result_raw, dict):
+            stt_result_dict = stt_result_raw
+        else:
+            # STTResult 객체인 경우
+            if hasattr(stt_result_raw, 'model_dump'):
+                stt_result_dict = stt_result_raw.model_dump()
+            elif hasattr(stt_result_raw, 'dict'):
+                stt_result_dict = stt_result_raw.dict()
+            else:
+                stt_result_dict = {
+                    "text": getattr(stt_result_raw, "text", ""),
+                    "confidence": getattr(stt_result_raw, "confidence", 0.0),
+                    "language": getattr(stt_result_raw, "language", "ko")
+                }
+        
+        # safety_check 처리
+        if isinstance(safety_check_raw, dict):
+            safety_check_dict = safety_check_raw
+            # message 필드가 없으면 None으로 설정
+            if "message" not in safety_check_dict:
+                safety_check_dict["message"] = None
+        else:
+            # SafetyCheckResult 객체인 경우
+            if hasattr(safety_check_raw, 'model_dump'):
+                safety_check_dict = safety_check_raw.model_dump()
+            elif hasattr(safety_check_raw, 'dict'):
+                safety_check_dict = safety_check_raw.dict()
+            else:
+                safety_check_dict = {
+                    "is_safe": getattr(safety_check_raw, "is_safe", True),
+                    "flagged_categories": getattr(safety_check_raw, "flagged_categories", []),
+                    "message": getattr(safety_check_raw, "message", None)
+                }
+        
+        # ai_response 변환 (tts_url -> tts_audio)
+        if isinstance(ai_response_raw, dict):
+            ai_response_formatted = {
+                "text": ai_response_raw.get("text", ""),
+                "tts_audio": ai_response_raw.get("tts_url") if "tts_url" in ai_response_raw else None,  # tts_url을 tts_audio로 매핑
+                "duration_ms": ai_response_raw.get("duration_ms") if "duration_ms" in ai_response_raw else None
+            }
+        else:
+            # AISpeech 객체인 경우
+            if hasattr(ai_response_raw, 'model_dump'):
+                ai_response_dict = ai_response_raw.model_dump()
+                ai_response_formatted = {
+                    "text": ai_response_dict.get("text", ""),
+                    "tts_audio": ai_response_dict.get("tts_url"),
+                    "duration_ms": ai_response_dict.get("duration_ms")
+                }
+            elif hasattr(ai_response_raw, 'dict'):
+                ai_response_dict = ai_response_raw.dict()
+                ai_response_formatted = {
+                    "text": ai_response_dict.get("text", ""),
+                    "tts_audio": ai_response_dict.get("tts_url"),
+                    "duration_ms": ai_response_dict.get("duration_ms")
+                }
+            else:
+                ai_response_formatted = {
+                    "text": getattr(ai_response_raw, "text", ""),
+                    "tts_audio": getattr(ai_response_raw, "tts_url", None),
+                    "duration_ms": getattr(ai_response_raw, "duration_ms", None)
+                }
+        
+        # 모든 필드가 있는지 확인 (None이라도 필드가 있어야 함)
+        if "tts_audio" not in ai_response_formatted:
+            ai_response_formatted["tts_audio"] = None
+        if "duration_ms" not in ai_response_formatted:
+            ai_response_formatted["duration_ms"] = None
+        
+        # TurnResult 생성
+        turn_result_formatted = TurnResult(
+            stt_result=STTResult(**stt_result_dict),
+            safety_check=SafetyCheckResult(**safety_check_dict),
+            ai_response=ai_response_formatted
+        )
+        
         response = DialogueTurnResponse(
             success=True,
             session_id=session_id,
-            turn_number=turn_number,
-            stage=session.current_stage,  # 업데이트된 세션의 current_stage 사용
-            result=turn_result,
-            next_stage=next_stage_value,
+            stage=session.current_stage.value,  # Stage enum을 문자열로 변환
+            result=turn_result_formatted,
+            next_stage=next_stage_value.value,  # Stage enum을 문자열로 변환
             fallback_triggered=session.retry_count > 0,
             retry_count=session.retry_count,
             processing_time_ms=processing_time

@@ -134,12 +134,12 @@ class DialogueAgent:
         
         # 2. 컨텍스트 구성
         context = self.context_manager.build_context_for_prompt(
-            request.story_name, session, Stage.S1_EMOTION_LABELING
+            session, Stage.S1_EMOTION_LABELING
         )
         
         # 3. AI 응답 생성
         ai_response = self._generate_empathic_response(
-            child_name=request.child_name,
+            child_name=session.child_name,
             child_text=child_text,
             emotion=emotion_result.primary.value,
             context=context,
@@ -153,7 +153,7 @@ class DialogueAgent:
                 emotion_result.primary.value,
                 *[e.value for e in emotion_result.secondary]
             ][:3],  # 최대 3개
-            instruction=f"{request.child_name}이는 어떤 기분이 들었을 것 같아?"
+            instruction=f"{session.child_name}이는 어떤 기분이 들었을 것 같아?"
         )
         
         # stt_result 직렬화
@@ -227,14 +227,14 @@ class DialogueAgent:
         
         # 1. 컨텍스트 (S1에서 파악한 감정)
         context = self.context_manager.build_context_for_prompt(
-            request.story_name, session, Stage.S2_ASK_EXPERIENCE
+            session, Stage.S2_ASK_EXPERIENCE
         )
         
         # identified_emotion = context.get("identified_emotion", "감정")
         
         # 2. AI 응답 생성 (원인 탐색 질문)
         ai_response = self._generate_ask_experience_question(
-            child_name=request.child_name,
+            child_name=session.child_name,
             # emotion=identified_emotion,
             context=context
         )
@@ -276,7 +276,7 @@ class DialogueAgent:
         
         # 1. 컨텍스트 (S2에서 파악한 상황)
         context = self.context_manager.build_context_for_prompt(
-            request.story_name, session, Stage.S3_ACTION_SUGGESTION
+            session, Stage.S3_ACTION_SUGGESTION
         )
         
         emotion = session.emotion_history[-1].value if session.emotion_history else "감정"
@@ -288,14 +288,14 @@ class DialogueAgent:
         strategies = self.action_card_generator.generate_draft(
             emotion=emotion,
             situation=situation,
-            child_name=request.child_name
+            child_name=session.child_name
         )
         
         logger.info(f"🔍 _execute_s3: 생성된 전략들={strategies}")
         
         # 3. AI 응답 생성 (전략 제안)
         ai_response = self._generate_strategy_suggestion(
-            child_name=request.child_name,
+            child_name=session.child_name,
             strategies=strategies,
             context=context
         )
@@ -352,14 +352,14 @@ class DialogueAgent:
         
         # 1. 컨텍스트 (동화 교훈)
         context = self.context_manager.build_context_for_prompt(
-            request.story_name, session, Stage.S4_LESSON_CONNECTION
+            session, Stage.S4_LESSON_CONNECTION
         )
         
         lesson = context.get("lesson", "배운 것을 기억하자")
         
         # 2. AI 응답 생성 (교훈 명시)
         ai_response = self._generate_lesson_connection(
-            child_name=request.child_name,
+            child_name=session.child_name,
             lesson=lesson,
             context=context
         )
@@ -406,7 +406,7 @@ class DialogueAgent:
         
         # 1. 전체 대화 요약
         context = self.context_manager.build_context_for_prompt(
-            request.story_name, session, Stage.S5_ACTION_CARD
+            session, Stage.S5_ACTION_CARD
         )
         
         conversation_summary = self._summarize_conversation(session)
@@ -424,8 +424,8 @@ class DialogueAgent:
         
         # 2. 최종 행동카드 생성
         action_card = self.action_card_generator.generate_final_card(
-            child_name=request.child_name,
-            story_name=request.story_name,
+            child_name=session.child_name,
+            story_name=session.story_name,
             emotion=emotion,
             situation=situation,
             selected_strategy=selected_strategy,
@@ -434,7 +434,7 @@ class DialogueAgent:
         
         # 3. AI 응답 (마무리)
         ai_response = AISpeech(
-            text=f"{request.child_name}아, 오늘 정말 잘했어! 행동카드를 만들었으니 언제든 사용해봐!",
+            text=f"{session.child_name}아, 오늘 정말 잘했어! 행동카드를 만들었으니 언제든 사용해봐!",
             tts_url=None,
             duration_ms=None
         )
