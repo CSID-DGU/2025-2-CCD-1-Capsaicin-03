@@ -266,6 +266,14 @@ class DialogueAgent:
         """S3: 대안 제시"""
         logger.info("S3 실행: 대안 제시")
         
+        # stt_result 검증 및 로깅
+        if stt_result is None:
+            logger.error("❌ _execute_s3: stt_result가 None입니다!")
+            raise ValueError("stt_result가 None입니다")
+        
+        logger.info(f"🔍 _execute_s3: 받은 stt_result.text='{stt_result.text}' (길이: {len(stt_result.text) if stt_result.text else 0})")
+        logger.info(f"🔍 _execute_s3: 받은 child_text='{child_text}' (길이: {len(child_text) if child_text else 0})")
+        
         # 1. 컨텍스트 (S2에서 파악한 상황)
         context = self.context_manager.build_context_for_prompt(
             request.story_name, session, Stage.S3_ACTION_SUGGESTION
@@ -274,12 +282,16 @@ class DialogueAgent:
         emotion = session.emotion_history[-1].value if session.emotion_history else "감정"
         situation = context.get("situation", child_text)
         
+        logger.info(f"🔍 _execute_s3: emotion={emotion}, situation={situation}")
+        
         # 2. 행동 전략 초안 생성
         strategies = self.action_card_generator.generate_draft(
             emotion=emotion,
             situation=situation,
             child_name=request.child_name
         )
+        
+        logger.info(f"🔍 _execute_s3: 생성된 전략들={strategies}")
         
         # 3. AI 응답 생성 (전략 제안)
         ai_response = self._generate_strategy_suggestion(
@@ -315,13 +327,22 @@ class DialogueAgent:
                 "language": getattr(stt_result, 'language', 'ko')
             }
         
-        return {
+        result_dict = {
             "stt_result": stt_dict,
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "ai_response": ai_response.dict(),
             "action_items": action_items.dict(),
-            "strategies": strategies
+            "strategies": strategies  # 전략 목록 포함 (orchestrator에서 사용)
         }
+        
+        # 반환 전 최종 확인
+        result_stt = result_dict.get("stt_result", {})
+        result_text = result_stt.get("text", "") if isinstance(result_stt, dict) else ""
+        result_strategies = result_dict.get("strategies", [])
+        logger.info(f"🔍 _execute_s3: 반환할 result_dict['stt_result']['text']='{result_text}' (길이: {len(result_text)})")
+        logger.info(f"🔍 _execute_s3: 반환할 result_dict['strategies']={result_strategies}")
+        
+        return result_dict
     
     def _execute_s4(
         self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
