@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # OpenAI API
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_TEMPERATURE: float = 0.7
     
