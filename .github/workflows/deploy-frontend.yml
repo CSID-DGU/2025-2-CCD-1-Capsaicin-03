@@ -6,22 +6,38 @@ on:
       - main
     paths:
       - 'Frontend/**'
+      - '.github/workflows/deploy-frontend.yml' # 이 파일 자체의 변경을 감지
 
 jobs:
-  build_and_deploy:
+  build_and_deploy_frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./Frontend
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install Dependencies and Build
-        run: cd Frontend && npm ci && npm run build
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NAMUROK_7512505 }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CAPSAICIN_S3 }}'
           channelId: live
-          projectId: namurok-7512505
+          projectId: capsaicin-s3
+          target: capsaicin-s3-frontend
+          entryPoint: ./Frontend
