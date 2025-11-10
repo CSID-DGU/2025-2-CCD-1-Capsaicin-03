@@ -18,6 +18,8 @@ jobs:
           node-version: '20'
       - name: Install Dependencies and Build
         run: cd Frontend && npm install && npm run build
+      - name: List files in the repository
+        run: ls -R
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
