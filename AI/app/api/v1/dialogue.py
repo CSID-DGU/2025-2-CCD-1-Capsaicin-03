@@ -70,8 +70,8 @@ async def process_dialogue_turn(
             # 새 세션 생성
             session = DialogueSession(
                 session_id=session_id,
-                # child_name=child_name,
-                # story_name=story_name,
+                child_name=session.child_name,
+                story_name=session.story_name,
                 current_stage=stage
             )
             context_manager.save_session(session)
@@ -284,7 +284,7 @@ async def process_dialogue_turn(
         response = DialogueTurnResponse(
             success=True,
             session_id=session_id,
-            stage=session.current_stage.value,  # Stage enum을 문자열로 변환
+            stage=old_stage,  # Stage enum을 문자열로 변환
             result=turn_result_formatted,
             next_stage=next_stage_value.value,  # Stage enum을 문자열로 변환
             fallback_triggered=session.retry_count > 0,
