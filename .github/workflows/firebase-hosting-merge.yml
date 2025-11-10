@@ -1,5 +1,7 @@
+# .github/workflows/firebase-hosting-merge.yml
+
 name: Deploy to Firebase Hosting on merge
-on:
+'on':
   push:
     branches:
       - main
@@ -15,14 +17,20 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: '20'
+
       - name: Install Dependencies and Build
-        run: cd Frontend && npm install && npm run build
+        run: |
+          cd Frontend
+          npm install
+          npm run build
+
       - name: List files in the repository
         run: ls -R
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NAMUROK_7512505 }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NAMUROK }}' # <- 올바른 Secret 이름으로 수정
           channelId: live
-          projectId: namurok-7512505
+          projectId: namurok-7512505 # <- 올바른 프로젝트 ID로 수정
