@@ -29,6 +29,7 @@ jobs:
       - name: Build project
         run: npm run build
         env:
+          VITE_API_URL: http://${{ secrets.EC2_HOST }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
