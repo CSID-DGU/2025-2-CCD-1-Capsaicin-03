@@ -36,8 +36,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NAMUROK }} 
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NAMUROK }}
           channelId: live
-          projectId: capsaicin-s3
-          target: capsaicin-s3-frontend
+          projectId: namurokmurok-75125505-13691
           entryPoint: ./Frontend
