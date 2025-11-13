@@ -1,3 +1,4 @@
+// Trigger frontend workflow
 // src/App.jsx
 
 import React from 'react';

@@ -528,3 +528,4 @@ const styles = {
 };
 
 export default AIChat;
+// Test comment to trigger workflow

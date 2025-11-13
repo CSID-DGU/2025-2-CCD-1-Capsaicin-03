@@ -1,38 +1,32 @@
 {
-  "hash": "8d3fe7f9",
+  "hash": "34563c6a",
   "configHash": "51f01d42",
-  "lockfileHash": "277b5ac8",
-  "browserHash": "db42f6e5",
+  "lockfileHash": "17ed39e6",
+  "browserHash": "42a118e2",
   "optimized": {
     "react": {
       "src": "../../node_modules/react/index.js",
       "file": "react.js",
-      "fileHash": "e7867cbd",
+      "fileHash": "53304eb5",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "8155ce78",
       "needsInterop": true
     },
     "react-router-dom": {
       "src": "../../node_modules/react-router-dom/dist/index.mjs",
       "file": "react-router-dom.js",
-      "fileHash": "415c471a",
-      "needsInterop": false
-    },
-    "axios": {
-      "src": "../../node_modules/axios/index.js",
-      "file": "axios.js",
-      "fileHash": "20ca4d9d",
+      "fileHash": "7c2279d4",
       "needsInterop": false
     },
     "@supabase/supabase-js": {
       "src": "../../node_modules/@supabase/supabase-js/dist/module/index.js",
       "file": "@supabase_supabase-js.js",
-      "fileHash": "97c382df",
+      "fileHash": "e081916e",
       "needsInterop": false
-    },
-    "react-dom/client": {
-      "src": "../../node_modules/react-dom/client.js",
-      "file": "react-dom_client.js",
-      "fileHash": "2ee0b95e",
-      "needsInterop": true
     }
   },
   "chunks": {
