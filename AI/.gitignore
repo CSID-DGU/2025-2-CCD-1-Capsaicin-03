@@ -1,1 +1,52 @@
-*__pycache__/*
+# —————————————
+# Python cache & build files
+# —————————————
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# MacOS
+.DS_Store
+
+# —————————————
+# Environment variables 
+# —————————————
+.env
+*.env
+**/.env
+
+# —————————————
+# Documentation 
+# —————————————
+*.md
+docs/
+README*
+QUICKSTART*
+START_SERVER*
+SETUP*
+ARCHITECTURE*
+REDIS_SETUP*
+
+# —————————————
+# Virtual environments
+# —————————————
+.venv/
+venv/
+
+# —————————————
+# Logs
+# —————————————
+*.log
+
+# —————————————
+# Tests
+# —————————————
+test_*
+tests/
+
+# —————————————
+# Docker / Build
+# —————————————
+docker-compose.override.yml
