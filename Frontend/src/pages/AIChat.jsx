@@ -420,7 +420,8 @@ const styles = {
         fontFamily: 'var(--font-family-primary)', 
         lineHeight: '1.6', 
         color: 'var(--color-text-dark)',
-        wordBreak: 'keep-all'
+        wordBreak: 'keep-all',
+        whiteSpace: 'pre-line'
     },
     micButton: { 
         width: '70px', 
