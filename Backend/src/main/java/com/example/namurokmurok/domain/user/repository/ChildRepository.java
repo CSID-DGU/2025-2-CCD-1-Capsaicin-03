@@ -9,5 +9,6 @@ import java.util.Optional;
 
 public interface ChildRepository extends JpaRepository<Child, Long> {
     boolean existsByUser(User user);
-    Optional<Child> findByName(String name);
+
+    Optional<Child> findByUserId(Long userId);
 }
