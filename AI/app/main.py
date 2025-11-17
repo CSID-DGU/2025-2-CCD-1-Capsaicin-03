@@ -12,8 +12,10 @@ load_dotenv(env_path)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import logging
 import sys
+from pathlib import Path
 
 from app.api.v1 import dialogue
 
@@ -44,6 +46,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 정적 파일 서빙 (TTS 음성 파일)
+audio_dir = Path("generated_audio")
+audio_dir.mkdir(exist_ok=True)
+app.mount("/audio", StaticFiles(directory=str(audio_dir)), name="audio")
+
 # 라우터 등록
 app.include_router(
     dialogue.router,
@@ -63,6 +70,7 @@ async def startup_event():
     from app.tools.emotion_classifier import get_emotion_classifier
     from app.tools.context_manager import get_context_manager
     from app.services.redis_service import get_redis_service
+    from app.services.tts_service import get_tts_service
     
     # Redis 연결 확인
     try:
@@ -82,6 +90,10 @@ async def startup_event():
     logger.info("컨텍스트 매니저 초기화...")
     get_context_manager()
     logger.info("✅ 컨텍스트 매니저 초기화 완료")
+    
+    logger.info("TTS 서비스 초기화...")
+    get_tts_service()
+    logger.info("✅ TTS 서비스 초기화 완료")
     
     logger.info("🚀 서버 준비 완료")
 
