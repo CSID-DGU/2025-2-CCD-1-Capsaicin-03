@@ -22,6 +22,7 @@ public enum ErrorCode {
 
     // child 관련
     CHILD_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "이미 등록된 아이가 있습니다."),
+    CHILD_NOT_FOUND(HttpStatus.NOT_FOUND, "등록되지 않은 아이입니다"),
 
     // story 관련
     INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "잘못된 카테고리입니다."),

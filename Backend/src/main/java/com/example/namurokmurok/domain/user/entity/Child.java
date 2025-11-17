@@ -1,12 +1,14 @@
 package com.example.namurokmurok.domain.user.entity;
 
+import com.example.namurokmurok.domain.conversation.entity.Converstation;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
@@ -29,6 +31,9 @@ public class Child {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @OneToMany(mappedBy = "child")
+    private List<Converstation> converstations = new ArrayList<>();
 
     public void linkUser(User user) {
         this.user = user;

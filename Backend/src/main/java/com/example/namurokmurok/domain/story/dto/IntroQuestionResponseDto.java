@@ -23,4 +23,7 @@ public class IntroQuestionResponseDto {
 
     @Schema(description = "질문 음성 URL", example = "https://example.com/audio.mp3")
     private String audio_url;
+
+    @Schema(description = "대화 세션 ID", example = "123324-aaaa-bb11-cc11-ddd432423543")
+    private String session_id;
 }
