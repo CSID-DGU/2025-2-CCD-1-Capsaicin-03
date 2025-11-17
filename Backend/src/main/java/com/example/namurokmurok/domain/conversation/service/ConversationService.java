@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -27,9 +28,25 @@ public class ConversationService {
     private final StoryRepository storyRepository;
     private final ConverstationRepository converstationRepository;
 
-    public SessionStartResponse startSession(SessionStartRequest request) {
+    // 세션 발급
+    public SessionStartResponse startSession(Long storyId, Long childId) {
 
-        // 1) FastAPI 호출 (세션 생성)
+        Child child = childRepository.findById(childId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
+        // 아이 만 나이 계산
+        int childAge = LocalDate.now().getYear() - child.getBirthYear();
+
+        SessionStartRequest request = SessionStartRequest.builder()
+                .story_name(story.getTitle())
+                .child_name(child.getName())
+                .child_age(childAge)
+                .build();
+
+        // FastAPI 세션 id 발급 요청
         var form = BodyInserters
                 .fromFormData("story_name", request.getStory_name())
                 .with("child_name", request.getChild_name())
@@ -41,14 +58,7 @@ public class ConversationService {
                 SessionStartResponse.class
         );
 
-        Child child = childRepository.findByName(request.getChild_name())
-                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
-
-        // 3) DB에서 Story 조회
-        Story story = storyRepository.findByTitle(request.getStory_name())
-                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
-
-        // 3) DB에 Conversation 저장
+        // DB에 Conversation 저장
         Converstation conversation = Converstation.builder()
                 .id(response.getSession_id())
                 .child(child)
@@ -62,6 +72,4 @@ public class ConversationService {
 
         return response;
     }
-
-
 }
