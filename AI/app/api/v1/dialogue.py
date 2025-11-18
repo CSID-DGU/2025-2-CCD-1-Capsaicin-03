@@ -362,7 +362,8 @@ async def process_dialogue_turn(
 async def start_session(
     story_name: str = Form(...),
     child_name: str = Form(...),
-    child_age: Optional[int] = Form(None)
+    child_age: Optional[int] = Form(None),
+    intro: str = Form(...)
 ):
     """
     새 대화 세션 시작
@@ -396,9 +397,9 @@ async def start_session(
                 detail=f"등록되지 않은 동화: {story_name}"
             )
         
-        # AI 인트로 생성
+        # AI 인트로 생성 (백엔드에서 전달받은 intro 사용)
         character_name = story_context["character_name"]
-        intro = story_context["intro"]
+        # intro = story_context["intro"]
         ai_intro = f"{first_name}아, {intro}"
         
         # AI 인트로를 TTS로 변환
@@ -429,7 +430,7 @@ async def start_session(
     except Exception as e:
         logger.error(f"세션 시작 실패: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
+    
 
 @router.get("/session/{session_id}")
 async def get_session(session_id: str):

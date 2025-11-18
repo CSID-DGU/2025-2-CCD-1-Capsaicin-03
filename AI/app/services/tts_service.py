@@ -23,7 +23,7 @@ class TTSService:
         Args:
             api_key: Supertone API Key (환경변수 SUPERTONE_API_KEY 또는 직접 입력)
         """
-        self.api_key = api_key or os.getenv("SUPERTONE_API_KEY", "80c4fc7276eaa9b766c6b6a5b22bfe10")
+        self.api_key = api_key or os.getenv("SUPERTONE_API_KEY")
         self.base_url = "https://supertoneapi.com/v1"
         self.headers = {
             "x-sup-api-key": self.api_key
