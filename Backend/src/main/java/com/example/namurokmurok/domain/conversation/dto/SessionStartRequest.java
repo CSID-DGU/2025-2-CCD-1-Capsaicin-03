@@ -1,9 +1,9 @@
 package com.example.namurokmurok.domain.conversation.dto;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class SessionStartRequest {
     private String story_name;

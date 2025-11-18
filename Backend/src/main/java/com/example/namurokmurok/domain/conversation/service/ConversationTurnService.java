@@ -1,0 +1,221 @@
+package com.example.namurokmurok.domain.conversation.service;
+
+import com.example.namurokmurok.domain.conversation.dto.ConversationTurnResponse;
+import com.example.namurokmurok.domain.conversation.dto.DialogueTurnRequest;
+import com.example.namurokmurok.domain.conversation.dto.DialogueTurnResponse;
+import com.example.namurokmurok.domain.conversation.entity.Conversation;
+import com.example.namurokmurok.domain.conversation.entity.Dialogue;
+import com.example.namurokmurok.domain.conversation.enums.Speaker;
+import com.example.namurokmurok.domain.conversation.enums.Stage;
+import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
+import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
+import com.example.namurokmurok.domain.story.repository.StoryRepository;
+import com.example.namurokmurok.domain.user.repository.ChildRepository;
+import com.example.namurokmurok.global.audio.AudioConverter;
+import com.example.namurokmurok.global.client.AiApiClient;
+import com.example.namurokmurok.global.exception.CustomException;
+import com.example.namurokmurok.global.exception.ErrorCode;
+import com.example.namurokmurok.global.s3.S3Uploader;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ConversationTurnService {
+
+    private final DialogueRepository dialogueRepository;
+    private final ConverstationRepository conversationRepository;
+    private final ChildRepository childRepository;
+    private final StoryRepository storyRepository;
+
+    private final AiApiClient aiApiClient;
+    private final AudioConverter audioConverter;
+    private final S3Uploader s3Uploader;
+
+    private static final int MAX_RETRY_COUNT = 3; // retry 최대 횟수
+
+    /**
+     * 실시간 대화 턴 처리 (메인 로직)
+     */
+    @Transactional
+    public ConversationTurnResponse processTurn(
+            Long childId, Long storyId, Stage stage, String sessionId, MultipartFile webmAudio
+    ) {
+        log.info("[ProcessTurn] Start - session={}, stage={}, childId={}", sessionId, stage, childId);
+
+        // 1. 검증 및 엔티티 조회
+        Conversation conversation = validateAndGetConversation(childId, storyId, sessionId);
+
+        // 2. 오디오 변환
+        File wavFile = audioConverter.convertWebmToWav(webmAudio);
+
+        // 3. AI 서버 요청
+        DialogueTurnResponse aiRes = requestToAiServer(sessionId, stage, wavFile);
+
+        // 4. 현재 Retry 횟수 (AI가 준 값 사용)
+        int currentRetryCount = aiRes.getRetryCount();
+
+        // 5. TTS 업로드
+        String ttsUrl = uploadTtsAudio(aiRes, sessionId, stage, currentRetryCount);
+
+        // 6. 로그 저장
+        saveDialogueLog(conversation, stage, currentRetryCount, aiRes, ttsUrl);
+
+        // 7. 종료 여부 판단
+        boolean isEnd = determineIsEnd(stage, aiRes, currentRetryCount);
+
+        // 8. 다음 스테이지 결정
+        String nextStageName = aiRes.getNextStage();
+        if (isEnd) {
+            nextStageName = null; // 종료 시 다음 스테이지 없음
+        }
+
+        log.info("[ProcessTurn] Completed. Session={}, Current={}, Next={}, isEnd={}",
+                sessionId, stage, nextStageName, isEnd);
+
+        // 9. 응답 생성
+        return ConversationTurnResponse.builder()
+                .sessionId(sessionId)
+                .currentStage(stage)      // 현재 스테이지
+                .nextStage(nextStageName) // 다음 스테이지 (String)
+                .sttText(aiRes.getResult().getSttResult().getText())
+                .aiText(aiRes.getResult().getAiResponse().getText())
+                .ttsAudioUrl(ttsUrl)
+                .isEnd(isEnd)
+                .build();
+    }
+
+    // =================================================================
+    // Private Helper Methods
+    // =================================================================
+
+    // 1. 엔티티 조회 및 유효성 검증
+    private Conversation validateAndGetConversation(Long childId, Long storyId, String sessionId) {
+        childRepository.findById(childId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+        storyRepository.findById(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
+        return conversationRepository.findById(sessionId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+    }
+
+    // 3. AI 서버 통신
+    private DialogueTurnResponse requestToAiServer(String sessionId, Stage stage, File wavFile) {
+        DialogueTurnRequest aiReq = DialogueTurnRequest.builder()
+                .sessionId(sessionId)
+                .stage(stage)
+                .audioFile(wavFile)
+                .build();
+
+        log.info("[ProcessTurn] Sending request to AI Model Server...");
+        DialogueTurnResponse aiRes = aiApiClient.sendTurn(aiReq);
+
+        if (aiRes == null || aiRes.getResult() == null) {
+            log.warn("[ProcessTurn] AI Response is null or empty.");
+        }
+        return aiRes;
+    }
+
+    // 5. S3 업로드 로직
+    private String uploadTtsAudio(DialogueTurnResponse aiRes, String sessionId, Stage stage, int currentRetryCount) {
+        if (!hasTtsAudio(aiRes)) {
+            return null;
+        }
+
+        log.info("[ProcessTurn] Uploading TTS audio to S3...");
+        // 파일명: conversation/{uuid}/S1_retry1.mp3
+        String fileName = String.format("conversation/%s/%s_retry%d.mp3",
+                sessionId,
+                stage.name(),
+                currentRetryCount
+        );
+
+        String ttsUrl = s3Uploader.upload(
+                aiRes.getResult().getAiResponse().getTtsAudio(),
+                fileName
+        );
+        log.info("[ProcessTurn] TTS Upload complete: {}", ttsUrl);
+        return ttsUrl;
+    }
+
+    // 7. 종료 조건 판단
+    /**
+     * * [정책 요약]
+     * 1. 기본적으로 AI가 '다음 스테이지 없음(null)'을 응답하면 종료합니다.
+     * 2. 단, 마지막 단계(S5)에서는 AI 응답의 안전성(Safety)과 재시도 횟수(Retry)를 기반으로 판단합니다.
+     * - Case A (성공): S5 + 안전함 -> 정상 종료
+     * - Case B (유예): S5 + 불안전 + 횟수 남음 -> 재시도 (종료 X)
+     * - Case C (실패): S5 + 불안전 + 횟수 초과 -> 강제 종료
+     */
+    private boolean determineIsEnd(Stage stage, DialogueTurnResponse aiRes, int currentRetryCount) {
+        // (A) 안전 여부 확인
+        boolean isSafe = true;
+        if (aiRes.getResult() != null && aiRes.getResult().getSafetyCheck() != null) {
+            isSafe = aiRes.getResult().getSafetyCheck().isSafe();
+        }
+
+        // (B) 로직 판단
+        if (stage == Stage.S5) {
+            if (isSafe) {
+                log.info("[Logic] S5 & Safe -> Normal End.");
+                return true;
+            } else {
+                if (currentRetryCount >= MAX_RETRY_COUNT) {
+                    log.info("[Logic] S5 & Unsafe & MaxRetry({}) -> Force End.", currentRetryCount);
+                    return true;
+                } else {
+                    log.info("[Logic] S5 & Unsafe & Count({}) -> Retry requested.", currentRetryCount);
+                    return false;
+                }
+            }
+        }
+
+        // S1~S4: AI가 끝(null)이라고 한 경우만 종료
+        return aiRes.getNextStage() == null;
+    }
+
+    // TTS 존재 여부 체크
+    private boolean hasTtsAudio(DialogueTurnResponse res) {
+        return res != null && res.getResult() != null
+                && res.getResult().getAiResponse() != null
+                && res.getResult().getAiResponse().getTtsAudio() != null
+                && !res.getResult().getAiResponse().getTtsAudio().isEmpty();
+    }
+
+    // 로그 저장
+    private void saveDialogueLog(Conversation conversation, Stage stage, int retryCount,
+                                 DialogueTurnResponse aiRes, String ttsUrl) {
+        LocalDateTime now = LocalDateTime.now();
+
+        Dialogue childLog = Dialogue.builder()
+                .conversation(conversation)
+                .stage(stage)
+                .retryCount(retryCount)
+                .speaker(Speaker.CHILD)
+                .content(aiRes.getResult().getSttResult().getText())
+                .audioUrl(null)
+                .createdAt(now)
+                .build();
+
+        Dialogue aiLog = Dialogue.builder()
+                .conversation(conversation)
+                .stage(stage)
+                .retryCount(retryCount)
+                .speaker(Speaker.AI)
+                .content(aiRes.getResult().getAiResponse().getText())
+                .audioUrl(ttsUrl)
+                .createdAt(now.plusNanos(1000000))
+                .build();
+
+        dialogueRepository.saveAll(List.of(childLog, aiLog));
+    }
+}

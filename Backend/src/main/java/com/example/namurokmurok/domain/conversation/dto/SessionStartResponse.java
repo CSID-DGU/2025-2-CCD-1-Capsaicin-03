@@ -1,8 +1,10 @@
 package com.example.namurokmurok.domain.conversation.dto;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 
-@Data
+@Builder
+@Getter
 public class SessionStartResponse {
     private boolean success;
     private String session_id;
