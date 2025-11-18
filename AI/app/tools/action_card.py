@@ -28,7 +28,8 @@ class ActionCardGeneratorTool:
         self,
         emotion: str,
         situation: str,
-        child_name: str
+        action_card: str,
+        child_name: str,        
     ) -> List[str]:
         """
         S3에서 사용: 행동 전략 초안 생성 (2-3개)
@@ -53,12 +54,14 @@ class ActionCardGeneratorTool:
             3. 오늘 당장 실천 가능한 간단한 행동
             4. 2-3개 전략 제시
             5. 아동(7-10세)이 이해하기 쉬운 표현
+            6. {action_card}의 하위 분류에 해당하는 전략 제안
             """),
             
             ("user", """
             감정: {emotion}
             상황: {situation}
             아이 이름: {child_name}
+            행동 카드: {action_card}
 
             2-3개의 행동 전략을 제안해줘.
             형식: JSON 배열
@@ -71,6 +74,7 @@ class ActionCardGeneratorTool:
                 prompt.format_messages(
                     emotion=emotion,
                     situation=situation,
+                    action_card=action_card,
                     child_name=child_name
                 )
             )
@@ -102,6 +106,7 @@ class ActionCardGeneratorTool:
         self,
         child_name: str,
         story_name: str,
+        action_card: str,
         emotion: str,
         situation: str,
         selected_strategy: Optional[str],
@@ -127,7 +132,7 @@ class ActionCardGeneratorTool:
                 아이와의 대화를 바탕으로 행동 카드를 만들어야 해.
 
                 행동 카드 구성:
-                1. 제목: 15자 이내, 명령형 ("화났을 때 심호흡하기")
+                1. 제목: {action_card}
                 2. 설명: 50자 이내, 구체적 행동 설명
                 3. 아이콘: 이모지 1개 (행동을 상징)
                 4. 부모 가이드: 3줄, 각 30자 이내
@@ -158,6 +163,7 @@ class ActionCardGeneratorTool:
                 prompt.format_messages(
                     child_name=child_name,
                     story_name=story_name,
+                    action_card=action_card,
                     emotion=emotion,
                     situation=situation,
                     strategy=selected_strategy or "자동 생성",
@@ -247,6 +253,7 @@ def action_card_generator_tool(action: str, **kwargs) -> Dict:
         strategies = generator.generate_draft(
             emotion=kwargs.get("emotion", ""),
             situation=kwargs.get("situation", ""),
+            action_card=kwargs.get("action_card", ""),
             child_name=kwargs.get("child_name", "")
         )
         return {"strategies": strategies}
@@ -255,6 +262,7 @@ def action_card_generator_tool(action: str, **kwargs) -> Dict:
         card = generator.generate_final_card(
             child_name=kwargs.get("child_name", ""),
             story_name=kwargs.get("story_name", ""),
+            action_card=kwargs.get("action_card", ""),
             emotion=kwargs.get("emotion", ""),
             situation=kwargs.get("situation", ""),
             selected_strategy=kwargs.get("selected_strategy"),
@@ -274,6 +282,7 @@ if __name__ == "__main__":
     strategies = generator.generate_draft(
         emotion="분노",
         situation="선생님이 화를 내서 속상했어요",
+        action_card="감정 표현하기",
         child_name="지민"
     )
     print(strategies)
@@ -283,6 +292,7 @@ if __name__ == "__main__":
     card = generator.generate_final_card(
         child_name="지민",
         story_name="콩쥐팥쥐",
+        action_card="화났을 때 심호흡하기",
         emotion="분노",
         situation="선생님이 화냈어요",
         selected_strategy="심호흡 3번",

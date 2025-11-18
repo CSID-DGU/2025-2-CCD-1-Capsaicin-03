@@ -19,7 +19,15 @@ SEL_CHARACTERS = {
         "intro": "새어머니가 나한테 구멍 난 항아리에 물을 채우라고 했어. 그때 내 마음이 어땠을 것 같아?",
         "sel_skill": "자기인식 (자신과 타인의 감정을 분별하고 인식하기)",
         "safe_tags": ["Sequenced", "Focused"],
-        "lesson": "감정을 표현하고 이해하는 것이 중요해요"
+        "lesson": "감정을 표현하고 이해하는 것이 중요해요",
+        "action_card": {
+            "title": "지금 감정 말로 표현하기",
+            "strategies": [
+                "속상해 말하기",
+                "좋았던 일 말하기",
+                "감정 그림으로 그리기"
+            ]
+        }
     },
     "가난한 유산": {
         "character_name": "아버지",
@@ -27,7 +35,15 @@ SEL_CHARACTERS = {
         "intro": "나는 가진 게 많지 않지만, 너에게 마음을 남기고 싶단다. 이런 말을 들으면 어떤 기분이 들까?",
         "sel_skill": "자기인식 (물질보다 마음의 유산이 더 소중함을 느끼며, 자신이 소중히 여기는 감정을 인식하기)",
         "safe_tags": ["Explicit"],
-        "lesson": "마음의 선물이 가장 소중한 선물이에요"
+        "lesson": "마음의 선물이 가장 소중한 선물이에요",
+        "action_card": {
+            "title": "고마운 마음 적어주기",
+            "strategies": [
+                "감사 카드 만들기",
+                "고마운 사람에게 말하기",
+                "하루 감사일기쓰기"
+            ]
+        }
     },
     "삼년 고개": {
         "character_name": "노인",
@@ -35,7 +51,15 @@ SEL_CHARACTERS = {
         "intro": "나는 약속을 지키기 위해 무거운 돌을 지고 삼년 고개를 오르고 있어. 어떤 마음이 들 것 같아?",
         "sel_skill": "자기관리 (어려운 상황에서도 감정을 다스리고, 약속을 지키는 힘을 기르기)",
         "safe_tags": ["Sequenced", "Active"],
-        "lesson": "힘들어도 약속을 지키는 것이 중요해요"
+        "lesson": "힘들어도 약속을 지키는 것이 중요해요",
+        "action_card": {
+            "title": "작은 약속 지키기 연습하기",
+            "strategies": [
+                "5분 약속 지키기",
+                "오늘 숙제 먼저하기",
+                "작은 목표 체크리스트"
+            ]
+        }
     },
     "해님 달님": {
         "character_name": "누나",
@@ -43,7 +67,15 @@ SEL_CHARACTERS = {
         "intro": "호랑이가 우리를 쫓아와서 동생 손을 꼭 잡고 달렸어. 그때 내 마음은 어땠을까?",
         "sel_skill": "사회적 인식 (타인이 어떻게 느끼는지 판단하기 위해 사회적 단서 해석하기)",
         "safe_tags": ["Active", "Focused"],
-        "lesson": "위험할 때 서로 도와야 해요"
+        "lesson": "위험할 때 서로 도와야 해요",
+        "action_card": {
+            "title": "도움 필요한 친구 살펴보기",
+            "strategies": [
+                "친구 얼굴 살펴보기",
+                "도와줄래 물어보기",
+                "같이 놀아주기"
+            ]
+        }
     },
     "금도끼 은도끼": {
         "character_name": "나무꾼",
@@ -51,7 +83,15 @@ SEL_CHARACTERS = {
         "intro": "내 도끼가 강물에 빠졌는데 산신령이 금도끼와 은도끼를 내밀었어. 너라면 뭐라고 대답했을까?",
         "sel_skill": "책임 있는 의사결정 (도덕적·규범적 기준을 고려하여 판단하고 결정하기)",
         "safe_tags": ["Explicit", "Active"],
-        "lesson": "정직하게 행동하면 좋은 일이 생겨요"
+        "lesson": "정직하게 행동하면 좋은 일이 생겨요",
+        "action_card": {
+            "title": "사실대로 말하기 연습하기",
+            "strategies": [
+                "진실 말하기 연습",
+                "잘못했을 때 사과하기",
+                "정직 칭찬받기"
+            ]
+        }
     }
 }
 
@@ -184,9 +224,17 @@ class ContextManagerTool:
                 context["situation"] = s2_moments[-1].get("content")
         
         elif stage == Stage.S4_LESSON_CONNECTION:
-            # 동화 교훈
+            # 동화 교훈 + 동화에 정의된 행동카드 하위 전략들 제공
             if story_context:
-                context["lesson"] = story_context.get("lesson")
+                action_card = story_context.get("action_card")
+                # 기존 코드/다른 모듈과의 호환을 위해 context['action_card']에는 제목(문자열)을 넣어둡니다.
+                if isinstance(action_card, dict):
+                    context["action_card"] = action_card.get("title")
+                    # S4에서 하위 전략(2-3개)을 프롬프트에 바로 전달
+                    context["action_card_strategies"] = action_card.get("strategies", [])[:3]
+                else:
+                    context["action_card"] = action_card
+                    context["action_card_strategies"] = []
         
         elif stage == Stage.S5_ACTION_CARD:
             # 전체 대화 요약

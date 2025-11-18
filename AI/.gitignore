@@ -1,6 +1,5 @@
-# —————————————
+*__pycache__/*
 # Python cache & build files
-# —————————————
 __pycache__/
 *.pyc
 *.pyo
