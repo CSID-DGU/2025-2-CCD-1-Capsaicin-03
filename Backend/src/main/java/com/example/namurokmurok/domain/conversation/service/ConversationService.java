@@ -2,7 +2,7 @@ package com.example.namurokmurok.domain.conversation.service;
 
 import com.example.namurokmurok.domain.conversation.dto.SessionStartRequest;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
-import com.example.namurokmurok.domain.conversation.entity.Converstation;
+import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.conversation.enums.ConverstationStatus;
 import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
 import com.example.namurokmurok.domain.story.entity.Story;
@@ -59,7 +59,7 @@ public class ConversationService {
         );
 
         // DB에 Conversation 저장
-        Converstation conversation = Converstation.builder()
+        Conversation conversation = Conversation.builder()
                 .id(response.getSession_id())
                 .child(child)
                 .story(story)
