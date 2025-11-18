@@ -1,0 +1,75 @@
+@font-face {
+  font-family: 'memomentKkukkuk';
+  src: url('/fonts/memomentKkukkkuk.ttf') format('truetype');
+  font-style: normal;
+  font-style: normal;
+}
+
+:root {
+  /* 타이포그래피 */
+  --font-family-primary: 'memomentKkukkuk';
+  /* 색상 (피그마 기준) */
+  --color-main: #F9E65C; /* Main 컬러 */
+  --color-second: #5DADE2; /* Second 컬러 */
+  --color-third: #58D68D; /* Third 컬러 */
+  --color-fourth: #FF914D; /* Fourth 컬러 */
+  
+  --color-text-dark: #4F4F4F;
+  --color-text-light: #FFFFFF;
+  --color-background-light: #F8F9FA;
+  --color-background-white: #FFFFFF;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+body {
+  font-family: var(--font-family-primary); 
+  color: var(--color-text-dark);         
+  background-color: var(--color-background-light);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 앱 컨테이너 (16:9 반응형 비율 유지) */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px; /* 앱 주변 여백 */
+}
+
+.app-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;     
+  max-width: 640px;                              
+
+  background-color: var(--color-main);        
+  position: relative;
+  overflow: hidden;                          
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;                       
+}
+
+/* 스크롤바 디자인 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-second); /* 스크롤바 색상 (Second 컬러 사용) */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-track {
+  background-color: #f0f0f0;
+}
