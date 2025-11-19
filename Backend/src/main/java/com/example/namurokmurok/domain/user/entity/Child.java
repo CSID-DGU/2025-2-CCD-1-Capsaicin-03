@@ -38,4 +38,14 @@ public class Child {
     public void linkUser(User user) {
         this.user = user;
     }
+
+    // 아이 정보 수정
+    public void update(String name, Integer birthYear) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (birthYear != null) {
+            this.birthYear = birthYear;
+        }
+    }
 }

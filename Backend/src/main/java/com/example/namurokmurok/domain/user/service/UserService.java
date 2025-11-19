@@ -1,6 +1,8 @@
 package com.example.namurokmurok.domain.user.service;
 
 import com.example.namurokmurok.domain.user.dto.ChildRequestDto;
+import com.example.namurokmurok.domain.user.dto.ChildResponseDto;
+import com.example.namurokmurok.domain.user.dto.UpdateChildRequestDto;
 import com.example.namurokmurok.domain.user.entity.Child;
 import com.example.namurokmurok.domain.user.entity.User;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
@@ -59,6 +61,24 @@ public class UserService {
         user.addChild(child);
 
         return child.getId();
+    }
+
+    // 아이 수정
+    @Transactional
+    public ChildResponseDto updateChild(String supabaseId, UpdateChildRequestDto requestDto) {
+        User user = userRepository.findBySupabaseId(supabaseId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        Child child = childRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND_FOR_USER));
+
+        child.update(requestDto.getName(), requestDto.getBirth_year());
+
+        return ChildResponseDto.builder()
+                .id(child.getId())
+                .name(child.getName())
+                .birth_year(child.getBirthYear())
+                .build();
     }
 
 }

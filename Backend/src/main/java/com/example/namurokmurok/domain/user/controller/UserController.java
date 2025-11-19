@@ -2,6 +2,7 @@ package com.example.namurokmurok.domain.user.controller;
 
 import com.example.namurokmurok.domain.user.dto.ChildRequestDto;
 import com.example.namurokmurok.domain.user.dto.ChildResponseDto;
+import com.example.namurokmurok.domain.user.dto.UpdateChildRequestDto;
 import com.example.namurokmurok.domain.user.service.UserService;
 import com.example.namurokmurok.global.common.response.ApiResponse;
 import com.example.namurokmurok.global.security.CustomUserDetails;
@@ -29,5 +30,16 @@ public class UserController {
             @Valid @RequestBody ChildRequestDto requestDto
     ) {
         return ApiResponse.success(userService.registerChild(userPrincipal.getSub(), requestDto));
+    }
+
+    @PatchMapping("/children")
+    @Operation(
+            summary = "아이 수정 API",
+            description = "현재 로그인한 부모 사용자가 아이 프로필을 수정합니다.")
+    public ApiResponse<ChildResponseDto> updateChild(
+            @AuthenticationPrincipal CustomUserDetails userPrincipal,
+            @Valid @RequestBody UpdateChildRequestDto requestDto
+    ) {
+        return ApiResponse.success(userService.updateChild(userPrincipal.getSub(), requestDto));
     }
 }
