@@ -63,27 +63,23 @@ async def process_dialogue_turn(
             f"child_text={'있음' if child_text else '없음'}"
         )
         
-        # 1. 세션 조회 또는 생성
+        # 1. 세션 조회
         session = context_manager.get_session(session_id)
         if not session:
-            # 새 세션 생성
-            session = DialogueSession(
-                session_id=session_id,
-                child_name=session.child_name,
-                story_name=session.story_name,
-                current_stage=stage
+            logger.error(f"❌ 세션을 찾을 수 없습니다: {session_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"세션을 찾을 수 없습니다. /session/start를 먼저 호출하세요."
             )
-            context_manager.save_session(session)
-            logger.info(f"새 세션 생성: {session_id}, Stage: {stage.value}")
-        else:
-            # 기존 세션: 세션의 current_stage를 사용 (Form의 stage와 다를 수 있음)
-            logger.info(
-                f"기존 세션 조회: {session_id}, "
-                f"세션 Stage: {session.current_stage.value}, "
-                f"Form Stage: {stage.value}"
-            )
-            # 세션의 current_stage를 사용하도록 stage 업데이트
-            stage = session.current_stage
+        
+        # 기존 세션: 세션의 current_stage를 사용 (Form의 stage와 다를 수 있음)
+        logger.info(
+            f"기존 세션 조회: {session_id}, "
+            f"세션 Stage: {session.current_stage.value}, "
+            f"Form Stage: {stage.value}"
+        )
+        # 세션의 current_stage를 사용하도록 stage 업데이트
+        stage = session.current_stage
         
         # 2. STT 처리 (오디오 파일 또는 텍스트)
         if audio_file:
@@ -202,15 +198,17 @@ async def process_dialogue_turn(
                 logger.info(f"🎙️ TTS 변환 시작: '{ai_text[:50]}...'")
                 tts_result = tts_service.text_to_speech(ai_text)
                 
-                # ai_response에 TTS 정보 추가
-                ai_response_dict["tts_url"] = tts_result["file_url"]
+                # ai_response에 TTS 정보 추가 (Base64 인코딩된 오디오)
+                ai_response_dict["tts_audio_base64"] = tts_result["audio_base64"]
+                ai_response_dict["tts_url"] = tts_result["file_url"]  # 백업용
                 ai_response_dict["duration_ms"] = tts_result["duration_ms"]
                 turn_result["ai_response"] = ai_response_dict
                 
-                logger.info(f"🎙️ TTS 변환 완료: {tts_result['file_path']}, duration={tts_result['duration_ms']}ms")
+                logger.info(f"🎙️ TTS 변환 완료: {tts_result['file_path']}, duration={tts_result['duration_ms']}ms, Base64 길이={len(tts_result['audio_base64'])}")
             except Exception as e:
                 logger.error(f"❌ TTS 변환 실패: {e}")
                 # TTS 실패해도 텍스트 응답은 제공
+                ai_response_dict["tts_audio_base64"] = None
                 ai_response_dict["tts_url"] = None
                 ai_response_dict["duration_ms"] = None
 
@@ -275,11 +273,12 @@ async def process_dialogue_turn(
                     "message": getattr(safety_check_raw, "message", None)
                 }
         
-        # ai_response 변환 (tts_url -> tts_audio)
+        # ai_response 변환 (Base64 오디오 포함)
         if isinstance(ai_response_raw, dict):
             ai_response_formatted = {
                 "text": ai_response_raw.get("text", ""),
-                "tts_audio": ai_response_raw.get("tts_url") if "tts_url" in ai_response_raw else None,  # tts_url을 tts_audio로 매핑
+                "tts_audio_base64": ai_response_raw.get("tts_audio_base64"),  # Base64 인코딩된 오디오
+                "tts_audio": ai_response_raw.get("tts_url") if "tts_url" in ai_response_raw else None,  # 백업용 URL
                 "duration_ms": ai_response_raw.get("duration_ms") if "duration_ms" in ai_response_raw else None
             }
         else:
@@ -288,6 +287,7 @@ async def process_dialogue_turn(
                 ai_response_dict = ai_response_raw.model_dump()
                 ai_response_formatted = {
                     "text": ai_response_dict.get("text", ""),
+                    "tts_audio_base64": ai_response_dict.get("tts_audio_base64"),
                     "tts_audio": ai_response_dict.get("tts_url"),
                     "duration_ms": ai_response_dict.get("duration_ms")
                 }
@@ -295,17 +295,21 @@ async def process_dialogue_turn(
                 ai_response_dict = ai_response_raw.dict()
                 ai_response_formatted = {
                     "text": ai_response_dict.get("text", ""),
+                    "tts_audio_base64": ai_response_dict.get("tts_audio_base64"),
                     "tts_audio": ai_response_dict.get("tts_url"),
                     "duration_ms": ai_response_dict.get("duration_ms")
                 }
             else:
                 ai_response_formatted = {
                     "text": getattr(ai_response_raw, "text", ""),
+                    "tts_audio_base64": getattr(ai_response_raw, "tts_audio_base64", None),
                     "tts_audio": getattr(ai_response_raw, "tts_url", None),
                     "duration_ms": getattr(ai_response_raw, "duration_ms", None)
                 }
         
         # 모든 필드가 있는지 확인 (None이라도 필드가 있어야 함)
+        if "tts_audio_base64" not in ai_response_formatted:
+            ai_response_formatted["tts_audio_base64"] = None
         if "tts_audio" not in ai_response_formatted:
             ai_response_formatted["tts_audio"] = None
         if "duration_ms" not in ai_response_formatted:
@@ -399,18 +403,19 @@ async def start_session(
         
         # AI 인트로 생성 (백엔드에서 전달받은 intro 사용)
         character_name = story_context["character_name"]
-        # intro = story_context["intro"]
         ai_intro = f"{first_name}아, {intro}"
         
         # AI 인트로를 TTS로 변환
+        ai_intro_audio_base64 = None
         ai_intro_audio = None
         intro_duration_ms = None
         try:
             logger.info(f"🎙️ 인트로 TTS 변환 시작: '{ai_intro[:50]}...'")
             tts_result = tts_service.text_to_speech(ai_intro)
-            ai_intro_audio = tts_result["file_url"]
+            ai_intro_audio_base64 = tts_result["audio_base64"]
+            ai_intro_audio = tts_result["file_url"]  # 백업용
             intro_duration_ms = tts_result["duration_ms"]
-            logger.info(f"🎙️ 인트로 TTS 변환 완료: {tts_result['file_path']}")
+            logger.info(f"🎙️ 인트로 TTS 변환 완료: {tts_result['file_path']}, Base64 길이={len(tts_result['audio_base64'])}")
         except Exception as e:
             logger.error(f"❌ 인트로 TTS 변환 실패: {e}")
             # TTS 실패해도 텍스트는 제공
@@ -422,6 +427,7 @@ async def start_session(
             "session_id": session_id,
             "character_name": character_name,
             "ai_intro": ai_intro,
+            "ai_intro_audio_base64": ai_intro_audio_base64,
             "ai_intro_audio": ai_intro_audio,
             "intro_duration_ms": intro_duration_ms,
             "stage": Stage.S1_EMOTION_LABELING.value
@@ -430,7 +436,7 @@ async def start_session(
     except Exception as e:
         logger.error(f"세션 시작 실패: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 @router.get("/session/{session_id}")
 async def get_session(session_id: str):
