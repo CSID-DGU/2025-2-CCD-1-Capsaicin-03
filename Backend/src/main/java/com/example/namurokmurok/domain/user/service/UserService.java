@@ -1,7 +1,6 @@
 package com.example.namurokmurok.domain.user.service;
 
 import com.example.namurokmurok.domain.user.dto.ChildRequestDto;
-import com.example.namurokmurok.domain.user.dto.ChildResponseDto;
 import com.example.namurokmurok.domain.user.entity.Child;
 import com.example.namurokmurok.domain.user.entity.User;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
@@ -20,6 +19,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final ChildRepository childRepository;
 
+    // user 저장(부모 최초 로그인시)
     @Transactional
     public User saveUser(String supabaseId, String email, String name) {
         return userRepository.findBySupabaseId(supabaseId)
@@ -38,8 +38,9 @@ public class UserService {
                 });
     }
 
+    // 아이 등록
     @Transactional
-    public ChildResponseDto registerChild(String supabaseId, ChildRequestDto requestDto) {
+    public Long registerChild(String supabaseId, ChildRequestDto requestDto) {
         User user = userRepository.findBySupabaseId(supabaseId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -57,7 +58,7 @@ public class UserService {
         childRepository.save(child);
         user.addChild(child);
 
-        return new ChildResponseDto(child.getId());
+        return child.getId();
     }
 
 }

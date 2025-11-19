@@ -24,11 +24,10 @@ public class UserController {
     @Operation(
             summary = "아이 등록 API",
             description = "현재 로그인한 부모 사용자가 아이 프로필을 등록합니다.")
-    public ApiResponse<ChildResponseDto> registerChild(
+    public ApiResponse<Long> registerChild(
             @AuthenticationPrincipal CustomUserDetails userPrincipal,
             @Valid @RequestBody ChildRequestDto requestDto
     ) {
-        ChildResponseDto response = userService.registerChild(userPrincipal.getSub(), requestDto);
-        return ApiResponse.success(response);
+        return ApiResponse.success(userService.registerChild(userPrincipal.getSub(), requestDto));
     }
 }
