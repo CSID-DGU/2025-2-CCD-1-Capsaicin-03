@@ -19,7 +19,7 @@ nano .env
 code .env
 
 # 아래 라인 수정
-OPENAI_API_KEY=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
+OPENAI_API_KEY=""
 ```
 
 ### 2️⃣ 서버 실행

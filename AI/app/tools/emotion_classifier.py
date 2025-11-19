@@ -80,12 +80,6 @@ class EmotionClassifierTool:
                     - 신뢰도는 0.0~1.0 사이
 
                     응답 형식 (JSON):
-                    {
-                    "primary": "감정명",
-                    "secondary": ["부감정1", "부감정2"],
-                    "confidence": 0.85,
-                    "reasoning": "간단한 이유"
-                    }
                 """),
                 ("user", "아이의 발화: \"{text}\"\n\n이 아이의 감정을 분석해줘.")
             ])
@@ -211,6 +205,7 @@ def emotion_classifier_tool(text: str) -> Dict:
     """
     아동 발화에서 감정을 분류합니다.
     6가지 기본 감정(행복, 슬픔, 분노, 두려움, 놀람, 혐오)을 감지합니다.
+    중립은 제외합니다.
     
     Args:
         text: 분류할 텍스트

@@ -17,6 +17,24 @@ class STTService:
     def __init__(self, api_key: str = None):
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
     
+    async def transcribe(
+        self, audio_data: bytes, filename: str = "audio.wav"
+    ) -> STTResult:
+        """
+        오디오 데이터를 텍스트로 변환 (메인 메서드)
+        
+        Args:
+            audio_data: 오디오 파일 바이트 데이터
+            filename: 파일명 (확장자로 형식 판단)
+        
+        Returns:
+            STTResult
+        """
+        # 파일 확장자 추출
+        audio_format = filename.split('.')[-1] if '.' in filename else "wav"
+        
+        return await self.transcribe_audio_file(audio_data, audio_format)
+    
     async def transcribe_audio_file(
         self, audio_file_bytes: bytes, audio_format: str = "webm"
     ) -> STTResult:

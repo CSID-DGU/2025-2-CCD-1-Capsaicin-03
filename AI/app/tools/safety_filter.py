@@ -84,7 +84,7 @@ class SafetyFilterTool:
     def _get_child_friendly_warning(self, categories: list) -> str:
         """아동 친화적 경고 메시지 생성"""
         if "self_harm" in categories:
-            return "힘든 일이 있구나. 선생님이랑 차근차근 이야기해볼까?"
+            return "힘든 일이 있구나. 나랑 차근차근 이야기해볼까?"
         elif "violence" in categories or "hate" in categories:
             return "그런 표현은 조금 위험할 수 있어. 다른 말로 이야기해줄래?"
         elif "sexual" in categories:

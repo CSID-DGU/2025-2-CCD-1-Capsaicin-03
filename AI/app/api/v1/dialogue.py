@@ -15,8 +15,10 @@ from app.models.schemas import (
 from app.core.orchestrator import StageOrchestrator
 from app.core.agent import DialogueAgent
 from app.services.stt_service import STTService
+from app.services.tts_service import get_tts_service
 from app.tools.context_manager import get_context_manager
 from app.services.redis_service import get_redis_service
+from app.utils.name_utils import extract_first_name
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ logger = logging.getLogger(__name__)
 orchestrator = StageOrchestrator()
 agent = DialogueAgent()
 stt_service = STTService()
+tts_service = get_tts_service()
 context_manager = get_context_manager()
 redis_service = get_redis_service()
 
@@ -33,11 +36,8 @@ redis_service = get_redis_service()
 async def process_dialogue_turn(
     session_id: str = Form(...),
     stage: Stage = Form(...),
-    # story_name: str = Form(...),
-    # story_theme: str = Form(""),
-    # child_name: str = Form(...),
-    # child_age: Optional[int] = Form(None),
-    child_text: str = Form(...)
+    audio_file: Optional[UploadFile] = File(None),
+    child_text: Optional[str] = Form(None)
 ):
     """
     대화 턴 처리
@@ -47,11 +47,8 @@ async def process_dialogue_turn(
     Args:
         session_id: 세션 ID
         stage: 현재 Stage (S1~S5)
-        # story_name: 동화 제목
-        # story_theme: 동화 주제
-        # child_name: 아동 이름
-        # child_age: 아동 나이
-        child_text: 아동 발화 텍스트 (STT 변환된 텍스트)
+        audio_file: 오디오 파일 (.wav) - 우선순위 1
+        child_text: 아동 발화 텍스트 (STT 변환된 텍스트) - 우선순위 2 (테스트용)
     
     Returns:
         DialogueTurnResponse: 처리 결과
@@ -61,7 +58,9 @@ async def process_dialogue_turn(
     try:
         logger.info(
             f"대화 턴 처리 시작: session={session_id}, "
-            f"stage={stage.value}"
+            f"stage={stage.value}, "
+            f"audio_file={'있음' if audio_file else '없음'}, "
+            f"child_text={'있음' if child_text else '없음'}"
         )
         
         # 1. 세션 조회 또는 생성
@@ -86,47 +85,52 @@ async def process_dialogue_turn(
             # 세션의 current_stage를 사용하도록 stage 업데이트
             stage = session.current_stage
         
-        # 2. STT 결과 생성 (텍스트 직접 입력)
-        # child_text 검증
-        if not child_text:
-            logger.error(f"❌ child_text가 None입니다!")
-            raise HTTPException(status_code=400, detail="child_text는 필수입니다")
+        # 2. STT 처리 (오디오 파일 또는 텍스트)
+        if audio_file:
+            # 오디오 파일이 있으면 STT 변환
+            logger.info(f"📁 오디오 파일 수신: filename={audio_file.filename}, content_type={audio_file.content_type}")
+            
+            # 오디오 파일 읽기
+            audio_data = await audio_file.read()
+            logger.info(f"📁 오디오 파일 크기: {len(audio_data)} bytes")
+            
+            # STT 서비스로 변환
+            try:
+                stt_result = await stt_service.transcribe(audio_data, audio_file.filename)
+                logger.info(f"🎙️ STT 변환 완료: text='{stt_result.text}', confidence={stt_result.confidence}")
+            except Exception as e:
+                logger.error(f"❌ STT 변환 실패: {e}")
+                raise HTTPException(status_code=500, detail=f"STT 변환 실패: {e}")
         
-        if not child_text.strip():
-            logger.warning(f"⚠️ child_text가 비어있거나 공백만 있습니다: '{child_text}'")
-            # 빈 텍스트도 허용 (재시도 가능)
+        elif child_text:
+            # 텍스트 직접 입력 (테스트용)
+            logger.info(f"📥 텍스트 직접 입력: '{child_text}' (길이: {len(child_text)})")
+            
+            if not child_text.strip():
+                logger.warning(f"⚠️ child_text가 비어있거나 공백만 있습니다: '{child_text}'")
+            
+            try:
+                stt_result = STTResult(
+                    text=child_text.strip() if child_text else "",
+                    confidence=1.0,  # 텍스트 직접 입력이므로 신뢰도 100%
+                    language="ko"
+                )
+            except Exception as e:
+                logger.error(f"❌ STTResult 생성 실패: {e}")
+                raise HTTPException(status_code=400, detail=f"STTResult 생성 실패: {e}")
         
-        logger.info(f"📥 Form에서 받은 child_text: '{child_text}' (길이: {len(child_text)}, 타입: {type(child_text)})")
-        logger.info(f"📥 child_text repr: {repr(child_text)}")
-        
-        try:
-            stt_result = STTResult(
-                text=child_text.strip() if child_text else "",  # 공백 제거
-                confidence=1.0,  # 텍스트 직접 입력이므로 신뢰도 100%
-                language="ko"
+        else:
+            # 둘 다 없으면 에러
+            logger.error("❌ audio_file과 child_text 둘 다 없습니다!")
+            raise HTTPException(
+                status_code=400,
+                detail="audio_file 또는 child_text 중 하나는 필수입니다"
             )
-        except Exception as e:
-            logger.error(f"❌ STTResult 생성 실패: {e}")
-            raise HTTPException(status_code=400, detail=f"STTResult 생성 실패: {e}")
         
         # STTResult 객체 생성 후 검증
-        logger.info(f"📝 생성된 stt_result 객체: text='{stt_result.text}' (길이: {len(stt_result.text)}, 타입: {type(stt_result.text)})")
+        logger.info(f"📝 생성된 stt_result 객체: text='{stt_result.text}' (길이: {len(stt_result.text)}), confidence={stt_result.confidence}")
         
-        # Pydantic v2에서는 model_dump() 사용, v1에서는 dict() 사용
-        try:
-            if hasattr(stt_result, 'model_dump'):
-                stt_dict = stt_result.model_dump()
-                logger.info(f"📝 stt_result.model_dump()={stt_dict}")
-            else:
-                stt_dict = stt_result.dict()
-                logger.info(f"📝 stt_result.dict()={stt_dict}")
-        except Exception as e:
-            logger.error(f"❌ stt_result 직렬화 실패: {e}")
-            # 기본값으로 dict 생성
-            stt_dict = {"text": stt_result.text, "confidence": stt_result.confidence, "language": stt_result.language}
-            logger.info(f"📝 수동 생성한 stt_dict={stt_dict}")
-        
-        logger.info(f"아동 발화: '{child_text}' (길이: {len(child_text)})")
+        logger.info(f"아동 발화: '{stt_result.text}' (길이: {len(stt_result.text)})")
         
         # 3. Request 객체 구성 (세션의 current_stage 사용)
         request = DialogueTurnRequest(
@@ -171,11 +175,44 @@ async def process_dialogue_turn(
 
         # 6. 세션 상태 업데이트
         old_stage = session.current_stage
+        old_retry_count = session.retry_count
         session = orchestrator.update_session_state(
             session, should_transition, turn_result
         )
         new_stage = session.current_stage
-        logger.info(f"🔍 세션 상태 업데이트: {old_stage.value} → {new_stage.value}, retry_count={session.retry_count}")
+        new_retry_count = session.retry_count
+        logger.info(f"🔍 세션 상태 업데이트: {old_stage.value} → {new_stage.value}, retry_count={old_retry_count} → {new_retry_count}")
+
+        # 7. Stage 전환 실패 시 fallback 응답 재생성
+        if not should_transition and new_retry_count > old_retry_count:
+            logger.info(f"🔄 Fallback 응답 재생성: Stage={new_stage.value}, retry_count={new_retry_count}")
+            fallback_response = agent.generate_fallback_response(
+                session, new_stage, new_retry_count
+            )
+            # turn_result의 ai_response를 fallback 응답으로 교체
+            turn_result["ai_response"] = fallback_response.dict()
+            logger.info(f"🔄 Fallback 응답 적용: {fallback_response.text}")
+        
+        # 8. AI 응답을 TTS로 변환
+        ai_response_dict = turn_result.get("ai_response", {})
+        ai_text = ai_response_dict.get("text", "")
+        
+        if ai_text:
+            try:
+                logger.info(f"🎙️ TTS 변환 시작: '{ai_text[:50]}...'")
+                tts_result = tts_service.text_to_speech(ai_text)
+                
+                # ai_response에 TTS 정보 추가
+                ai_response_dict["tts_url"] = tts_result["file_url"]
+                ai_response_dict["duration_ms"] = tts_result["duration_ms"]
+                turn_result["ai_response"] = ai_response_dict
+                
+                logger.info(f"🎙️ TTS 변환 완료: {tts_result['file_path']}, duration={tts_result['duration_ms']}ms")
+            except Exception as e:
+                logger.error(f"❌ TTS 변환 실패: {e}")
+                # TTS 실패해도 텍스트 응답은 제공
+                ai_response_dict["tts_url"] = None
+                ai_response_dict["duration_ms"] = None
 
         context_manager.save_session(session)
         
@@ -325,7 +362,8 @@ async def process_dialogue_turn(
 async def start_session(
     story_name: str = Form(...),
     child_name: str = Form(...),
-    child_age: Optional[int] = Form(None)
+    child_age: Optional[int] = Form(None),
+    intro: str = Form(...)
 ):
     """
     새 대화 세션 시작
@@ -337,10 +375,14 @@ async def start_session(
         # 세션 ID 생성
         session_id = str(uuid.uuid4())
         
+        # 이름에서 성 제거 (이름만 추출)
+        first_name = extract_first_name(child_name)
+        logger.info(f"이름 변환: '{child_name}' → '{first_name}'")
+        
         # 세션 생성
         session = DialogueSession(
             session_id=session_id,
-            child_name=child_name,
+            child_name=first_name,
             story_name=story_name,
             current_stage=Stage.S1_EMOTION_LABELING,
             current_turn=1
@@ -355,10 +397,23 @@ async def start_session(
                 detail=f"등록되지 않은 동화: {story_name}"
             )
         
-        # AI 인트로 생성
+        # AI 인트로 생성 (백엔드에서 전달받은 intro 사용)
         character_name = story_context["character_name"]
-        intro = story_context["intro"]
-        ai_intro = f"{child_name} 아(야), {intro}"
+        # intro = story_context["intro"]
+        ai_intro = f"{first_name}아, {intro}"
+        
+        # AI 인트로를 TTS로 변환
+        ai_intro_audio = None
+        intro_duration_ms = None
+        try:
+            logger.info(f"🎙️ 인트로 TTS 변환 시작: '{ai_intro[:50]}...'")
+            tts_result = tts_service.text_to_speech(ai_intro)
+            ai_intro_audio = tts_result["file_url"]
+            intro_duration_ms = tts_result["duration_ms"]
+            logger.info(f"🎙️ 인트로 TTS 변환 완료: {tts_result['file_path']}")
+        except Exception as e:
+            logger.error(f"❌ 인트로 TTS 변환 실패: {e}")
+            # TTS 실패해도 텍스트는 제공
         
         logger.info(f"세션 시작: {session_id}, 동화={story_name}")
         
@@ -367,13 +422,15 @@ async def start_session(
             "session_id": session_id,
             "character_name": character_name,
             "ai_intro": ai_intro,
+            "ai_intro_audio": ai_intro_audio,
+            "intro_duration_ms": intro_duration_ms,
             "stage": Stage.S1_EMOTION_LABELING.value
         }
     
     except Exception as e:
         logger.error(f"세션 시작 실패: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
+    
 
 @router.get("/session/{session_id}")
 async def get_session(session_id: str):

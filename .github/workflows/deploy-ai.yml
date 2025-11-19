@@ -1,0 +1,79 @@
+name: AI Server CI/CD
+
+on:
+  push:
+    branches: 
+      - "main"
+    paths:
+      - "AI/**"
+      - ".github/workflows/deploy-ai.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # 1️⃣ 코드 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Docker Hub 로그인
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3️⃣ AI Docker 이미지 빌드
+      - name: Build Docker image
+        run: |
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-ai
+          TAG=dev
+          docker build -t $IMAGE_NAME:$TAG ./AI
+
+      # 4️⃣ Docker Hub로 푸시
+      - name: Push Docker image
+        run: |
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-ai
+          TAG=dev
+          docker push $IMAGE_NAME:$TAG
+
+      # 5️⃣ EC2로 배포
+      - name: Deploy to EC2 (DEV)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-ai
+            TAG=dev
+            CONTAINER_NAME=ai-server-dev
+            PORT=8000
+
+            # 기존 컨테이너 종료
+            sudo docker stop $CONTAINER_NAME || true
+            sudo docker rm $CONTAINER_NAME || true
+
+            # ENV 파일 생성 (.env)
+            echo "${{ secrets.AI_ENV_DEV }}" > ai.env
+
+            # 최신 이미지 pull
+            sudo docker pull $IMAGE_NAME:$TAG
+
+            # 새 컨테이너 실행 (8000 포트로 외부 공개)
+            sudo docker run -d \
+              -p $PORT:8000 \
+              --env-file ai.env \
+              --name $CONTAINER_NAME \
+              $IMAGE_NAME:$TAG
+
+            rm ai.env
+
+            # 사용하지 않는 이미지 정리
+            sudo docker image prune -f
+
+            echo "🚀 AI Server 배포 완료! 컨테이너: $CONTAINER_NAME"
