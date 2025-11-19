@@ -22,8 +22,11 @@ class RedisService:
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
                 db=settings.REDIS_DB,
+                username=settings.REDIS_USERNAME,
                 password=settings.REDIS_PASSWORD,
                 decode_responses=True,  # 자동으로 bytes → str 변환
+                ssl=True,               #서버리스 Valkey는 TLS 필수
+                ssl_cert_reqs=None,
                 socket_connect_timeout=5,
                 socket_timeout=5
             )
