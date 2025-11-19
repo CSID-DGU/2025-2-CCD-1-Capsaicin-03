@@ -40,17 +40,24 @@ public class ConversationService {
         // 아이 만 나이 계산
         int childAge = LocalDate.now().getYear() - child.getBirthYear();
 
+        if (story.getIntroQuestions().isEmpty()) {
+            throw new CustomException(ErrorCode.INTRO_QUESTION_NOT_FOUND);
+        }
+        String introQuestion = story.getIntroQuestions().get(0).getTextContent();
+
         SessionStartRequest request = SessionStartRequest.builder()
                 .story_name(story.getTitle())
                 .child_name(child.getName())
                 .child_age(childAge)
+                .intro(introQuestion)
                 .build();
 
         // FastAPI 세션 id 발급 요청
         var form = BodyInserters
                 .fromFormData("story_name", request.getStory_name())
                 .with("child_name", request.getChild_name())
-                .with("child_age", String.valueOf(request.getChild_age()));
+                .with("child_age", String.valueOf(request.getChild_age()))
+                .with("intro", request.getIntro());
 
         SessionStartResponse response = aiApiClient.postForm(
                 "/api/v1/dialogue/session/start",
