@@ -7,6 +7,8 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.util.Base64;
+
 @Component
 @RequiredArgsConstructor
 public class S3Uploader {
@@ -17,7 +19,16 @@ public class S3Uploader {
     private String bucket;
 
     public String upload(String base64Audio, String fileName) {
-        byte[] audioBytes = java.util.Base64.getDecoder().decode(base64Audio);
+
+        // URL-safe Base64 대응 ( '_' 또는 '-' 포함 시 URL-safe 방식으로 디코딩 )
+        Base64.Decoder decoder;
+        if (base64Audio.contains("_") || base64Audio.contains("-")) {
+            decoder = Base64.getUrlDecoder();
+        } else {
+            decoder = Base64.getDecoder();
+        }
+
+        byte[] audioBytes = decoder.decode(base64Audio);
 
         return uploadBytes(audioBytes, fileName);
     }
@@ -32,6 +43,8 @@ public class S3Uploader {
         s3Client.putObject(putObjectRequest, RequestBody.fromBytes(content));
 
         // 업로드된 URL 반환
-        return s3Client.utilities().getUrl(builder -> builder.bucket(bucket).key(fileName)).toExternalForm();
+        return s3Client.utilities()
+                .getUrl(builder -> builder.bucket(bucket).key(fileName))
+                .toExternalForm();
     }
 }
