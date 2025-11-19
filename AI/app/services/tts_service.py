@@ -8,6 +8,7 @@ import logging
 from typing import Optional, Dict
 import uuid
 from pathlib import Path
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -129,26 +130,33 @@ class TTSService:
                 logger.error(f"TTS 생성 실패: {response.status_code} {response.text}")
                 raise Exception(f"TTS 생성 실패: {response.status_code}")
             
-            # 3. 파일 저장
+            # 3. 파일 저장 및 Base64 인코딩
             # 고유한 파일명 생성 (UUID + timestamp)
             file_id = str(uuid.uuid4())
             file_name = f"tts_{file_id}.wav"
             file_path = self.audio_dir / file_name
             
+            audio_bytes = response.content
+            
+            # 파일로 저장 (백업용)
             with open(file_path, "wb") as f:
-                f.write(response.content)
+                f.write(audio_bytes)
+            
+            # Base64 인코딩
+            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             
             # 4. 음성 길이 추정 (대략 150자/분 = 2.5자/초 → 400ms/자)
             estimated_duration_ms = int(len(text) * 400)
             
-            logger.info(f"TTS 음성 파일 생성 완료: {file_path}, 크기: {len(response.content)} bytes")
+            logger.info(f"TTS 음성 파일 생성 완료: {file_path}, 크기: {len(audio_bytes)} bytes, Base64 길이: {len(audio_base64)}")
             
-            # 5. 파일 URL 생성 (FastAPI static files 경로)
+            # 5. 파일 URL 및 Base64 반환
             file_url = f"/audio/{file_name}"
             
             return {
                 "file_path": str(file_path),
                 "file_url": file_url,
+                "audio_base64": audio_base64,
                 "duration_ms": estimated_duration_ms
             }
         
