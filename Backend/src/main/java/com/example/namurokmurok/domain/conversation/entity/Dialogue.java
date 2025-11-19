@@ -36,6 +36,7 @@ public class Dialogue {
     @Column(name = "retry_count", nullable = false)
     private int retryCount;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "speaker", nullable = false)
     private Speaker speaker;
 
@@ -48,8 +49,8 @@ public class Dialogue {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "is_safty", nullable = true)
-    private boolean isSafty;
+    @Column(name = "is_safe", nullable = true)
+    private boolean isSafe;
 
     @Column(name = "unsafe_reason", columnDefinition = "TEXT" ,nullable = true)
     private String unsafeReason;

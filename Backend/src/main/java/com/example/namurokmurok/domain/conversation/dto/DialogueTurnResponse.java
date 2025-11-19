@@ -23,13 +23,22 @@ public class DialogueTurnResponse {
     @JsonProperty("retry_count")
     private int retryCount;
 
+    @JsonProperty("fallback_triggered")
+    private boolean fallbackTriggered;
+
+    @JsonProperty("processing_time_ms")
+    private long processingTimeMs;
+
+    private String timestamp;
+
     private ResultData result;
 
-    // 내부 클래스로 구조 정의
+    // 내부 클래스
     @Getter
     @NoArgsConstructor
     @ToString
     public static class ResultData {
+
         @JsonProperty("stt_result")
         private SttResult sttResult;
 
@@ -54,7 +63,10 @@ public class DialogueTurnResponse {
     public static class SafetyCheck {
         @JsonProperty("is_safe")
         private boolean isSafe;
-        private String[] flagged_categories;
+
+        @JsonProperty("flagged_categories")
+        private String[] flaggedCategories;
+
         private String message;
     }
 
@@ -62,9 +74,16 @@ public class DialogueTurnResponse {
     @NoArgsConstructor
     @ToString
     public static class AiResponse {
+
         private String text;
+
+        @JsonProperty("tts_audio_base64")
+        private String ttsAudioBase64;
 
         @JsonProperty("tts_audio")
         private String ttsAudio;
+
+        @JsonProperty("duration_ms")
+        private Long durationMs;
     }
 }

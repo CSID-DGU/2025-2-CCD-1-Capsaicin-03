@@ -36,5 +36,5 @@ public class ConversationTurnResponse {
 
     @Schema(description = "대화 종료 여부", example = "false")
     @JsonProperty("is_end")
-    private boolean isEnd;
+    private boolean end;
 }

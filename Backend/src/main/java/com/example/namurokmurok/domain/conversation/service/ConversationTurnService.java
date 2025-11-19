@@ -89,14 +89,12 @@ public class ConversationTurnService {
                 .sttText(aiRes.getResult().getSttResult().getText())
                 .aiText(aiRes.getResult().getAiResponse().getText())
                 .ttsAudioUrl(ttsUrl)
-                .isEnd(isEnd)
+                .end(isEnd)
                 .build();
     }
 
-    // =================================================================
-    // Private Helper Methods
-    // =================================================================
 
+    // Private Helper Methods
     // 1. 엔티티 조회 및 유효성 검증
     private Conversation validateAndGetConversation(Long childId, Long storyId, String sessionId) {
         childRepository.findById(childId)
@@ -119,6 +117,14 @@ public class ConversationTurnService {
         log.info("[ProcessTurn] Sending request to AI Model Server...");
         DialogueTurnResponse aiRes = aiApiClient.sendTurn(aiReq);
 
+        try {
+            String rawTts = aiRes.getResult().getAiResponse().getTtsAudio();
+            log.warn("[DEBUG] RAW TTS AUDIO (first 200 chars) = {}",
+                    rawTts != null ? rawTts.substring(0, Math.min(200, rawTts.length())) : "null");
+        } catch (Exception e) {
+            log.warn("[DEBUG] RAW TTS AUDIO LOGGING FAILED: {}", e.getMessage());
+        }
+
         if (aiRes == null || aiRes.getResult() == null) {
             log.warn("[ProcessTurn] AI Response is null or empty.");
         }
@@ -127,25 +133,26 @@ public class ConversationTurnService {
 
     // 5. S3 업로드 로직
     private String uploadTtsAudio(DialogueTurnResponse aiRes, String sessionId, Stage stage, int currentRetryCount) {
-        if (!hasTtsAudio(aiRes)) {
-            return null;
+
+        DialogueTurnResponse.AiResponse ai = aiRes.getResult().getAiResponse();
+
+        if (ai.getTtsAudioBase64() != null && !ai.getTtsAudioBase64().isEmpty()) {
+            log.info("[TTS] Base64 detected. Uploading to S3...");
+
+            byte[] audioBytes = java.util.Base64.getDecoder().decode(ai.getTtsAudioBase64());
+
+            String fileName = String.format("conversation/%s/%s_retry%d.wav",
+                    sessionId,
+                    stage.name(),
+                    currentRetryCount
+            );
+
+            return s3Uploader.uploadBytes(audioBytes, fileName);
         }
 
-        log.info("[ProcessTurn] Uploading TTS audio to S3...");
-        // 파일명: conversation/{uuid}/S1_retry1.mp3
-        String fileName = String.format("conversation/%s/%s_retry%d.mp3",
-                sessionId,
-                stage.name(),
-                currentRetryCount
-        );
-
-        String ttsUrl = s3Uploader.upload(
-                aiRes.getResult().getAiResponse().getTtsAudio(),
-                fileName
-        );
-        log.info("[ProcessTurn] TTS Upload complete: {}", ttsUrl);
-        return ttsUrl;
+        return null;
     }
+
 
     // 7. 종료 조건 판단
     /**
@@ -194,26 +201,51 @@ public class ConversationTurnService {
     // 로그 저장
     private void saveDialogueLog(Conversation conversation, Stage stage, int retryCount,
                                  DialogueTurnResponse aiRes, String ttsUrl) {
+
         LocalDateTime now = LocalDateTime.now();
 
+        // 해당 Conversation의 마지막 turn_number 조회
+        Integer lastTurn = dialogueRepository.findMaxTurnNumberByConversationId(conversation.getId());
+        if (lastTurn == null) lastTurn = 0;
+        int nextTurn = lastTurn + 1;
+
+        // safety 정보 (아이 발화에 대한 판단)
+        boolean childSafe = true;
+        String unsafeReason = null;
+
+        if (aiRes.getResult() != null && aiRes.getResult().getSafetyCheck() != null) {
+            childSafe = aiRes.getResult().getSafetyCheck().isSafe();
+            unsafeReason = aiRes.getResult().getSafetyCheck().getMessage();
+        }
+
+        // CHILD 로그 (아이 발화)
         Dialogue childLog = Dialogue.builder()
                 .conversation(conversation)
+                .turnNumber(nextTurn)
                 .stage(stage)
                 .retryCount(retryCount)
                 .speaker(Speaker.CHILD)
                 .content(aiRes.getResult().getSttResult().getText())
                 .audioUrl(null)
                 .createdAt(now)
+                .isSafe(childSafe)
+                .unsafeReason(unsafeReason)
+                .fallbackTriggered(aiRes.isFallbackTriggered())
                 .build();
 
+        // AI 로그 (AI 응답)
         Dialogue aiLog = Dialogue.builder()
                 .conversation(conversation)
+                .turnNumber(nextTurn + 1)
                 .stage(stage)
                 .retryCount(retryCount)
                 .speaker(Speaker.AI)
                 .content(aiRes.getResult().getAiResponse().getText())
                 .audioUrl(ttsUrl)
                 .createdAt(now.plusNanos(1000000))
+                .isSafe(true)          // AI 답변은 기본적으로 safe 처리
+                .unsafeReason(null)
+                .fallbackTriggered(false)
                 .build();
 
         dialogueRepository.saveAll(List.of(childLog, aiLog));
