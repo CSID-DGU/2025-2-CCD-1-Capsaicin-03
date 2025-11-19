@@ -12,6 +12,7 @@ import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.client.AiApiClient;
 import com.example.namurokmurok.global.exception.CustomException;
 import com.example.namurokmurok.global.exception.ErrorCode;
+import com.example.namurokmurok.global.s3.S3Uploader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -24,6 +25,8 @@ import java.time.LocalDateTime;
 public class ConversationService {
 
     private final AiApiClient aiApiClient;
+    private final S3Uploader s3Uploader;
+
     private final ChildRepository childRepository;
     private final StoryRepository storyRepository;
     private final ConverstationRepository converstationRepository;
@@ -64,6 +67,22 @@ public class ConversationService {
                 form,
                 SessionStartResponse.class
         );
+
+        String introAudioBase64 = response.getAi_intro_audio_base64();
+
+        String introAudioUrl = null;
+        if (introAudioBase64 != null && !introAudioBase64.isEmpty()) {
+
+            String fileName = String.format(
+                    "conversation/%s/intro.mp3",
+                    response.getSession_id()
+            );
+
+            introAudioUrl = s3Uploader.upload(introAudioBase64, fileName);
+        }
+
+        // s3에 업로드된 오디오 url로 교체
+        response.setAi_intro_audio_base64(introAudioUrl);
 
         // DB에 Conversation 저장
         Conversation conversation = Conversation.builder()

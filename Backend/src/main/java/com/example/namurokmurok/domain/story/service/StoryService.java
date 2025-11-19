@@ -117,9 +117,9 @@ public class StoryService {
         return IntroQuestionResponseDto.builder()
                 .id(introQuestion.getId())
                 .story_id(storyId)
-                .text_content(introQuestion.getTextContent())
+                .text_content(sessionRes.getAi_intro()) //인트로 텍스트
                 .img_url(introQuestion.getImgUrl())
-                .audio_url(introQuestion.getAudioUrl())
+                .audio_url(sessionRes.getAi_intro_audio_base64()) // 인트로 오디오
                 .session_id(sessionRes.getSession_id())
                 .build();
         }
