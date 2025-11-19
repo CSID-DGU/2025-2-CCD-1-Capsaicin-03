@@ -87,8 +87,3 @@ out/
 .vscode/
 
 .env
-*.env
-.env
-**/.env
-
-**/pycache**/
