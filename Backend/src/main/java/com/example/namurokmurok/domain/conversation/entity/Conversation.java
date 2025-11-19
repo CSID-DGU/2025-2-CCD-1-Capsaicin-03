@@ -10,14 +10,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Builder
-@Table(name = "converstations")
-public class Converstation {
+@Table(name = "conversations")
+public class Conversation {
 
     @Id
     private String id; //세션 id
@@ -42,6 +44,9 @@ public class Converstation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "story_id", nullable = false)
     private Story story;
+
+    @OneToMany(mappedBy = "conversation")
+    private List<Dialogue> dialogues = new ArrayList<>();
 
     public void linkChild(Child child) {
         this.child = child;

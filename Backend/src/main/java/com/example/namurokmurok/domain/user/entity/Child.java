@@ -1,6 +1,6 @@
 package com.example.namurokmurok.domain.user.entity;
 
-import com.example.namurokmurok.domain.conversation.entity.Converstation;
+import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,7 +33,7 @@ public class Child {
     private User user;
 
     @OneToMany(mappedBy = "child")
-    private List<Converstation> converstations = new ArrayList<>();
+    private List<Conversation> converstations = new ArrayList<>();
 
     public void linkUser(User user) {
         this.user = user;
