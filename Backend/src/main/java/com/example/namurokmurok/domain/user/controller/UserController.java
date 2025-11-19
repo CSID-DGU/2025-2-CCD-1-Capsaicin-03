@@ -42,4 +42,13 @@ public class UserController {
     ) {
         return ApiResponse.success(userService.updateChild(userPrincipal.getSub(), requestDto));
     }
+
+    @GetMapping("/children")
+    @Operation(
+            summary = "아이 조회 API",
+            description = "현재 로그인한 부모 사용자가 아이 프로필을 조회합니다.")
+    public ApiResponse<ChildResponseDto> getChild(
+            @AuthenticationPrincipal CustomUserDetails userPrincipal) {
+        return ApiResponse.success(userService.getChild(userPrincipal.getSub()));
+    }
 }

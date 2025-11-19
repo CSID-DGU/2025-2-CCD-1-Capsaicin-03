@@ -81,4 +81,20 @@ public class UserService {
                 .build();
     }
 
+    // 아이 조회
+    @Transactional(readOnly = true)
+    public ChildResponseDto getChild(String supabaseId) {
+        User user = userRepository.findBySupabaseId(supabaseId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        Child child = childRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND_FOR_USER));
+
+        return ChildResponseDto.builder()
+                .id(child.getId())
+                .name(child.getName())
+                .birth_year(child.getBirthYear())
+                .build();
+    }
+
 }
