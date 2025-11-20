@@ -19,6 +19,8 @@ import FeedbackListPage from '../pages/FeedbackListPage.jsx';
 import FeedbackDetailPage from '../pages/FeedbackDetailPage.jsx';
 import ChatListPage from '../pages/ChatListPage.jsx';
 import ChatDetailPage from '../pages/ChatDetailPage.jsx';
+import SettingPage from '../pages/SettingPage.jsx';
+import EditChildPage from '../pages/EditChildPage.jsx';
 
 const router = createBrowserRouter([
   {
@@ -29,6 +31,7 @@ const router = createBrowserRouter([
       {
         element: <GuestLayout />,
         children: [
+          { index: true, element: <Home /> },
           { path: 'login', element: <Login /> },
         ],
       },
@@ -54,6 +57,14 @@ const router = createBrowserRouter([
             element: <Parents />,
           },
           {
+            path: 'parents/settings', // 부모 페이지 설정
+            element: <SettingPage />,
+          },
+          {
+            path: 'parents/settings/edit-child', 
+            element: <EditChildPage />, 
+          },
+          {
             path: 'parents/feedback', // 피드백 목록
             element: <FeedbackListPage />,
           },
@@ -73,11 +84,7 @@ const router = createBrowserRouter([
           },
         ],
       },
-      // --- 3. 공통 경로 ---
-      {
-        index: true, // 홈 ('/')
-        element: <Home />,
-      },
+      
       // --- 4. 404 페이지 ---
       {
         path: '*',
@@ -91,5 +98,6 @@ const router = createBrowserRouter([
     ],
   },
 ]);
+
 
 export default router;

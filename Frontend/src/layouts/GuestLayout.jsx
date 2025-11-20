@@ -1,66 +1,64 @@
 // src/layouts/GuestLayout.jsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { supabase } from '../supabaseClient'; 
+import { getChildProfile } from '../api/profileApi';
 
 const GuestLayout = () => {
-  const [session, setSession] = useState(null);
+  const [redirectPath, setRedirectPath] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); 
 
   useEffect(() => {
-    const checkSession = async () => {
+    const checkUserStatus = async () => {
       try { 
+        // 세션 확인
+        const { data: { session } } = await supabase.auth.getSession();
         
-        console.log('GuestLayout: Supabase 클라이언트 확인:', supabase);
-        if (!supabase) {
-          throw new Error("Supabase client is not defined or imported correctly.");
+        if (!session) {
+          // 로그인이 안 되어 있으면 -> 로딩 끝내고 원래 보여주려던 화면(Home, Login 등) 보여줌
+          setLoading(false);
+          return;
         }
 
-        console.log('GuestLayout: getSession 시도...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log("로그인 확인됨. 백엔드 API로 프로필 조회 시도...");
 
-        if (sessionError) {
-          throw sessionError;
+        // 로그인 되어 있다면 -> 백엔드 API 조회(프로필 조회)
+        try {
+          const response = await getChildProfile();
+
+          // 백엔드 응답에 success가 true이고 data가 있으면 -> 기존 유저
+          if (response && response.success && response.data) {
+            console.log("기존 유저 확인 -> /stories");
+            setRedirectPath('/stories'); 
+          } else {
+            // 응답은 왔는데 데이터가 비어있다면 -> 신규 유저
+            throw new Error("프로필 데이터 없음");
+          }
+
+        } catch (apiError) {
+          // API 에러 발생 (404 Not Found 등) -> 신규 유저로 간주
+          console.log("신규 유저(또는 조회 실패) -> /setup");
+          setRedirectPath('/setup'); 
         }
-        
-        console.log('GuestLayout: getSession 성공:', session);
-        setSession(session);
 
       } catch (err) {
-        console.error('GuestLayout checkSession 에러:', err); 
-        setError(err.message || 'An unknown error occurred');
+        console.error("GuestLayout 시스템 에러:", err);
+        setLoading(false);
       } finally {
-        console.log('GuestLayout: 로딩 종료');
         setLoading(false); 
       }
     };
 
-    checkSession();
+    checkUserStatus();
   }, []);
 
-  if (error) {
-    return (
-      <div style={{ padding: 20, color: 'red', backgroundColor: 'white' }}>
-        <h1>GuestLayout Error:</h1>
-        <p>Supabase 세션을 확인하는 중 에러가 발생했습니다.</p>
-        <pre><strong>{error}</strong></pre>
-        <p>---</p>
-        <p>1. .env 파일에 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY가 올바른지 확인하세요.</p>
-        <p>2. src/supabaseClient.js 파일에 오타가 없는지 확인하세요.</p>
-        <p>3. 터미널에서 서버를 껐다 켰는지 확인하세요 (Ctrl + C → npm run dev).</p>
-      </div>
-    );
-  }
+  if (loading) return <div>잠시만 기다려주세요...</div>; 
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  // 리디렉션 경로가 정해졌으면 그 경로로 리디렉션 (홈 화면 안 보여줌)
+  if (redirectPath) return <Navigate to={redirectPath} replace />;
 
-  console.log('GuestLayout 렌더링:', session ? 'stories로 이동' : 'Outlet 표시');
-  
-  return session ? <Navigate to="/stories" replace /> : <Outlet />; //로그인했으면 바로 스토리목록 페이지로 이동
-  /*return <Outlet />;*/
+  // 비로그인 상태일 때만 자식 컴포넌트(홈, 로그인 등)를 보여줌
+  return <Outlet />;
 };
 
 export default GuestLayout;

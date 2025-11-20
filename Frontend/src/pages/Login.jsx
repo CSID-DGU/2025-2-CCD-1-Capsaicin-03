@@ -1,25 +1,18 @@
 // src/pages/Login.jsx
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-// 1. supabase 클라이언트를 import 합니다. (경로 확인 필수!)
-import { supabase } from '../supabaseClient'; // './supabaseClient' 또는 '../supabaseClient' 등 경로 확인
 
+import { supabase } from '../supabaseClient';
 const Login = () => {
-  const navigate = useNavigate(); // navigate는 일단 둡니다.
-
-  // 2. handleSignIn 함수를 async 함수로 변경하고, Supabase 로그인 로직을 추가합니다.
   const handleSignIn = async () => {
     console.log('구글 로그인 버튼 클릭됨. Supabase 인증을 시작합니다.');
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // 3. 로그인 성공 후 리디렉션될 경로를 지정합니다.
-        redirectTo: `${window.location.origin}/setup`
+        // 기본 도메인으로 리디렉션 수정(자동 리디렉션 처리를 위해)
+        redirectTo: window.location.origin
       }
     });
 
-    // 만약 오류가 발생하면 콘솔에 출력합니다.
     if (error) {
       console.error('Google 로그인 중 오류 발생:', error.message);
     }
@@ -41,16 +34,16 @@ const Login = () => {
   );
 };
 
-// --- Styles --- (스타일 코드는 변경 없음)
+// --- Styles --- 
 const styles = {
   container: {
     height: '100%',
     width: '100%',
-    backgroundColor: 'var(--color-main)', // 부드러운 크림색 배경
+    backgroundColor: 'var(--color-main)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-around', // 콘텐츠를 균등하게 배치
+    justifyContent: 'space-around', 
     padding: '40px',
     boxSizing: 'border-box'
   },
