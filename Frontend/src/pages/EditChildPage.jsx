@@ -1,0 +1,239 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getChildProfile, updateChildProfile } from '../api/profileApi';
+import leftArrowIcon from '../assets/left_arrow.svg'; 
+
+const EditChildPage = () => {
+    const navigate = useNavigate();
+    const [name, setName] = useState('');
+    const [birthYear, setBirthYear] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        const fetchChildInfo = async () => {
+            setIsLoading(true);
+            try {
+                const response = await getChildProfile();
+                
+                if (response.success && response.data) {
+                    const { name, birth_year, birthYear: birthYearCamel } = response.data;
+                    
+                    setName(name);
+                    const yearValue = birth_year || birthYearCamel;
+                    setBirthYear(String(yearValue)); 
+                }
+            } catch (error) {
+                console.error("아이 정보를 불러오는데 실패했습니다.", error);
+                alert("정보를 불러올 수 없습니다.");
+                navigate(-1); 
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchChildInfo();
+    }, [navigate]);
+
+    const handleBackClick = () => {
+        navigate(-1);
+    };
+
+    const handleYearChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 4) {
+            setBirthYear(value);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!name.trim()) {
+            alert("아이 이름을 입력해주세요.");
+            return;
+        }
+        if (birthYear.length !== 4) {
+            alert("태어난 해 4자리를 정확히 입력해주세요. (예: 2019)");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const response = await updateChildProfile({ name, birthYear });
+
+            if (response.success) {
+                alert("아이 정보가 수정되었습니다.");
+                navigate(-1);
+            } else {
+                throw new Error(response.message || "수정 실패");
+            }
+
+        } catch (error) {
+            console.error("저장 실패:", error);
+            const msg = error.response?.data?.message || "저장에 실패했습니다. 다시 시도해주세요.";
+            alert(msg);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div style={styles.container}>
+                <div style={styles.loadingText}>정보를 불러오는 중...</div>
+            </div>
+        );
+    }
+
+    return (
+        <div style={styles.container}>
+            <header style={styles.header}>
+                <div style={styles.headerLeft}>
+                    <button onClick={handleBackClick} style={styles.backButton}>
+                        <img src={leftArrowIcon} alt="닫기" style={styles.backIconImg} />
+                    </button>
+                    <span style={styles.pageTitle}>아이 정보</span>
+                </div>
+            </header>
+            <main style={styles.content}>
+
+                <div style={styles.inputWrapper}>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        style={styles.inputField}
+                        placeholder="이름"
+                        disabled={isSaving}
+                    />
+                </div>
+
+                <div style={styles.inputWrapper}>
+                    <input
+                        type="tel" 
+                        value={birthYear}
+                        onChange={handleYearChange}
+                        style={styles.inputField}
+                        placeholder="태어난 해 (YYYY)"
+                        disabled={isSaving}
+                    />
+                </div>
+
+                <button 
+                    onClick={handleSave} 
+                    style={{
+                        ...styles.saveButton,
+                        backgroundColor: isSaving ? '#ccc' : 'var(--color-main)', 
+                        cursor: isSaving ? 'not-allowed' : 'pointer'
+                    }}
+                    disabled={isSaving}
+                >
+                    {isSaving ? '저장 중...' : '저장하기'}
+                </button>
+            </main>
+
+             <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)' }}>
+                <div style={{ width: '100px', height: '5px', backgroundColor: '#333', borderRadius: '2.5px' }}></div>
+            </div>
+        </div>
+    );
+};
+
+const styles = {
+    container: {
+        backgroundColor: 'var(--color-second)', 
+        height: '100%',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '20px',
+        position: 'relative',
+        overflow: 'hidden',
+        alignItems: 'center', 
+    },
+    header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '15px',
+        paddingTop: '5px',
+        width: '100%', 
+        maxWidth: '732px', 
+    },
+    headerLeft: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '15px',
+    },
+    backButton: {
+        background: 'var(--color-fourth)', 
+        border: '3px solid var(--color-text-dark)',
+        borderRadius: '50%',
+        width: '40px',
+        height: '40px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+    },
+    backIconImg: {
+        width: '60%',
+        height: '60%',
+        objectFit: 'contain',
+    },
+    pageTitle: {
+        fontSize: '1.3rem',
+        color: 'var(--color-text-dark)',
+        margin: 0,
+        fontFamily: "var(--font-family-primary)",
+    },
+    loadingText: {
+        color: 'var(--color-text-light)',
+        fontSize: '1.5rem',
+        marginTop: '100px',
+        fontFamily: "var(--font-family-primary)",
+    },
+    
+    content: {
+        flex: 1,
+        width: '80%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '18px', 
+        marginTop: '10px',
+    },
+    inputWrapper: {
+        width: '100%',
+        position: 'relative',
+    },
+    inputField: {
+        width: '100%',
+        padding: '15px 20px',
+        borderRadius: '30px', 
+        border: '3px solid var(--color-text-dark)', 
+        fontSize: '1.2rem',
+        textAlign: 'center', 
+        outline: 'none',
+        fontFamily: "var(--font-family-primary)",
+        boxSizing: 'border-box',
+        color: 'var(--color-text-dark)',
+        backgroundColor: 'var(--color-text-light)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    },
+    saveButton: {
+        marginTop: '15px', 
+        backgroundColor: 'var(--color-main)', 
+        border: '3px solid var(--color-text-dark)',
+        borderRadius: '30px',
+        padding: '12px 30px',
+        fontSize: '20px',
+        color: 'var(--color-text-dark)',
+        cursor: 'pointer',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+        fontFamily: "var(--font-family-primary)"
+    },
+};
+
+export default EditChildPage;
