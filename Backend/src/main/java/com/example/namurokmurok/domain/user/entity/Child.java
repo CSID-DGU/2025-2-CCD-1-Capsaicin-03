@@ -1,12 +1,14 @@
 package com.example.namurokmurok.domain.user.entity;
 
+import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
@@ -30,7 +32,20 @@ public class Child {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @OneToMany(mappedBy = "child")
+    private List<Conversation> converstations = new ArrayList<>();
+
     public void linkUser(User user) {
         this.user = user;
+    }
+
+    // 아이 정보 수정
+    public void update(String name, Integer birthYear) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (birthYear != null) {
+            this.birthYear = birthYear;
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.example.namurokmurok.domain.story.service;
 
+import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
+import com.example.namurokmurok.domain.conversation.service.ConversationService;
 import com.example.namurokmurok.domain.story.dto.*;
 import com.example.namurokmurok.domain.story.entity.ActionCard;
 import com.example.namurokmurok.domain.story.entity.IntroQuestion;
@@ -10,6 +12,8 @@ import com.example.namurokmurok.domain.story.repository.ActionCardRepository;
 import com.example.namurokmurok.domain.story.repository.IntroQuestionRepository;
 import com.example.namurokmurok.domain.story.repository.StoryPageRepository;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
+import com.example.namurokmurok.domain.user.entity.Child;
+import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.exception.CustomException;
 import com.example.namurokmurok.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Service
 @RequiredArgsConstructor
 public class StoryService {
@@ -26,6 +31,8 @@ public class StoryService {
     private final StoryPageRepository storyPageRepository;
     private final IntroQuestionRepository introQuestionRepository;
     private final ActionCardRepository actionCardRepository;
+    private final ChildRepository childRepository;
+    private final ConversationService conversationService;
 
     // 카테고리별 동화 목록 조회
     public StoryListResponseDto getStoriesByCategory(SelCategory category) {
@@ -94,19 +101,26 @@ public class StoryService {
     }
 
     // 동화별 인트로 질문 조회
-    public IntroQuestionResponseDto getIntroQuestion(Long storyId) {
+    public IntroQuestionResponseDto getIntroQuestion(Long storyId, Long userId) {
         storyRepository.findById(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
 
         IntroQuestion introQuestion = introQuestionRepository.findByStoryId(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.INTRO_QUESTION_NOT_FOUND));
 
+        Child child = childRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        // 세션 id 발급 요청
+        SessionStartResponse sessionRes = conversationService.startSession(storyId, child.getId());
+
         return IntroQuestionResponseDto.builder()
                 .id(introQuestion.getId())
                 .story_id(storyId)
-                .text_content(introQuestion.getTextContent())
+                .text_content(sessionRes.getAi_intro()) //인트로 텍스트
                 .img_url(introQuestion.getImgUrl())
-                .audio_url(introQuestion.getAudioUrl())
+                .audio_url(sessionRes.getAi_intro_audio_base64()) // 인트로 오디오
+                .session_id(sessionRes.getSession_id())
                 .build();
         }
 
