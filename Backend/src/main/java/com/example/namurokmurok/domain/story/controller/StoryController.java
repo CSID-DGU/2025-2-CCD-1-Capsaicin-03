@@ -4,12 +4,10 @@ import com.example.namurokmurok.domain.story.dto.*;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import com.example.namurokmurok.domain.story.service.StoryService;
 import com.example.namurokmurok.global.common.response.ApiResponse;
-import com.example.namurokmurok.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -56,12 +54,9 @@ public class StoryController {
             description = "story-id에 해당하는 인트로 질문 정보를 조회합니다.")
     public ApiResponse<IntroQuestionResponseDto> getIntroQuestion(
             @Parameter(description = "동화 ID", example = "1")
-            @PathVariable("story-id") Long storyId,
-            @AuthenticationPrincipal CustomUserDetails user) {
+            @PathVariable("story-id") Long storyId) {
 
-        Long userId = user.getUserId();
-
-        IntroQuestionResponseDto response = storyService.getIntroQuestion(storyId, userId);
+        IntroQuestionResponseDto response = storyService.getIntroQuestion(storyId);
         return ApiResponse.success(response);
     }
 

@@ -8,7 +8,7 @@ on:
       - "Backend/**"
       - ".github/workflows/deploy-backend.yml"
   release:
-    types: "published"  # 릴리즈 Published 시 -> prod 환경 배포
+    types: "published"  # 릴리즈 'Published'(발행)시 -> prod 환경 배포
 
 jobs:
   build-and-deploy:
@@ -90,33 +90,21 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-
             IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/na-murok-murok
             TAG=${{ steps.env-detect.outputs.tag }}
             PORT=${{ steps.env-detect.outputs.port }}
             CONTAINER_NAME=${{ steps.env-detect.outputs.container }}
+            ENV_FILE="${{ steps.env-detect.outputs.env == 'prod' && secrets.ENV_FILE_PROD || secrets.ENV_FILE_DEV }}"
 
-            # 기존 컨테이너 종료 & 삭제
             sudo docker stop $CONTAINER_NAME || true
             sudo docker rm $CONTAINER_NAME || true
 
-            if [ "${{ steps.env-detect.outputs.env }}" = "prod" ]; then
-              echo "${{ secrets.ENV_FILE_PROD }}" > .env
-            else
-              echo "${{ secrets.ENV_FILE_DEV }}" > .env
-            fi
-
-            # 최신 이미지 pull
+            echo "$ENV_FILE" > .env
             sudo docker pull $IMAGE_NAME:$TAG
-
-            # 새 컨테이너 실행
-            sudo docker run -d \
-              -p $PORT:8080 \
+            sudo docker run -d -p $PORT:8080 \
               --env-file .env \
               --name $CONTAINER_NAME \
               $IMAGE_NAME:$TAG
-
-            # ENV 파일 삭제
             rm .env
 
             # 사용되지 않는 도커 이미지 정리

@@ -12,7 +12,6 @@ import java.util.Collections;
 @AllArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
-    private final Long userId;
     private final String email;
     private final String sub; // Supabase user_id (UUID)
     private final String username;
