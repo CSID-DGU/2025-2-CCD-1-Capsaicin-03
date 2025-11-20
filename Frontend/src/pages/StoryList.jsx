@@ -16,11 +16,14 @@ const categories = [
 const StoryList = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState(categories[0].code);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [stories, setStories] = useState([]);
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null);
 
+  const handleGoToParentsPage = () => {
+    navigate('/parents'); 
+  }
+  
   useEffect(() => {
     const loadStories = async () => {
       setIsLoading(true); 
@@ -50,7 +53,7 @@ const StoryList = () => {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <button style={styles.parentButton} onClick={() => setIsModalOpen(true)}>
+        <button style={styles.parentButton} onClick={handleGoToParentsPage}>
           부모 페이지
         </button>
       </header>
