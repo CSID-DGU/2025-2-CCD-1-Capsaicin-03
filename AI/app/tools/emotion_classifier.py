@@ -4,6 +4,7 @@ GPT-4o-mini 기반 감정 분류기
 """
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 import logging
 from typing import Dict, List
@@ -62,6 +63,7 @@ class EmotionClassifierTool:
             EmotionResult: 감정 분류 결과
         """
         try:
+            parser = JsonOutputParser(pydantic_object=EmotionResult)
             prompt = ChatPromptTemplate.from_messages([
                 ("system", """
                     너는 아동 심리 전문가로서 아이의 발화에서 감정을 정확히 분류해야 해.
@@ -79,34 +81,31 @@ class EmotionClassifierTool:
                     - 부 감정은 0-2개 (확실한 경우만)
                     - 신뢰도는 0.0~1.0 사이
 
-                    응답 형식 (JSON):
+                    다음 스키마를 엄격하게 따르세요.
+                    {format_instructions}
+                    
                 """),
                 ("user", "아이의 발화: \"{text}\"\n\n이 아이의 감정을 분석해줘.")
             ])
             
-            response = self.llm.invoke(prompt.format_messages(text=text))
-            content = response.content.strip()
-            
-            # JSON 파싱
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
-            
-            result_json = json.loads(content)
-            
+            response = self.llm.invoke(prompt.format_messages(text=text, format_instructions=parser.get_format_instructions()))
+            print(response)
+            result = parser.parse(response.content)
+            print(result)
+
             # EmotionLabel로 변환
-            primary_emotion = self._map_to_emotion_label(result_json["primary"])
+            # print(result)
+            primary_emotion = self._map_to_emotion_label(result["primary"])
             secondary_emotions = [
                 self._map_to_emotion_label(e) 
-                for e in result_json.get("secondary", [])
+                for e in result.get("secondary", [])
             ]
-            confidence = float(result_json.get("confidence", 0.8))
+            confidence = float(result.get("confidence", 0.8))
             
             logger.info(
                 f"감정 분류 완료: primary={primary_emotion.value}({confidence:.2f}), "
                 f"secondary={[e.value for e in secondary_emotions]}, "
-                f"reasoning={result_json.get('reasoning', '')}"
+                f"reasoning={result.get('reasoning', '')}"
             )
             
             return EmotionResult(
