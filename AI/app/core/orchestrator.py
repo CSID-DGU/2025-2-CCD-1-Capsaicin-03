@@ -143,6 +143,10 @@ class StageOrchestrator:
         logger.info(f"📊 평가 결과 - 규칙 기반: {rule_based_success}, LLM 평가: {llm_evaluation}")
         
         # 3. 최종 판단 (규칙 우선)
+        if current_stage == Stage.S5_ACTION_CARD:
+            logger.info(f"🏁 S5는 마지막 스테이지이므로 다음 Stage로 전환 없음")
+            return False  # S5는 마지막 스테이지
+        
         if rule_based_success:
             logger.info(f"✅ {current_stage.value} 성공: 다음 Stage로 전환")
             return True
@@ -154,7 +158,7 @@ class StageOrchestrator:
                 f"Stage 스킵"
             )
             return True  # 강제 전환
-        
+
         # 5. 현재 Stage 유지
         logger.info(
             f"🔄 {current_stage.value} 재시도 "
@@ -178,6 +182,10 @@ class StageOrchestrator:
             # S1: 감정이 분류되었는가?
             emotion_result = result.get("emotion_detected")
             
+            # 안전 필터 감지 시 emotion_result가 None일 수 있음
+            if emotion_result is None:
+                logger.warning(f"❌ S1: emotion_result가 None입니다 (안전 필터 감지 등)")
+                return False
             
             if emotion_result.get("primary") != EmotionLabel.NEUTRAL:
                 logger.info(emotion_result.get("primary"))
@@ -390,12 +398,29 @@ class StageOrchestrator:
         #         return False
         
         elif stage == Stage.S5_ACTION_CARD:
-            # S5: 행동카드가 생성되었는가?
-            action_card = result.get("action_card")
-            if action_card and action_card.get("title"):
-                return True
+            return True  # S5는 항상 성공으로 간주 (대화 종료)
         
-        return False
+        #     stt_result = result.get("stt_result")
+            
+        #     if isinstance(stt_result, dict):
+        #         text = stt_result.get("text", "").strip()
+        #         text_lower = text.lower()
+                
+        #     # 1. 전략 수락 키워드 (명시적 수락)
+        #     acceptance_keywords = [
+        #         "네", "좋아", "할게", "그럴게", "응", "해볼게", "해볼래", 
+        #         "그렇게 할게", "해보자", "시도해볼게", "할래", "좋아요",
+        #         "그럼 그렇게", "그렇게 하자", "그렇게 할래", "알겠어", "알겠어요", "알았어", "알았어요",
+        #         "그렇게 해볼게", "해볼게요", "할게요", "그렇게 할게요"
+        #     ]
+            
+        #     has_acceptance = any(keyword in text_lower for keyword in acceptance_keywords)
+            
+        #     if has_acceptance:
+        #         logger.info(f"✅ S5 성공: 행동카드 수락 키워드 발견")
+        #         return True
+        
+        # return False
     
     def get_next_stage(self, current_stage: Stage) -> Optional[Stage]:
         """다음 Stage 반환 (순차적)"""

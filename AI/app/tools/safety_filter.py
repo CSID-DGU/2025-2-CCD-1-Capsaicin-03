@@ -82,15 +82,23 @@ class SafetyFilterTool:
             )
     
     def _get_child_friendly_warning(self, categories: list) -> str:
-        """아동 친화적 경고 메시지 생성"""
+        """
+        아동 친화적 경고 메시지 생성
+        - 아동의 감정을 인정하면서도 올바른 표현 방법을 안내
+        - 교육적이면서도 공감적인 톤 유지
+        """
         if "self_harm" in categories:
-            return "힘든 일이 있구나. 나랑 차근차근 이야기해볼까?"
-        elif "violence" in categories or "hate" in categories:
-            return "그런 표현은 조금 위험할 수 있어. 다른 말로 이야기해줄래?"
+            return "많이 힘들구나. 그런 생각이 들 때는 꼭 어른에게 말해야 해. 지금은 나랑 이야기하면서 마음을 풀어보자. 어떤 일이 있었는지 천천히 말해줄래?"
+        elif "violence" in categories:
+            return "화가 많이 났구나. 하지만 그런 표현보다는 '화가 났어', '속상했어'라고 말하면 더 좋을 것 같아. 무슨 일이 있었는지 다시 말해줄래?"
+        elif "hate" in categories or "hate_threatening" in categories:
+            return "속상한 마음은 이해해. 하지만 친구나 다른 사람을 미워하는 말은 사용하지 않는 게 좋아. 대신 어떤 점이 속상했는지 말해볼까?"
+        elif "harassment" in categories or "harassment_threatening" in categories:
+            return "누군가를 괴롭히는 말은 듣는 사람도 말하는 사람도 마음이 아파. 다른 방식으로 이야기해볼 수 있을까?"
         elif "sexual" in categories:
-            return "그 이야기는 다음에 하자. 다른 이야기 해볼까?"
+            return "그 이야기는 조금 어려운 주제야. 우리는 동화 이야기로 돌아가자. 어떤 기분이 들었는지 말해줄래?"
         else:
-            return "조금 다르게 말해볼 수 있을까?"
+            return "그 말은 조금 다르게 표현하면 더 좋을 것 같아. 다시 이야기해줄 수 있을까?"
 
 
 # LangChain Tool 래퍼

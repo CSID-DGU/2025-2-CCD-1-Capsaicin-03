@@ -214,15 +214,20 @@ async def process_dialogue_turn(
 
         context_manager.save_session(session)
         
-        # 7. 다음 Stage 결정 (업데이트된 세션의 current_stage 사용)
+        # 7. 다음 Stage 결정
         if should_transition:
-            # 세션이 업데이트되었으므로 session.current_stage가 다음 스테이지
-            next_stage_value = session.current_stage
-            logger.info(f"✅ Stage 전환 완료: 다음 Stage = {next_stage_value.value}")
+            # Stage 전환 성공: session.current_stage가 다음 스테이지
+            next_stage_value = new_stage
+            # S5로 전환된 경우, 아직 S5 대화를 시작하지 않았으므로 next_stage는 S5
+            logger.info(f"✅ Stage 전환 완료: {old_stage.value} → 다음 Stage = {next_stage_value.value}")
+        elif old_stage.value == Stage.S5_ACTION_CARD and not should_transition:
+            # S5는 다음 스테이지가 없음
+            next_stage_value = None
+            logger.info("🏁 S5 완료: next_stage = null")
         else:
-            # 현재 Stage 유지
-            next_stage_value = session.current_stage
-            logger.info(f"🔄 Stage 유지: 현재 Stage = {next_stage_value.value}, 재시도 {session.retry_count}/{orchestrator.get_stage_config(session.current_stage).max_retry}")
+            # Stage 유지: 다음에도 같은 Stage
+            next_stage_value = new_stage
+            logger.info(f"🔄 Stage 유지: 현재 Stage = {new_stage.value}, 재시도 {session.retry_count}/{orchestrator.get_stage_config(session.current_stage).max_retry}")
         
         # 8. 응답 구성
         processing_time = int((time.time() - start_time) * 1000)
@@ -327,7 +332,7 @@ async def process_dialogue_turn(
             session_id=session_id,
             stage=old_stage,  # Stage enum을 문자열로 변환
             result=turn_result_formatted,
-            next_stage=next_stage_value.value,  # Stage enum을 문자열로 변환
+            next_stage=next_stage_value.value if next_stage_value else None,  # S5 완료 시 None
             fallback_triggered=session.retry_count > 0,
             retry_count=session.retry_count,
             processing_time_ms=processing_time
@@ -335,8 +340,8 @@ async def process_dialogue_turn(
         
         logger.info(
             f"✅ 대화 턴 처리 완료: {processing_time}ms, "
-            f"현재 Stage={session.current_stage.value}, "
-            f"다음 Stage={next_stage_value.value}, "
+            f"현재 Stage={old_stage.value}, "
+            f"다음 Stage={next_stage_value.value if next_stage_value else 'null'}, "
             f"재시도={session.retry_count}"
         )
         
