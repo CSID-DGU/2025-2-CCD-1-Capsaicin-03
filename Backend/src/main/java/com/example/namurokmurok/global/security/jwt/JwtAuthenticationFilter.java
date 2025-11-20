@@ -1,5 +1,6 @@
 package com.example.namurokmurok.global.security.jwt;
 
+import com.example.namurokmurok.domain.user.entity.User;
 import com.example.namurokmurok.domain.user.service.UserService;
 import com.example.namurokmurok.global.security.CustomUserDetails;
 import jakarta.servlet.FilterChain;
@@ -57,11 +58,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String sub = (String) claims.get("sub");
             String username = (String) ((Map)claims.get("user_metadata")).get("full_name");
 
-            userService.saveUser(sub, email, username);
+            User user = userService.saveUser(sub, email, username);
+            Long userId = user.getId();
 
             if (email != null && sub != null) {
                 // CustomUserDetails 생성 및 인증 객체 구성
-                CustomUserDetails userDetails = new CustomUserDetails(email, sub, username);
+                CustomUserDetails userDetails = new CustomUserDetails(userId, email, sub, username);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, Collections.emptyList());

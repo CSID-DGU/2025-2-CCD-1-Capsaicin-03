@@ -1,6 +1,7 @@
 package com.example.namurokmurok.domain.story.entity;
 
 
+import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
 import jakarta.persistence.*;
         import lombok.AllArgsConstructor;
@@ -45,4 +46,7 @@ public class Story {
 
     @OneToMany(mappedBy = "story")
     private List<ActionCard> actionCards = new ArrayList<>();
+
+    @OneToMany(mappedBy = "story")
+    private List<Conversation> conversations = new ArrayList<>();
 }
