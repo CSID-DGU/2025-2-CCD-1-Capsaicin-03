@@ -15,6 +15,4 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
 
     @Query("SELECT DISTINCT s FROM Story s LEFT JOIN FETCH s.pages WHERE s.id = :id")
     Optional<Story> findByIdWithPages(@Param("id") Long id);
-
-    Optional<Story> findByTitle(String title);
 }
