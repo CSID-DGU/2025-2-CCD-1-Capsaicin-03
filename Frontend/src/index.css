@@ -6,6 +6,8 @@
 }
 
 :root {
+  /*라이트모드만 지원*/
+  color-scheme: light;
   /* 타이포그래피 */
   --font-family-primary: 'memomentKkukkuk';
   /* 색상 (피그마 기준) */

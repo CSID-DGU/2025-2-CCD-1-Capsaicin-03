@@ -2,22 +2,45 @@
 
 import apiClient from './axiosInstance.js'; 
 
-/**
- * 자녀 프로필을 생성합니다.
- * API: POST /api/users/children
- * @param {object} profileData - 프로필 데이터
- * @param {string} profileData.name - 아이 이름
- * @param {string} profileData.birthYear - 아이 생년 (YYYY)
- */
-
 export const createChildProfile = async ({ name, birthYear }) => {
   try {
     const response = await apiClient.post('/api/users/children', { name, birthYear });
     return response.data;
 
   } catch (error) {
-    console.error('Error creating child profile:', error.message);
+    console.error('아이 프로필 생성 실패:', error.message);
     
+    throw error;
+  }
+};
+
+export const getChildProfile = async () => {
+  try {
+    const response = await apiClient.get('/api/users/children', {
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    });
+    return response.data; 
+
+  } catch (error) {
+    console.error('아이 프로필 조회 실패:', error.message);
+    throw error;
+  }
+};
+
+export const updateChildProfile = async ({ name, birthYear }) => {
+  try {
+    const response = await apiClient.patch('/api/users/children', { 
+      name, 
+      birth_year: birthYear 
+    });
+    return response.data;
+
+  } catch (error) {
+    console.error('아이 프로필 수정 실패:', error.message);
     throw error;
   }
 };

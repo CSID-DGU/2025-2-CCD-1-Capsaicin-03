@@ -1,10 +1,12 @@
 // src/pages/AIChat.jsx
-import React, { useEffect, useState, useRef} from 'react';
+
+import { useEffect, useState, useRef} from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAudioPlayback } from '../hooks/useAudioPlayback';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { fetchStoryScene } from '../api/storyApi';
-import { fetchIntroQuestion, fetchActionCard } from '../api/chatApi';
+import { fetchIntroQuestion, postConversationTurn, fetchActionCard } from '../api/chatApi';
+import { getChildProfile } from '../api/profileApi';
 import homeIcon from '../assets/home_icon.svg';
 import micBlackIcon from '../assets/Mic_black.svg';
 import micIcon from '../assets/mic.svg';
@@ -14,15 +16,23 @@ const AIChat = () => {
     const { storyId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+
     const questionAudioRef = useRef(null);
+
     const [chatStep, setChatStep] = useState('intro'); 
     const [sceneData, setSceneData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
     const [isFetchingQuestion, setIsFetchingQuestion] = useState(false);
-    const [cardData, setCardData] = useState(null);
     const [isResponding, setIsResponding] = useState(false);
     const [isAIAudioPlaying, setIsAIAudioPlaying] = useState(false);
+
+    const [cardData, setCardData] = useState(null);
+
+    const [childId, setChildId] = useState(null);     
+    const [sessionId, setSessionId] = useState('');   
+    const [currentStage, setCurrentStage] = useState('S1');
 
     useEffect(() => {
         if (location.pathname.includes('/intro')) setChatStep('intro');
@@ -30,6 +40,24 @@ const AIChat = () => {
         else if (location.pathname.includes('/card')) setChatStep('card');
     }, [location.pathname]);
     
+    useEffect(() => {
+        const loadChildData = async () => {
+            try {
+                const response = await getChildProfile();
+                
+                if (response.success && response.data && response.data.id) {
+                    console.log("👶 Child ID Loaded:", response.data.id);
+                    setChildId(response.data.id);
+                } else {
+                    console.warn("아이 정보를 찾을 수 없습니다.");
+                }
+            } catch (err) {
+                console.error("아이 정보를 불러오지 못했습니다.", err);
+            }
+        };
+        loadChildData();
+    }, []);
+
     useEffect(() => {
         if (!storyId) {
             setLoading(false);
@@ -78,22 +106,98 @@ const AIChat = () => {
         }
     }, [chatStep, storyId, cardData]);
 
+    //컴포넌트 이동 시 오디오 정지 로직 추가
+    useEffect(() => {
+        return () => {
+            if (questionAudioRef.current) {
+                console.log("페이지 이동 감지: 오디오 정지");
+                questionAudioRef.current.pause();       // 오디오 일시정지
+                questionAudioRef.current.currentTime = 0; // 재생 위치 초기화
+                questionAudioRef.current = null;        
+            }
+        };
+    }, []);
+
     const { handleReplay } = useAudioPlayback(
         sceneData?.audio_url, 
         chatStep === 'intro' 
     );
     
+    const handleRecordingComplete = async (audioBlob, audioUrl) => {
+        if (!sessionId) {
+            console.error("세션 ID가 없습니다. 처음부터 다시 시작해주세요.");
+            return;
+        }
+        if (!childId) {
+            alert("아이 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
+
+        setIsResponding(true); 
+
+        try {
+            const response = await postConversationTurn({
+                storyId,
+                childId,     
+                sessionId,   
+                stage: currentStage,
+                audioBlob
+            });
+
+            console.log("🤖 AI 응답 수신:", response);
+
+            if (response.ai_text) {
+                setSceneData(prev => ({
+                    ...prev,
+                    text_content: response.ai_text
+                }));
+            }
+            
+            if (response.next_stage) {
+                setCurrentStage(response.next_stage);
+            }
+
+            if (response.tts_audio_url) {
+                const aiAudio = new Audio(response.tts_audio_url);
+                questionAudioRef.current = aiAudio;
+
+                setIsAIAudioPlaying(true);
+                
+                aiAudio.onended = () => {
+                    setIsAIAudioPlaying(false);
+                    if (response.is_end) {
+                        finishChat(); 
+                    }
+                };
+
+                await aiAudio.play();
+            } else {
+                setIsResponding(false); 
+                if (response.is_end) {
+                    finishChat();
+                }
+            }
+
+        } catch (err) {
+            console.error("대화 처리 중 오류:", err);
+            alert("AI와의 연결이 원활하지 않습니다.");
+        } finally {
+            setIsResponding(false); 
+        }
+    };
+
     const { 
         isRecording, 
         recordedAudioURL, 
         startRecording,  
         stopRecording    
     } = useAudioRecorder({
-        // 나중에 API 연동 시 여기에 handleRecordingComplete 함수를 전달
         onStop: (audioBlob, audioUrl) => {
-             console.log("훅에서 녹음 완료:", audioUrl);
+             console.log("🎤 녹음 완료, API 전송 시작");
+             handleRecordingComplete(audioBlob, audioUrl);
         }
     });
+
     const startChat = async () => {
         if (isFetchingQuestion) return; 
         setIsFetchingQuestion(true); 
@@ -101,17 +205,31 @@ const AIChat = () => {
         
         try {
             const questionData = await fetchIntroQuestion(storyId);
+            
+            if (questionData.session_id) {
+                console.log("✅ 세션 시작, ID:", questionData.session_id);
+                setSessionId(questionData.session_id);
+            } else {
+                console.warn("⚠️ 경고: Intro API 응답에 session_id가 없습니다.");
+            }
+            
+            if (questionData.current_stage) {
+                setCurrentStage(questionData.current_stage);
+            }
+
             const questionAudio = new Audio(questionData.audio_url);
+            questionAudioRef.current = questionAudio;
 
             setIsAIAudioPlaying(true);
             questionAudio.onended = () => {
                 setIsAIAudioPlaying(false);
             };
-            questionAudio.play().catch(e => {
+            
+            await questionAudio.play().catch(e => {
                 console.error("오디오 재생 실패:", e);
                 setIsAIAudioPlaying(false); 
             });
-            questionAudioRef.current = questionAudio;
+            
             setSceneData(questionData);
             navigate(`/chat/${storyId}/dialogue`);
 
@@ -122,6 +240,7 @@ const AIChat = () => {
             setIsFetchingQuestion(false); 
         }
     };
+    
     const finishChat = () => {
             if (questionAudioRef.current) {
             questionAudioRef.current.pause();
@@ -136,7 +255,7 @@ const AIChat = () => {
         </button>
     );
     
-    if (loading) {
+    if (loading && chatStep !== 'dialogue') { 
         return <div style={{ padding: '20px', ...styles.fontBase }}>
             {chatStep === 'card' ? '행동 카드를 불러오는 중입니다...' : '장면을 불러오는 중입니다...'}
         </div>;
@@ -152,8 +271,8 @@ const AIChat = () => {
 
     // -------------------------  AI 대화 인트로 -------------------------
     if (chatStep === 'intro') {
-        return (
-            <div style={styles.introContainer}>
+        return (
+            <div style={styles.introContainer}>
                 <TopHomeButton />
                 <div style={styles.introImageSection}>
                     <img src={sceneData.img_url} alt="동화 속 장면" style={styles.storyImage} />
@@ -165,63 +284,64 @@ const AIChat = () => {
                             {sceneData.text_content}
                         </p>
                     </div>
-                    
-                    <div style={styles.buttonGroup}>           
-                        <button onClick={handleReplay} style={styles.introSecondaryButton}>
+                    
+                    <div style={styles.buttonGroup}>            
+                        <button onClick={handleReplay} style={styles.introSecondaryButton}>
                             <img src={playBackIcon} alt="다시 듣기" style={styles.buttonIcon} />
                             <span>다시 듣기</span>
                         </button>
-                        <button onClick={startChat} style={styles.introPrimaryButton} disabled={isFetchingQuestion}>
+                        <button onClick={startChat} style={styles.introPrimaryButton} disabled={isFetchingQuestion}>
                             <img src={micBlackIcon} alt="대화하기" style={styles.buttonIcon} />
                             <span>{isFetchingQuestion ? '준비중...' : '대화하기'}</span>
                         </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // -------------------------  AI 대화 -------------------------
     if (chatStep === 'dialogue') {
         const isMicDisabled = isResponding || isAIAudioPlaying;
-        return (
-            <div style={styles.dialogueContainer}>
-                <TopHomeButton />
-                <div style={styles.dialogueImageSection}>
-                    <img src={sceneData.img_url} alt="대화 캐릭터" style={styles.dialogueStoryImage} />
-                </div>
-                <div style={styles.dialogueTextSection}>
-                    <div style={styles.chatBubble}>
-                        <p>{sceneData.text_content}</p>
-                    </div>
-                    <button 
-                        style={{
+        
+        return (
+            <div style={styles.dialogueContainer}>
+                <TopHomeButton />
+                <div style={styles.dialogueImageSection}>
+                    <img src={sceneData.img_url} alt="대화 캐릭터" style={styles.dialogueStoryImage} />
+                </div>
+                <div style={styles.dialogueTextSection}>
+                    <div style={styles.chatBubble}>
+                        <p>{sceneData.text_content}</p>
+                    </div>
+                    
+                    <button 
+                        style={{
                             ...styles.micButton,
                             backgroundColor: isMicDisabled ? '#AAAAAA' : 'var(--color-fourth)',
                             cursor: isMicDisabled ? 'not-allowed' : 'pointer',
+                            transform: isRecording ? 'scale(1.1)' : 'scale(1)',
+                            transition: 'all 0.2s ease'
                         }}
-                        onMouseDown={startRecording} //웹
+                        onMouseDown={startRecording}
                         onMouseUp={stopRecording}    
-                        onTouchStart={startRecording} //모바일
-                        onTouchEnd={stopRecording}  
+                        onTouchStart={startRecording}
+                        onTouchEnd={stopRecording}   
                         disabled={isMicDisabled}
-                    >
-                        <img src={micIcon} alt ="마이크" style={styles.micIcon} />
-                    </button>
-                    <p style={styles.dialogueGuidanceText}>
-                        {isAIAudioPlaying ? 'AI가 이야기 중이에요. 조금만 기다려줘!' :
-                         (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!')}
-                    </p>
-                    {recordedAudioURL && (
-                    <div style={{marginTop: '10px'}}>
-                        <audio src={recordedAudioURL} controls autoPlay />
-                    </div>
-                    )}
-                    <button onClick={finishChat} style={styles.tempButton}>대화 마치기</button>
-                </div>
-            </div>
-        );
-    }
+                    >
+                        <img src={micIcon} alt ="마이크" style={styles.micIcon} />
+                    </button>
+                    
+                    <p style={styles.dialogueGuidanceText}>
+                        {isResponding ? 'AI가 대답을 생각하고 있어요...' : 
+                         (isAIAudioPlaying ? 'AI가 이야기 중이에요. 잘 들어보세요!' :
+                          (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!'))}
+                    </p>
+                    <button onClick={finishChat} style={styles.tempButton}>대화 마치기</button>
+                </div>
+            </div>
+        );
+    }
 
    // -------------------------  행동카드 -------------------------
     if (chatStep === 'card') {
@@ -528,4 +648,3 @@ const styles = {
 };
 
 export default AIChat;
-// Test comment to trigger workflow
