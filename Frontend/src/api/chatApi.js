@@ -1,11 +1,6 @@
 // src/api/chatApi.js
 import apiClient from './axiosInstance.js';
 
-/**
- * storyId에 해당하는 첫 번째 씬의 학습 목표를 가져옵니다.
- * @param {string} storyId - 동화 ID
- * @returns {Promise<{ data: any, error: any }>}
- */
 export const getLearningGoal = async (storyId) => {
   try {
     const response = await apiClient.get(`/api/stories/${storyId}/scene`);
@@ -22,10 +17,6 @@ export const getLearningGoal = async (storyId) => {
   }
 };
 
-/**
- * 동화별 첫번째 질문 조회 API
- * GET /api/stories/{storyId}/intro-question
- */
 export const fetchIntroQuestion = async (storyId) => {
   if (!storyId) {
     throw new Error("Story ID가 필요합니다.");
@@ -40,10 +31,40 @@ export const fetchIntroQuestion = async (storyId) => {
   }
 };
 
-/**
- * 동화별 행동 카드 조회 API
- * GET /api/stories/{storyId}/action-card
- */
+export const postConversationTurn = async ({ 
+  storyId, 
+  sessionId, 
+  childId, 
+  stage, 
+  audioBlob 
+}) => {
+  if (!audioBlob) throw new Error("전송할 오디오 데이터가 없습니다.");
+
+  const formData = new FormData();
+  // 브라우저 녹음 파일(webm/blob)을 파일 객체로 변환하여 추가
+  const audioFile = new File([audioBlob], "user_response.webm", { type: "audio/webm" });
+  formData.append('audio', audioFile);
+
+  try {
+    const response = await apiClient.post('/api/conversations/turn', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      params: {
+        session_id: sessionId,
+        child_id: childId,
+        story_id: storyId,
+        stage: stage
+      }
+    });
+    
+    return response.data.data; 
+  } catch (error) {
+    console.error("대화 턴 전송 실패:", error);
+    throw error;
+  }
+};
+
 export const fetchActionCard = async (storyId) => {
   if (!storyId) {
     throw new Error("Story ID가 필요합니다.");
