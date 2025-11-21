@@ -330,10 +330,14 @@ const AIChat = () => {
                             startRecording(); 
                         }}
                         onTouchEnd={stopRecording}  
-                        onContextMenu={(e) => e.preventDefault()}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        }}
                         disabled={isMicDisabled}
                     >
-                        <img src={micIcon} alt ="마이크" style={styles.micIcon} />
+                        <img src={micIcon} alt ="마이크" style={styles.micIcon} draggable="false" />
                     </button>
                     
                     <p style={styles.dialogueGuidanceText}>
@@ -557,11 +561,18 @@ const styles = {
         justifyContent: 'center', 
         alignItems: 'center', 
         cursor: 'pointer', 
-        boxShadow: '0 4px 20px rgba(255, 160, 122, 0.5)',
+        boxShadow: '0 4px 20px rgba(255, 160, 122, 0.5)',
+        touchAction: 'none',         
+        userSelect: 'none',          
+        WebkitUserSelect: 'none',    
+        WebkitTouchCallout: 'none',
     },
     micIcon: { 
         width: '80%',    
-        height: '80%'
+        height: '80%',
+        pointerEvents: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
     },
     dialogueGuidanceText: {
         marginTop: '10px', 
