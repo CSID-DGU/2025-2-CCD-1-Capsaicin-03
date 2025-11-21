@@ -99,8 +99,9 @@ class DialogueAgent:
         safety_result = self.safety_filter.check(child_text)
         
         if not safety_result.is_safe:
-            logger.warning(f"안전 필터 위반: {safety_result.flagged_categories}")
-            return self._handle_safety_violation(safety_result)
+            logger.warning(f"안전 필터 감지: {safety_result.flagged_categories} - AI가 교육적으로 대응합니다")
+            # 에러가 아닌 AI의 교육적 응답으로 처리
+            return self._handle_safety_violation(safety_result, session, stage)
         
         # 2. Stage별 Tool 실행 및 대화 생성
         if stage == Stage.S1_EMOTION_LABELING:
@@ -810,15 +811,47 @@ class DialogueAgent:
         
         return " | ".join(summary_parts) 
     
-    def _handle_safety_violation(self, safety_result: SafetyCheckResult) -> Dict:
-        """안전 필터 위반 처리"""
+    def _handle_safety_violation(
+        self, safety_result: SafetyCheckResult, session: DialogueSession, stage: Stage
+    ) -> Dict:
+        """
+        안전 필터 감지 시 교육적 대응
+        - 에러를 발생시키지 않고 AI가 적절히 대응
+        - 아동의 감정을 이해하면서도 올바른 방향으로 유도
+        """
+        # 컨텍스트 구성
+        context = self.context_manager.build_context_for_prompt(session, stage)
+        story_name = context.get("story", {}).get("character_name", "친구")
+        child_name = session.child_name
+        
+        # 카테고리별 교육적 응답 생성
+        category_prompts = {
+            "self_harm": f"{child_name}아, 많이 힘들구나. 그런 생각이 들 때는 어른에게 꼭 말해야 해. 지금은 나랑 이야기하면서 마음을 풀어보자. 어떤 일이 있었는지 천천히 말해줄래?",
+            "violence": f"{child_name}아, 화가 많이 났구나. 하지만 그런 표현보다는 '화가 났어', '속상했어'라고 말하면 더 좋을 것 같아. 무슨 일이 있었는지 다시 말해줄래?",
+            "hate": f"{child_name}아, 속상한 마음은 이해해. 하지만 친구나 다른 사람을 미워하는 말은 사용하지 않는 게 좋아. 대신 어떤 점이 속상했는지 말해볼까?",
+            "harassment": f"{child_name}아, 누군가를 괴롭히는 말은 듣는 사람도 말하는 사람도 마음이 아파. 다른 방식으로 이야기해볼 수 있을까?",
+            "sexual": f"{child_name}아, 그 이야기는 조금 어려운 주제야. 우리는 {story_name}의 이야기로 돌아가자. 어떤 기분이 들었는지 말해줄래?"
+        }
+        
+        # 첫 번째 flagged category에 대한 응답 선택
+        ai_text = safety_result.message  # 기본 메시지
+        if safety_result.flagged_categories:
+            first_category = safety_result.flagged_categories[0]
+            # 정확한 카테고리 매칭 또는 포함 검사
+            for key, prompt in category_prompts.items():
+                if key in first_category:
+                    ai_text = prompt
+                    break
+        
+        logger.info(f"안전 필터 교육적 응답: {ai_text[:50]}...")
+        
         return {
-            "stt_result": None,
+            "stt_result": STTResult(text="", confidence=0.0, language="ko").dict(),
             "safety_check": safety_result.dict(),
-            "ai_response": AISpeech(text=safety_result.message).dict(),
+            "ai_response": {"text": ai_text, "tts_url": None, "duration_ms": None},
             "action_items": ActionItems(
                 type="open_question",
-                instruction="다시 말해줄래?"
+                instruction="다시 이야기해보자"
             ).dict()
         }
     

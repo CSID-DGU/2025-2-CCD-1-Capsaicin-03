@@ -177,7 +177,7 @@ class DialogueTurnResponse(BaseModel):
     result: TurnResult = Field(..., description="턴 처리 결과")
     
     # 상태 관리
-    next_stage: str = Field(..., description="다음 Stage (S1~S5)")
+    next_stage: Optional[str] = Field(..., description="다음 Stage (S1~S5, S5 완료 시 null)")
     fallback_triggered: bool = Field(default=False, description="Fallback 전략 사용 여부")
     retry_count: int = Field(default=0, description="현재 Stage 재시도 횟수")
     
