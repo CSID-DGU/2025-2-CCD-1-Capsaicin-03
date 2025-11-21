@@ -326,10 +326,19 @@ const AIChat = () => {
                         onMouseDown={startRecording}
                         onMouseUp={stopRecording}    
                         onTouchStart={(e) => {
-                            e.preventDefault(); // 기본 컨텍스트 메뉴 활성화 차단
-                            startRecording(); 
-                        }}
-                        onTouchEnd={stopRecording}  
+                            e.preventDefault();
+                            e.stopPropagation();  
+                            startRecording(); 
+                        }}
+                        onTouchEnd={(e) => {  
+                            e.preventDefault();  
+                            e.stopPropagation();  
+                            stopRecording();
+                        }}
+                        onTouchMove={(e) => {  
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
                         onContextMenu={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -337,7 +346,17 @@ const AIChat = () => {
                         }}
                         disabled={isMicDisabled}
                     >
-                        <img src={micIcon} alt ="마이크" style={styles.micIcon} draggable="false" />
+                        <img 
+                            src={micIcon} 
+                            alt="마이크" 
+                            style={styles.micIcon}
+                            draggable="false"
+                            onDragStart={(e) => e.preventDefault()}  
+                            onContextMenu={(e) => e.preventDefault()}  
+                            onTouchStart={(e) => e.preventDefault()}  
+                            onTouchEnd={(e) => e.preventDefault()}  
+                            onTouchMove={(e) => e.preventDefault()}  
+                        />
                     </button>
                     
                     <p style={styles.dialogueGuidanceText}>
@@ -566,13 +585,17 @@ const styles = {
         userSelect: 'none',          
         WebkitUserSelect: 'none',    
         WebkitTouchCallout: 'none',
+        WebkitUserDrag: 'none'
     },
     micIcon: { 
         width: '80%',    
         height: '80%',
         pointerEvents: 'none',
         userSelect: 'none',
-        WebkitUserSelect: 'none'
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',  
+        WebkitUserDrag: 'none',  
+        objectFit: 'contain'  
     },
     dialogueGuidanceText: {
         marginTop: '10px', 
