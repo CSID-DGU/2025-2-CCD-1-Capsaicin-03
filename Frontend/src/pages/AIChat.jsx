@@ -325,8 +325,12 @@ const AIChat = () => {
                         }}
                         onMouseDown={startRecording}
                         onMouseUp={stopRecording}    
-                        onTouchStart={startRecording}
-                        onTouchEnd={stopRecording}   
+                        onTouchStart={(e) => {
+                            e.preventDefault(); // 기본 컨텍스트 메뉴 활성화 차단
+                            startRecording(); 
+                        }}
+                        onTouchEnd={stopRecording}  
+                        onContextMenu={(e) => e.preventDefault()}
                         disabled={isMicDisabled}
                     >
                         <img src={micIcon} alt ="마이크" style={styles.micIcon} />
