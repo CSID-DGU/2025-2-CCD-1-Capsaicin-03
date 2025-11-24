@@ -163,11 +163,16 @@ async def process_dialogue_turn(
             session.current_stage, turn_result, stt_result.text
         )
         
-        logger.info(f"🔍 Stage 전환 판단 시작: Stage={session.current_stage.value}")
-        should_transition = orchestrator.should_transition_to_next_stage(
-            session, turn_result, agent_evaluation
-        )
-        logger.info(f"🔍 Stage 전환 결정: {session.current_stage.value} → {'✅ 전환' if should_transition else '❌ 유지'}")
+        if(session.current_stage != Stage.S5_ACTION_CARD):
+            logger.info(f"🔍 Stage 전환 판단 시작: Stage={session.current_stage.value}")
+            should_transition = orchestrator.should_transition_to_next_stage(
+                session, turn_result, agent_evaluation
+            )
+            logger.info(f"🔍 Stage 전환 결정: {session.current_stage.value} → {'✅ 전환' if should_transition else '❌ 유지'}")
+        else:
+            # S5는 다음 스테이지가 없으므로 전환하지 않음
+            should_transition = False
+            logger.info(f"🔍 S5는 다음 스테이지가 없으므로 전환하지 않음")
 
         # 6. 세션 상태 업데이트
         old_stage = session.current_stage

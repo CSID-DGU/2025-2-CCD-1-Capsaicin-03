@@ -570,11 +570,11 @@ class DialogueAgent:
             "신기": "신기했을"
         }
         
-        empathy = empathy_map.get(emotion, "그랬구나.")
-        emotion_verb = emotion_verb_map.get(emotion, f"{emotion}을 느꼈을")
+        # empathy = empathy_map.get(emotion, "그랬구나.")
+        # emotion_verb = emotion_verb_map.get(emotion, f"{emotion}을 느꼈을")
         
         # 공감 + 왜 그런 감정이 들었는지 질문
-        response_text = f"{empathy} {character_name}가 왜 {emotion_verb} 것 같아?"
+        response_text = f"그랬구나. 왜 그런 감정이 들었어?"
         
         return AISpeech(text=response_text)
     
@@ -902,7 +902,7 @@ class DialogueAgent:
             if next_retry_count == 1:
                 # retry_1: 개방형 질문 재시도
                 logger.info("🔄 S1 retry_1: 개방형 질문 재시도")
-                return AISpeech(text=f"{session.child_name}아, 괜찮아. 천천히 생각해봐. 어떤 기분이 들었어?")
+                return AISpeech(text=f"{session.child_name}아, 괜찮아. 천천히 생각해봐. 어떤 기분이 들 것 같아?")
             elif next_retry_count == 2:
                 # retry_2: 감정 선택지 3개 제시
                 logger.info("🔄 S1 retry_2: 감정 선택지 제시")
