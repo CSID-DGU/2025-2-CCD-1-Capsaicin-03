@@ -27,3 +27,10 @@ cloud:
       bucket: ${AWS_S3_BUCKET}
     region:
       static: ap-northeast-2
+
+logging:
+  level:
+    root: INFO
+    com.example: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"
