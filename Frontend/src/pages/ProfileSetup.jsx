@@ -17,7 +17,7 @@ const ProfileSetup = () => {
   const [isTermsAgreed, setIsTermsAgreed] = useState(false);
 
   useEffect(() => {
-    const checkProfileExists = async () => {
+    const checkAuth = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -26,25 +26,9 @@ const ProfileSetup = () => {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('profiles') 
-          .select('id')     
-          .eq('id', user.id) 
-          .single(); 
-
-        if (error && error.code !== 'PGRST116') {
-          // "행을 찾을 수 없음" 오류, 신규 유저
-          // 그 외의 오류는 throw
-          throw error;
-        }
-
-        if (data) {
-          console.log('기존 프로필 확인. /stories로 이동합니다.');
-          navigate('/stories', { replace: true });
-        } else {
-          console.log('신규 사용자. 프로필 설정을 시작합니다.');
-          setIsChecking(false);
-        }
+        
+        console.log('로그인 확인됨. 프로필 설정을 시작합니다.');
+        setIsChecking(false);
 
       } catch (err) {
         console.error('프로필 확인 중 오류:', err);
@@ -53,7 +37,7 @@ const ProfileSetup = () => {
       }
     };
 
-    checkProfileExists();
+    checkAuth();
   }, [navigate]);
 
 
@@ -153,7 +137,7 @@ const ProfileSetup = () => {
           </>
         ) : (
           <>
-            <h3 style={styles.question}>아이의 생년월일이 언제인가요?</h3>
+            <h3 style={styles.question}>아이의 생년이 언제인가요?</h3>
             <div style={styles.dateInputWrapper}>
               <input
                 type="tel"
