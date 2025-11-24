@@ -34,6 +34,7 @@ public enum ErrorCode {
 
     // conversation 관련
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 대화입니다"),
+    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 대화에 접근 권한이 없습니다."),
 
     // Audio & File 관련
     AUDIO_CONVERSION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "오디오 파일 변환에 실패했습니다."),

@@ -1,11 +1,11 @@
 package com.example.namurokmurok.domain.conversation.service;
 
-import com.example.namurokmurok.domain.conversation.dto.ConversationListResponseDto;
-import com.example.namurokmurok.domain.conversation.dto.SessionStartRequest;
-import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
+import com.example.namurokmurok.domain.conversation.dto.*;
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
+import com.example.namurokmurok.domain.conversation.entity.Dialogue;
 import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
 import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
+import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.entity.Child;
@@ -33,6 +33,7 @@ public class ConversationService {
     private final ChildRepository childRepository;
     private final StoryRepository storyRepository;
     private final ConversationRepository conversationRepository;
+    private final DialogueRepository dialogueRepository;
 
     // 세션 발급
     public SessionStartResponse startSession(Long storyId, Long childId) {
@@ -129,4 +130,39 @@ public class ConversationService {
         }
         return GenerationStatus.GENERATING;
     }
+
+    // 대화 상세 조회
+    public ConversationDetailResponseDto getConversationDetail(Long userId, String conversationId) {
+
+        Child child = childRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        if (!conversation.getChild().getId().equals(child.getId())) {
+            throw new CustomException(ErrorCode.CONVERSATION_ACCESS_DENIED);
+        }
+
+        List<Dialogue> logs =
+                dialogueRepository.findAllByConversationIdOrderByTurnNumberAsc(conversationId);
+
+        List<DialogueLogDto> logDtos = logs.stream()
+                .map(log -> DialogueLogDto.builder()
+                        .logId(log.getId())
+                        .turnOrder(log.getTurnNumber())
+                        .speaker(log.getSpeaker())
+                        .content(log.getContent())
+                        .violated(!log.isSafe())
+                        .createdAt(log.getCreatedAt())
+                        .build()
+                )
+                .toList();
+
+        return ConversationDetailResponseDto.builder()
+                .id(conversationId)
+                .logs(logDtos)
+                .build();
+    }
+
 }

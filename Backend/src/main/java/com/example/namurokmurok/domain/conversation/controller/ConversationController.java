@@ -1,6 +1,7 @@
 package com.example.namurokmurok.domain.conversation.controller;
 
 
+import com.example.namurokmurok.domain.conversation.dto.ConversationDetailResponseDto;
 import com.example.namurokmurok.domain.conversation.dto.ConversationListResponseDto;
 import com.example.namurokmurok.domain.conversation.dto.ConversationTurnResponse;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
@@ -66,5 +67,16 @@ public class ConversationController {
             @AuthenticationPrincipal CustomUserDetails userPrincipal
     ) {
         return ApiResponse.success(conversationService.getConversationList(userPrincipal.getUserId()));
+    }
+
+    @GetMapping("/{conversationId}")
+    @Operation(
+            summary = "대화 상세(로그) 조회 API",
+            description = "{conversationId}의 대화 로그를 조회합니다.")
+    public ApiResponse<ConversationDetailResponseDto> getConversationDetail(
+            @AuthenticationPrincipal CustomUserDetails userPrincipal,
+            @PathVariable String conversationId
+    ) {
+        return ApiResponse.success(conversationService.getConversationDetail(userPrincipal.getUserId(), conversationId));
     }
 }
