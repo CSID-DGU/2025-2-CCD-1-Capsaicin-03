@@ -1,8 +1,10 @@
 // src/pages/StoryPage.jsx
-import React from 'react';
+
+import { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStory } from '../hooks/useStory.js';
 import { useAudioPlayback } from '../hooks/useAudioPlayback.js';
+import ReactGA from 'react-ga4';
 import homeIcon from '../assets/home_icon.svg';
 
 const StoryPage = () => {
@@ -19,6 +21,46 @@ const StoryPage = () => {
     goToNextPage,
     goToPrevPage
   } = useStory(storyId);
+  const hasSentStartEvent = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && storyData && !hasSentStartEvent.current) {
+      ReactGA.event({
+        category: "Story",
+        action: "book_start",
+        label: "동화 읽기 시작",
+        story_id: storyId,
+        total_pages: totalPages 
+      });
+      console.log(`[Analytics] book_start (total: ${totalPages})`);
+      hasSentStartEvent.current = true;
+    }
+  }, [isLoading, storyData, totalPages, storyId]);
+
+  useEffect(() => {
+    if (!isLoading && storyData) {
+      ReactGA.event({
+        category: "Story",
+        action: "book_read_page",
+        label: `페이지 진입 (${page}쪽)`,
+        story_id: storyId,
+        page_number: page 
+      });
+      console.log(`[Analytics] book_read_page (page: ${page})`);
+    }
+  }, [page, isLoading, storyData, storyId]); // page가 변할 때마다 실행됨
+
+  useEffect(() => {
+    if (!isLoading && isLastPage) {
+      ReactGA.event({
+        category: "Story",
+        action: "book_read_complete",
+        label: "동화 읽기 완료",
+        story_id: storyId
+      });
+      console.log("[Analytics] book_read_complete");
+    }
+  }, [isLastPage, isLoading, storyId]);
 
   useAudioPlayback(
     currentPageData?.audio_url, 

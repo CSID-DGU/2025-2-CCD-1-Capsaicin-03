@@ -1,9 +1,10 @@
 // src/pages/ProfileSetup.jsx
 
-import React, { useState, useEffect } from 'react'; 
+import { useState, useEffect, useRef } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import { createChildProfile } from '../api/profileApi.js';
 import { supabase } from '../supabaseClient'; 
+import ReactGA from 'react-ga4';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -15,7 +16,40 @@ const ProfileSetup = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [isPrivacyAgreed, setIsPrivacyAgreed] = useState(false);
   const [isTermsAgreed, setIsTermsAgreed] = useState(false);
+  const startTime = useRef(Date.now());
 
+  useEffect(() => {
+    ReactGA.event({
+      category: "Profile",
+      action: "profile_screen_enter",
+      label: "프로필 생성 화면 진입"
+    });
+    console.log("[Analytics] profile_screen_enter");
+
+    return () => {
+      const endTime = Date.now();
+      const duration = endTime - startTime.current; // 머문 시간(ms) 계산
+
+      ReactGA.event({
+        category: "Profile",
+        action: "profile_screen_exit",
+        label: "프로필 생성 화면 이탈",
+        duration: duration 
+      });
+      console.log(`[Analytics] profile_screen_exit (체류시간: ${duration}ms)`);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isChecking) return;
+
+    ReactGA.event({
+      category: "Profile",
+      action: `profile_step_${step}_view`, // step 변수에 따라 1_view, 2_view 자동 전송
+      label: `${step}단계 진입`
+    });
+    console.log(`[Analytics] profile_step_${step}_view`);
+  }, [step, isChecking]);
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -73,6 +107,13 @@ const ProfileSetup = () => {
       console.log('API Response:', response);
 
       if (response.success) {
+        ReactGA.event({
+          category: "Profile",
+          action: "profile_create_success",
+          label: "프로필 생성 완료"
+        });
+        console.log("[Analytics] profile_create_success");
+
         navigate('/stories');
       } else {
         const errorMessage = response.message || '프로필 생성에 실패했습니다.';

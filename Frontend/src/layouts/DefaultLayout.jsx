@@ -1,21 +1,31 @@
 // src/layouts/DefaultLayout.jsx
-import React, { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // 2. supabase 클라이언트 추가 (경로 확인!)
+
+import { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { supabase } from '../supabaseClient'; 
+import ReactGA from 'react-ga4';
+
 const DefaultLayout = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    ReactGA.send({ hitType: "pageview", page: location.pathname });
+    console.log(`[Analytics] 페이지 이동: ${location.pathname}`);
+  }, [location]); 
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // (디버깅용)
         console.log(`Supabase auth event: ${event}`);
 
         if (event === 'SIGNED_IN') {
           console.log('로그인 됨:', session?.user?.email);
+          ReactGA.set({ userId: session.user.id });
         }
 
         if (event === 'SIGNED_OUT') {
           console.log('로그아웃 됨');
+          ReactGA.set({ userId: null });
         }
       }
     );
