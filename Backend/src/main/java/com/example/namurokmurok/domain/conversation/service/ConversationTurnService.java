@@ -8,14 +8,14 @@ import com.example.namurokmurok.domain.conversation.entity.Dialogue;
 import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
 import com.example.namurokmurok.domain.conversation.enums.Speaker;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
-import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
+import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
 import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.audio.AudioConverter;
 import com.example.namurokmurok.global.client.AiApiClient;
-import com.example.namurokmurok.global.exception.CustomException;
-import com.example.namurokmurok.global.exception.ErrorCode;
+import com.example.namurokmurok.global.common.exception.CustomException;
+import com.example.namurokmurok.global.common.exception.ErrorCode;
 import com.example.namurokmurok.global.s3.S3Uploader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ import java.util.List;
 public class ConversationTurnService {
 
     private final DialogueRepository dialogueRepository;
-    private final ConverstationRepository conversationRepository;
+    private final ConversationRepository conversationRepository;
     private final ChildRepository childRepository;
     private final StoryRepository storyRepository;
 

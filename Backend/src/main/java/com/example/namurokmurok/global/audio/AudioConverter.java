@@ -1,7 +1,7 @@
 package com.example.namurokmurok.global.audio;
 
-import com.example.namurokmurok.global.exception.CustomException;
-import com.example.namurokmurok.global.exception.ErrorCode;
+import com.example.namurokmurok.global.common.exception.CustomException;
+import com.example.namurokmurok.global.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;

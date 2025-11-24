@@ -1,17 +1,24 @@
 package com.example.namurokmurok.domain.conversation.controller;
 
 
+import com.example.namurokmurok.domain.conversation.dto.ConversationDetailResponseDto;
+import com.example.namurokmurok.domain.conversation.dto.ConversationListResponseDto;
 import com.example.namurokmurok.domain.conversation.dto.ConversationTurnResponse;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
+import com.example.namurokmurok.domain.conversation.service.ConversationService;
 import com.example.namurokmurok.domain.conversation.service.ConversationTurnService;
 import com.example.namurokmurok.global.common.response.ApiResponse;
+import com.example.namurokmurok.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 
 @RestController
@@ -21,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ConversationController {
 
     private final ConversationTurnService conversationTurnService;
+    private final ConversationService conversationService;
 
     @PostMapping(
             value = "/turn",
@@ -48,7 +56,27 @@ public class ConversationController {
         ConversationTurnResponse response =
                 conversationTurnService.processTurn(childId, storyId, stage, sessionId, audio);
 
-
         return ApiResponse.success(response);
+    }
+
+    @GetMapping()
+    @Operation(
+            summary = "대화 목록 조회 API",
+            description = "현재 로그인한 사용자의 아이가 대화한 목록을 조회합니다.")
+    public ApiResponse<List<ConversationListResponseDto>> getConversationList(
+            @AuthenticationPrincipal CustomUserDetails userPrincipal
+    ) {
+        return ApiResponse.success(conversationService.getConversationList(userPrincipal.getUserId()));
+    }
+
+    @GetMapping("/{conversationId}")
+    @Operation(
+            summary = "대화 상세(로그) 조회 API",
+            description = "{conversationId}의 대화 로그를 조회합니다.")
+    public ApiResponse<ConversationDetailResponseDto> getConversationDetail(
+            @AuthenticationPrincipal CustomUserDetails userPrincipal,
+            @PathVariable String conversationId
+    ) {
+        return ApiResponse.success(conversationService.getConversationDetail(userPrincipal.getUserId(), conversationId));
     }
 }
