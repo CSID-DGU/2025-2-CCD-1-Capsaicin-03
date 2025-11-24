@@ -360,60 +360,63 @@ const AIChat = () => {
                     <img src={sceneData.img_url} alt="대화 캐릭터" style={styles.dialogueStoryImage} />
                 </div>
                 <div style={styles.dialogueTextSection}>
-                    <div style={styles.chatBubble}>
-                        <p>{sceneData.text_content}</p>
+                    <div style={styles.dialogueBubbleZone}>
+                        <div style={styles.chatBubble}>
+                            <p>{sceneData.text_content}</p>
+                        </div>
                     </div>
                     
-                    <button 
-                        style={{
-                            ...styles.micButton,
-                            backgroundColor: isMicDisabled ? '#AAAAAA' : 'var(--color-fourth)',
-                            cursor: isMicDisabled ? 'not-allowed' : 'pointer',
-                            transform: isRecording ? 'scale(1.1)' : 'scale(1)',
-                            transition: 'all 0.2s ease'
-                        }}
-                        onMouseDown={handleStartRecording} 
-                        onMouseUp={stopRecording}    
-                        onTouchStart={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();  
-                            handleStartRecording();
-                        }}
-                        onTouchEnd={(e) => {  
-                            e.preventDefault();  
-                            e.stopPropagation();  
-                            stopRecording();
-                        }}
-                        onTouchMove={(e) => {  
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                        onContextMenu={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
-                        }}
-                        disabled={isMicDisabled}
-                    >
-                        <img 
-                            src={micIcon} 
-                            alt="마이크" 
-                            style={styles.micIcon}
-                            draggable="false"
-                            onDragStart={(e) => e.preventDefault()}  
-                            onContextMenu={(e) => e.preventDefault()}  
-                            onTouchStart={(e) => e.preventDefault()}  
-                            onTouchEnd={(e) => e.preventDefault()}  
-                            onTouchMove={(e) => e.preventDefault()}  
-                        />
-                    </button>
-                    
-                    <p style={styles.dialogueGuidanceText}>
-                        {isResponding ? 'AI가 대답을 생각하고 있어요...' : 
-                         (isAIAudioPlaying ? 'AI가 이야기 중이에요. 잘 들어보세요!' :
-                          (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!'))}
-                    </p>
-                    <button onClick={finishChat} style={styles.tempButton}>대화 마치기</button>
+                    <div style={styles.dialogueControlZone}>
+                        <button 
+                            style={{
+                                ...styles.micButton,
+                                backgroundColor: isMicDisabled ? '#AAAAAA' : 'var(--color-fourth)',
+                                cursor: isMicDisabled ? 'not-allowed' : 'pointer',
+                                transform: isRecording ? 'scale(1.1)' : 'scale(1)',
+                                transition: 'all 0.2s ease'
+                            }}
+                            onMouseDown={handleStartRecording} 
+                            onMouseUp={stopRecording}    
+                            onTouchStart={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();  
+                                handleStartRecording();
+                            }}
+                            onTouchEnd={(e) => {  
+                                e.preventDefault();  
+                                e.stopPropagation();  
+                                stopRecording();
+                            }}
+                            onTouchMove={(e) => {  
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                return false;
+                            }}
+                            disabled={isMicDisabled}
+                        >
+                            <img 
+                                src={micIcon} 
+                                alt="마이크" 
+                                style={styles.micIcon}
+                                draggable="false"
+                                onDragStart={(e) => e.preventDefault()}  
+                                onContextMenu={(e) => e.preventDefault()}  
+                                onTouchStart={(e) => e.preventDefault()}  
+                                onTouchEnd={(e) => e.preventDefault()}  
+                                onTouchMove={(e) => e.preventDefault()}  
+                            />
+                        </button>
+                        
+                        <p style={styles.dialogueGuidanceText}>
+                            {isResponding ? 'AI가 대답을 생각하고 있어요...' : 
+                             (isAIAudioPlaying ? 'AI가 이야기 중이에요. 잘 들어보세요!' :
+                              (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!'))}
+                        </p>
+                    </div>
                 </div>
             </div>
         );
@@ -603,7 +606,26 @@ const styles = {
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
-    },
+    },
+    dialogueBubbleZone: {
+        flex: 1,                     
+        display: 'flex',
+        alignItems: 'center',         
+        justifyContent: 'center',    
+        overflow: 'hidden',           
+        width: '100%',
+        paddingBottom: '10px',                     
+    },
+
+    dialogueControlZone: {
+        height: '120px',              
+        flexShrink: 0,                
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start', 
+        paddingTop: '10px',
+    },
     chatBubble: { 
         background: 'var(--color-main)',
         padding: '3px 15px', 
@@ -634,7 +656,8 @@ const styles = {
         userSelect: 'none',          
         WebkitUserSelect: 'none',    
         WebkitTouchCallout: 'none',
-        WebkitUserDrag: 'none'
+        WebkitUserDrag: 'none',
+        flexShrink: 0
     },
     micIcon: { 
         width: '80%',    
