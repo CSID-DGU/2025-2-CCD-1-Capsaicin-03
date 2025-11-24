@@ -14,8 +14,8 @@ import com.example.namurokmurok.domain.story.repository.StoryPageRepository;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.entity.Child;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
-import com.example.namurokmurok.global.exception.CustomException;
-import com.example.namurokmurok.global.exception.ErrorCode;
+import com.example.namurokmurok.global.common.exception.CustomException;
+import com.example.namurokmurok.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

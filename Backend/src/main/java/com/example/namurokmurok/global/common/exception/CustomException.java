@@ -1,4 +1,4 @@
-package com.example.namurokmurok.global.exception;
+package com.example.namurokmurok.global.common.exception;
 
 import lombok.Getter;
 

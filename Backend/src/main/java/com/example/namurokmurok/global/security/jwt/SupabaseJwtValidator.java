@@ -1,7 +1,7 @@
 package com.example.namurokmurok.global.security.jwt;
 
-import com.example.namurokmurok.global.exception.CustomException;
-import com.example.namurokmurok.global.exception.ErrorCode;
+import com.example.namurokmurok.global.common.exception.CustomException;
+import com.example.namurokmurok.global.common.exception.ErrorCode;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.KeyLengthException;
