@@ -1,6 +1,6 @@
 package com.example.namurokmurok.domain.conversation.entity;
 
-import com.example.namurokmurok.domain.conversation.enums.ConverstationStatus;
+import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.user.entity.Child;
 import jakarta.persistence.*;
@@ -26,7 +26,7 @@ public class Conversation {
 
     @Column(name = "status" ,nullable = false)
     @Enumerated(EnumType.STRING)
-    private ConverstationStatus status;
+    private ConversationStatus status;
 
     @Column(name = "started_at" ,nullable = false)
     private LocalDateTime startedAt;
@@ -48,11 +48,11 @@ public class Conversation {
     @OneToMany(mappedBy = "conversation")
     private List<Dialogue> dialogues = new ArrayList<>();
 
-    public void linkChild(Child child) {
-        this.child = child;
+    public void updateStatus(ConversationStatus status) {
+        this.status = status;
     }
 
-    public void linkStory(Story story) {
-        this.story = story;
+    public void updateEndedAt(LocalDateTime endedAt) {
+        this.endedAt = endedAt;
     }
 }

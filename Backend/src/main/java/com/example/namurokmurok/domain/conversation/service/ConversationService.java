@@ -3,7 +3,7 @@ package com.example.namurokmurok.domain.conversation.service;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartRequest;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
-import com.example.namurokmurok.domain.conversation.enums.ConverstationStatus;
+import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
 import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
@@ -89,7 +89,7 @@ public class ConversationService {
                 .id(response.getSession_id())
                 .child(child)
                 .story(story)
-                .status(ConverstationStatus.STARTED)
+                .status(ConversationStatus.STARTED)
                 .startedAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();

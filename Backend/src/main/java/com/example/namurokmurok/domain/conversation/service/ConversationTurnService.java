@@ -5,6 +5,7 @@ import com.example.namurokmurok.domain.conversation.dto.DialogueTurnRequest;
 import com.example.namurokmurok.domain.conversation.dto.DialogueTurnResponse;
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.conversation.entity.Dialogue;
+import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
 import com.example.namurokmurok.domain.conversation.enums.Speaker;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
 import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
@@ -54,6 +55,11 @@ public class ConversationTurnService {
         // 1. 검증 및 엔티티 조회
         Conversation conversation = validateAndGetConversation(childId, storyId, sessionId);
 
+        // 아이의 첫 발화 시점에 대화 상태 IN_PROGRESS 로 변경
+        if (conversation.getStatus() == ConversationStatus.STARTED) {
+            conversation.updateStatus(ConversationStatus.IN_PROGRESS);
+        }
+
         // 2. 오디오 변환
         File wavFile = audioConverter.convertWebmToWav(webmAudio);
 
@@ -71,6 +77,13 @@ public class ConversationTurnService {
 
         // 7. 종료 여부 판단
         boolean isEnd = determineIsEnd(stage, aiRes, currentRetryCount);
+
+        // 종료시 COMPLETED & endedAt 저장
+        if (isEnd) {
+            conversation.updateStatus(ConversationStatus.COMPLETED);
+            conversation.updateEndedAt(LocalDateTime.now());
+            log.info("[Conversation] Status updated → COMPLETED, endedAt saved");
+        }
 
         // 8. 다음 스테이지 결정
         String nextStageName = aiRes.getNextStage();
@@ -93,7 +106,7 @@ public class ConversationTurnService {
                 .build();
     }
 
-
+    // ------------------------------------
     // Private Helper Methods
     // 1. 엔티티 조회 및 유효성 검증
     private Conversation validateAndGetConversation(Long childId, Long storyId, String sessionId) {
@@ -156,46 +169,27 @@ public class ConversationTurnService {
 
     // 7. 종료 조건 판단
     /**
-     * * [정책 요약]
-     * 1. 기본적으로 AI가 '다음 스테이지 없음(null)'을 응답하면 종료합니다.
-     * 2. 단, 마지막 단계(S5)에서는 AI 응답의 안전성(Safety)과 재시도 횟수(Retry)를 기반으로 판단합니다.
-     * - Case A (성공): S5 + 안전함 -> 정상 종료
-     * - Case B (유예): S5 + 불안전 + 횟수 남음 -> 재시도 (종료 X)
-     * - Case C (실패): S5 + 불안전 + 횟수 초과 -> 강제 종료
+     * [Stage 5]
+     * - next_stage == null → 종료
      */
     private boolean determineIsEnd(Stage stage, DialogueTurnResponse aiRes, int currentRetryCount) {
-        // (A) 안전 여부 확인
-        boolean isSafe = true;
-        if (aiRes.getResult() != null && aiRes.getResult().getSafetyCheck() != null) {
-            isSafe = aiRes.getResult().getSafetyCheck().isSafe();
+
+        String nextStage = aiRes.getNextStage();
+
+        // Stage 1~4: 종료 없음
+        if (stage != Stage.S5) {
+            return false;
         }
 
-        // (B) 로직 판단
-        if (stage == Stage.S5) {
-            if (isSafe) {
-                log.info("[Logic] S5 & Safe -> Normal End.");
-                return true;
-            } else {
-                if (currentRetryCount >= MAX_RETRY_COUNT) {
-                    log.info("[Logic] S5 & Unsafe & MaxRetry({}) -> Force End.", currentRetryCount);
-                    return true;
-                } else {
-                    log.info("[Logic] S5 & Unsafe & Count({}) -> Retry requested.", currentRetryCount);
-                    return false;
-                }
-            }
+        // Stage 5: next_stage == null → 종료
+        if (nextStage == null) {
+            log.info("[Logic] S5 & next_stage=null → End conversation.");
+            return true;
         }
 
-        // S1~S4: AI가 끝(null)이라고 한 경우만 종료
-        return aiRes.getNextStage() == null;
-    }
-
-    // TTS 존재 여부 체크
-    private boolean hasTtsAudio(DialogueTurnResponse res) {
-        return res != null && res.getResult() != null
-                && res.getResult().getAiResponse() != null
-                && res.getResult().getAiResponse().getTtsAudio() != null
-                && !res.getResult().getAiResponse().getTtsAudio().isEmpty();
+        // Stage 5: next_stage != null → 종료 아님
+        log.info("[Logic] S5 & next_stage exists → Continue conversation.");
+        return false;
     }
 
     // 로그 저장
