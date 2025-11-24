@@ -1,10 +1,11 @@
 package com.example.namurokmurok.domain.conversation.service;
 
+import com.example.namurokmurok.domain.conversation.dto.ConversationListResponseDto;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartRequest;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
-import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
+import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.entity.Child;
@@ -13,12 +14,14 @@ import com.example.namurokmurok.global.client.AiApiClient;
 import com.example.namurokmurok.global.common.exception.CustomException;
 import com.example.namurokmurok.global.common.exception.ErrorCode;
 import com.example.namurokmurok.global.s3.S3Uploader;
+import com.example.namurokmurok.global.common.enums.GenerationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +32,7 @@ public class ConversationService {
 
     private final ChildRepository childRepository;
     private final StoryRepository storyRepository;
-    private final ConverstationRepository converstationRepository;
+    private final ConversationRepository conversationRepository;
 
     // 세션 발급
     public SessionStartResponse startSession(Long storyId, Long childId) {
@@ -94,8 +97,36 @@ public class ConversationService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        converstationRepository.save(conversation);
+        conversationRepository.save(conversation);
 
         return response;
+    }
+
+    // 대화 목록 조회
+    public List<ConversationListResponseDto> getConversationList(Long userId) {
+
+        Child child = childRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        List<Conversation> conversations =
+                conversationRepository.findAllByChildIdOrderByCreatedAtDesc(child.getId());
+
+        return conversations.stream()
+                .map(con -> ConversationListResponseDto.builder()
+                        .id(con.getId())
+                        .date(con.getCreatedAt().toLocalDate())
+                        .title(con.getStory().getTitle())
+                        .status(determineGenerationStatus(con))
+                        .build()
+                )
+                .toList();
+    }
+
+    // 대화 로그 생성 상태 계산
+    private GenerationStatus determineGenerationStatus(Conversation conversation) {
+        if (conversation.getStatus() == ConversationStatus.COMPLETED) {
+            return GenerationStatus.COMPLETED;
+        }
+        return GenerationStatus.GENERATING;
     }
 }

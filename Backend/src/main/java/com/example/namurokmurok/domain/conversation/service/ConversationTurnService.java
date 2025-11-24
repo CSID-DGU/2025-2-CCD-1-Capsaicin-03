@@ -8,7 +8,7 @@ import com.example.namurokmurok.domain.conversation.entity.Dialogue;
 import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
 import com.example.namurokmurok.domain.conversation.enums.Speaker;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
-import com.example.namurokmurok.domain.conversation.repository.ConverstationRepository;
+import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
 import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
@@ -33,7 +33,7 @@ import java.util.List;
 public class ConversationTurnService {
 
     private final DialogueRepository dialogueRepository;
-    private final ConverstationRepository conversationRepository;
+    private final ConversationRepository conversationRepository;
     private final ChildRepository childRepository;
     private final StoryRepository storyRepository;
 
