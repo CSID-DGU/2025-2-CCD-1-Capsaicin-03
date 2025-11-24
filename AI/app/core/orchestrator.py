@@ -398,29 +398,29 @@ class StageOrchestrator:
         #         return False
         
         elif stage == Stage.S5_ACTION_CARD:
-            return True  # S5는 항상 성공으로 간주 (대화 종료)
+            # return True  # S5는 항상 성공으로 간주 (대화 종료)
         
-        #     stt_result = result.get("stt_result")
+            stt_result = result.get("stt_result")
             
-        #     if isinstance(stt_result, dict):
-        #         text = stt_result.get("text", "").strip()
-        #         text_lower = text.lower()
+            if isinstance(stt_result, dict):
+                text = stt_result.get("text", "").strip()
+                text_lower = text.lower()
                 
-        #     # 1. 전략 수락 키워드 (명시적 수락)
-        #     acceptance_keywords = [
-        #         "네", "좋아", "할게", "그럴게", "응", "해볼게", "해볼래", 
-        #         "그렇게 할게", "해보자", "시도해볼게", "할래", "좋아요",
-        #         "그럼 그렇게", "그렇게 하자", "그렇게 할래", "알겠어", "알겠어요", "알았어", "알았어요",
-        #         "그렇게 해볼게", "해볼게요", "할게요", "그렇게 할게요"
-        #     ]
+            # 1. 전략 수락 키워드 (명시적 수락)
+            acceptance_keywords = [
+                "네", "좋아", "할게", "그럴게", "응", "해볼게", "해볼래", 
+                "그렇게 할게", "해보자", "시도해볼게", "할래", "좋아요",
+                "그럼 그렇게", "그렇게 하자", "그렇게 할래", "알겠어", "알겠어요", "알았어", "알았어요",
+                "그렇게 해볼게", "해볼게요", "할게요", "그렇게 할게요"
+            ]
             
-        #     has_acceptance = any(keyword in text_lower for keyword in acceptance_keywords)
+            has_acceptance = any(keyword in text_lower for keyword in acceptance_keywords)
             
-        #     if has_acceptance:
-        #         logger.info(f"✅ S5 성공: 행동카드 수락 키워드 발견")
-        #         return True
+            if has_acceptance:
+                logger.info(f"✅ S5 성공: 행동카드 수락 키워드 발견")
+                return True
         
-        # return False
+        return False
     
     def get_next_stage(self, current_stage: Stage) -> Optional[Stage]:
         """다음 Stage 반환 (순차적)"""

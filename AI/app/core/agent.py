@@ -5,6 +5,7 @@ L2 Agent: LLM 기반 Tool 실행 및 평가
 - 대화 생성
 - Fallback 전략 실행
 """
+from http import client
 from typing import Dict, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -154,7 +155,7 @@ class DialogueAgent:
                 emotion_result.primary.value,
                 *[e.value for e in emotion_result.secondary]
             ][:3],  # 최대 3개
-            instruction=f"{session.child_name}이는 어떤 기분이 들었을 것 같아?"
+            instruction=f"{session.child_name}아 어떤 기분이 들었어?"
         )
         
         # stt_result 직렬화
@@ -681,6 +682,7 @@ class DialogueAgent:
             1. 질문 한 문장만 출력해. 다른 말은 하지 마.
             2. 아이가 겪을 법한 일상적인 경험 2가지를 예시로 제시
             3. 감정 단어를 반복하지 마
+            4. 6살~9살 사이의 아이에 맞는 단어 사용
             
             형식: "혹시 {child_name}이도 [경험1] 했던 적이 있어? 아니면 [경험2] 했어?"
             
@@ -710,7 +712,7 @@ class DialogueAgent:
             1. "그럴 때는 이런 방법들을 해볼 수 있어" 형태로 제안
             2. 두 문장 이내
             3. 격려하는 톤
-            4. 아이의 나이에 맞는 제안
+            4. 6살~9살 사이의 아이에 맞는 단어 사용
             """),
             
             ("user", f"""
