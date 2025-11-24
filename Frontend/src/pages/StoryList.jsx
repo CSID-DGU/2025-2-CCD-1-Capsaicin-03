@@ -1,8 +1,9 @@
 // src/pages/StoryList.jsx
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStoriesByCategory } from '../api/storyApi.js';
+import ReactGA from 'react-ga4';
 
 const categories = [
   { code: 'SA', name: '내 마음 살펴보기' },
@@ -12,6 +13,14 @@ const categories = [
   { code: 'RDM', name: '생각하고 바르게 선택하기' }
 ];
 
+//GA를 위한 파라미터 변환용 맵
+const CASEL_MAP = {
+  'SA': 'self_awareness',
+  'SM': 'self_management',
+  'SOA': 'social_awareness',
+  'RS': 'relationship_skills',
+  'RDM': 'responsible_decision_making'
+};
 
 const StoryList = () => {
   const navigate = useNavigate();
@@ -24,6 +33,15 @@ const StoryList = () => {
     navigate('/parents'); 
   }
   
+  useEffect(() => {
+    ReactGA.event({
+      category: "Story",
+      action: "book_list_view",
+      label: "동화 목록 화면 진입"
+    });
+    console.log("[Analytics] book_list_view");
+  }, []);
+
   useEffect(() => {
     const loadStories = async () => {
       setIsLoading(true); 
@@ -46,7 +64,28 @@ const StoryList = () => {
   }, [activeCategory]); 
 
   
+  const handleCategoryClick = (categoryCode) => {
+    setActiveCategory(categoryCode); // 탭 변경
+
+    const caselDomainName = CASEL_MAP[categoryCode] || categoryCode;
+    ReactGA.event({
+      category: "Story",
+      action: "casel_tab_click",
+      label: "CASEL 탭 클릭",
+      casel_domain: caselDomainName 
+    });
+    console.log(`[Analytics] casel_tab_click (param: ${caselDomainName})`);
+  };
+
   const handleStorySelect = (storyId) => {
+    ReactGA.event({
+      category: "Story",
+      action: "book_select",
+      label: "동화 상세 이동",
+      story_id: storyId 
+    });
+    console.log(`[Analytics] book_select (param: ${storyId})`);
+
     navigate(`/story/${storyId}`);
   };
 
@@ -63,7 +102,7 @@ const StoryList = () => {
           {categories.map((cat) => (
             <button
               key={cat.code} 
-              onClick={() => setActiveCategory(cat.code)}
+              onClick={() => handleCategoryClick(cat.code)}
               style={{
                 ...styles.categoryButton,
                 ...(activeCategory === cat.code ? styles.activeCategory : {})
@@ -80,7 +119,7 @@ const StoryList = () => {
           {!isLoading && !error && stories.map((story) => (
             <div
               key={story.id} 
-              onClick={() => handleStorySelect(story.id)} 
+              onClick={() => handleStorySelect(story.id)}
               style={styles.storyCard}
             >
               <div style={styles.storyImageContainer}>

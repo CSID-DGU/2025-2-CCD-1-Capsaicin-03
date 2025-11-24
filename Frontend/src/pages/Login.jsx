@@ -1,14 +1,42 @@
 // src/pages/Login.jsx
 
+import { useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import ReactGA from 'react-ga4';
+
 const Login = () => {
+
+  const isLoginProcessStarted = useRef(false);
+
+  useEffect(() => {
+    ReactGA.event({
+      category: "Authentication",
+      action: "login_screen_view",
+      label: "로그인 화면 진입"
+    });
+
+    console.log("[Analytics] login_screen_view 전송됨");
+
+    return () => {
+      if (!isLoginProcessStarted.current) {
+        ReactGA.event({
+          category: "Authentication",
+          action: "login_exit",
+          label: "로그인 하지 않고 이탈"
+        });
+        console.log("[Analytics] login_exit 전송됨 (이탈)");
+      }
+    };
+  }, []);
+  
   const handleSignIn = async () => {
     console.log('구글 로그인 버튼 클릭됨. Supabase 인증을 시작합니다.');
-
+    
+    isLoginProcessStarted.current = true;
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // 기본 도메인으로 리디렉션 수정(자동 리디렉션 처리를 위해)
         redirectTo: window.location.origin
       }
     });

@@ -7,6 +7,7 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { fetchStoryScene } from '../api/storyApi';
 import { fetchIntroQuestion, postConversationTurn, fetchActionCard } from '../api/chatApi';
 import { getChildProfile } from '../api/profileApi';
+import ReactGA from 'react-ga4';
 import homeIcon from '../assets/home_icon.svg';
 import micBlackIcon from '../assets/Mic_black.svg';
 import micIcon from '../assets/mic.svg';
@@ -18,6 +19,7 @@ const AIChat = () => {
     const location = useLocation();
 
     const questionAudioRef = useRef(null);
+    const recordingStartTime = useRef(0);
 
     const [chatStep, setChatStep] = useState('intro'); 
     const [sceneData, setSceneData] = useState(null);
@@ -33,6 +35,34 @@ const AIChat = () => {
     const [childId, setChildId] = useState(null);     
     const [sessionId, setSessionId] = useState('');   
     const [currentStage, setCurrentStage] = useState('S1');
+
+    useEffect(() => {
+        if (chatStep === 'dialogue' && currentStage) {
+            // 'S1' -> 1 로 변환
+            const stepNum = parseInt(currentStage.replace('S', '')) || 1;
+            
+            ReactGA.event({
+                category: "Chat",
+                action: "dialog_step_progress",
+                label: `${stepNum}단계 진입`,
+                story_id: storyId,
+                step_number: stepNum
+            });
+            console.log(`[Analytics] dialog_step_progress (step: ${stepNum})`);
+        }
+    }, [chatStep, currentStage, storyId]);
+
+    useEffect(() => {
+        if (chatStep === 'card') {
+            ReactGA.event({
+                category: "Chat",
+                action: "actioncard_reach",
+                label: "행동 카드 도달",
+                story_id: storyId
+            });
+            console.log("[Analytics] actioncard_reach");
+        }
+    }, [chatStep, storyId]);
 
     useEffect(() => {
         if (location.pathname.includes('/intro')) setChatStep('intro');
@@ -193,10 +223,29 @@ const AIChat = () => {
         stopRecording    
     } = useAudioRecorder({
         onStop: (audioBlob, audioUrl) => {
-             console.log("🎤 녹음 완료, API 전송 시작");
-             handleRecordingComplete(audioBlob, audioUrl);
+            console.log("🎤 녹음 완료, API 전송 시작");
+            
+            const duration = Date.now() - recordingStartTime.current; 
+            const stepNum = parseInt(currentStage.replace('S', '')) || 1;
+
+            ReactGA.event({
+                category: "Chat",
+                action: "dialog_answer",
+                label: `답변 완료 (${duration}ms)`,
+                story_id: storyId,
+                step_number: stepNum,
+                answer_duration: duration 
+            });
+            console.log(`[Analytics] dialog_answer (duration: ${duration}ms)`);
+
+            handleRecordingComplete(audioBlob, audioUrl);
         }
     });
+
+    const handleStartRecording = () => {
+        recordingStartTime.current = Date.now(); // 시간 기록
+        startRecording(); // 실제 녹음 시작
+    };
 
     const startChat = async () => {
         if (isFetchingQuestion) return; 
@@ -323,12 +372,12 @@ const AIChat = () => {
                             transform: isRecording ? 'scale(1.1)' : 'scale(1)',
                             transition: 'all 0.2s ease'
                         }}
-                        onMouseDown={startRecording}
+                        onMouseDown={handleStartRecording} 
                         onMouseUp={stopRecording}    
                         onTouchStart={(e) => {
                             e.preventDefault();
                             e.stopPropagation();  
-                            startRecording(); 
+                            handleStartRecording();
                         }}
                         onTouchEnd={(e) => {  
                             e.preventDefault();  
