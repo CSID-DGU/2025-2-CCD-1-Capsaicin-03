@@ -405,20 +405,22 @@ class StageOrchestrator:
             if isinstance(stt_result, dict):
                 text = stt_result.get("text", "").strip()
                 text_lower = text.lower()
-                
+            
+            if text_length:
+                return True     
             # 1. 전략 수락 키워드 (명시적 수락)
-            acceptance_keywords = [
-                "네", "좋아", "할게", "그럴게", "응", "해볼게", "해볼래", 
-                "그렇게 할게", "해보자", "시도해볼게", "할래", "좋아요",
-                "그럼 그렇게", "그렇게 하자", "그렇게 할래", "알겠어", "알겠어요", "알았어", "알았어요",
-                "그렇게 해볼게", "해볼게요", "할게요", "그렇게 할게요"
-            ]
+            # acceptance_keywords = [
+            #     "네", "좋아", "할게", "그럴게", "응", "해볼게", "해볼래", 
+            #     "그렇게 할게", "해보자", "시도해볼게", "할래", "좋아요",
+            #     "그럼 그렇게", "그렇게 하자", "그렇게 할래", "알겠어", "알겠어요", "알았어", "알았어요",
+            #     "그렇게 해볼게", "해볼게요", "할게요", "그렇게 할게요"
+            # ]
             
-            has_acceptance = any(keyword in text_lower for keyword in acceptance_keywords)
+            # has_acceptance = any(keyword in text_lower for keyword in acceptance_keywords)
             
-            if has_acceptance:
-                logger.info(f"✅ S5 성공: 행동카드 수락 키워드 발견")
-                return True
+            # if has_acceptance:
+            #     logger.info(f"✅ S5 성공: 행동카드 수락 키워드 발견")
+            #     return True
         
         return False
     
