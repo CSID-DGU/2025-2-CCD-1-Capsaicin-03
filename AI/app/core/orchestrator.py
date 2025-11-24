@@ -406,7 +406,7 @@ class StageOrchestrator:
                 text = stt_result.get("text", "").strip()
                 text_lower = text.lower()
             
-            if text_length:
+            if text_lower:
                 return True     
             # 1. 전략 수락 키워드 (명시적 수락)
             # acceptance_keywords = [
@@ -474,9 +474,13 @@ class StageOrchestrator:
                 session.is_active = False
                 logger.info("✅ 대화 세션 종료 (S5 완료)")
         else:
-            # 현재 Stage 유지, 재시도 카운트 증가
-            session.retry_count += 1
-        
+            next_stage = self.get_next_stage(session.current_stage)
+            if next_stage:
+                # 현재 Stage 유지, 재시도 카운트 증가
+                session.retry_count += 1
+            else:
+                session.is_active = False
+                logger.info("✅ 대화 세션 종료 (S5 완료)")
         # 턴 증가
         session.current_turn += 1
         
