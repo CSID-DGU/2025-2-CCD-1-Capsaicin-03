@@ -100,20 +100,18 @@ const ChatDetailPage = () => {
                 <style>
                     {`
                         .custom-scrollbar::-webkit-scrollbar {
-                            width: 12px;
+                            width: 16px;
                         }
                         .custom-scrollbar::-webkit-scrollbar-track {
                             background: var(--color-text-light); 
-                            border : 1.7px solid var(--color-text-dark);
+                            border : 2px solid var(--color-text-dark);
                             border-radius: 10px;
-                            margin: 10px 0;
                         }
                         .custom-scrollbar::-webkit-scrollbar-thumb {
                             background: var(--color-main);
                             border-radius: 10px;
                             background-clip: padding-box;
-                            border: 3.5px solid transparent;
-                        }
+                            border: 4px solid transparent;
                     `}
                 </style>
 
@@ -121,17 +119,32 @@ const ChatDetailPage = () => {
                     {isLoading ? (
                         <div style={styles.loadingText}>대화를 불러오는 중...</div>
                     ) : (
-                        chatLogs.map((log) => (
-                            <div 
-                                key={log.log_id} 
-                                style={{
-                                    ...styles.chatBubble,
-                                    backgroundColor: log.speaker === 'AI' ? 'var(--color-third)' : 'var(--color-main)' 
-                                }}
-                            >
-                                <p style={styles.chatText}>{log.content}</p>
-                            </div>
-                        ))
+                        chatLogs.map((log) => {
+                            const isAi = log.speaker === 'AI';
+                            return (
+                                <div key={log.log_id} style={styles.messageRow}>
+                                    {isAi && (
+                                        <div style={{...styles.avatar, backgroundColor: 'var(--color-third)'}}>
+                                            AI
+                                        </div>
+                                    )}
+
+                                    <div style={{
+                                        ...styles.chatBubble,
+                                        backgroundColor: isAi ? 'var(--color-third)' : 'var(--color-main)',
+                                        marginLeft: isAi ? '10px' : '0',
+                                        marginRight: isAi ? '0' : '10px'
+                                    }}>
+                                        <p style={styles.chatText}>{log.content}</p>
+                                    </div>
+                                    {!isAi && (
+                                        <div style={{...styles.avatar, backgroundColor: 'var(--color-main)'}}>
+                                            아이
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             </main>
@@ -211,21 +224,43 @@ const styles = {
         display: 'flex',
         flexDirection: 'column',
         gap: '12px', 
-        paddingBottom: '20px',
+        paddingBottom: '20px'
     },
   chatBubble: {
-    width: '100%',
-    height: '50px',
-    border: '2px solid var(--color-text-dark)', 
-    borderRadius: '25px',     
-    padding: '10px 20px',     
-    boxSizing: 'border-box',
-    boxShadow: '0 4px 4px rgba(0,0,0,0.1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center', 
-    textAlign: 'center',
-  },
+        flex: 1, 
+        height: '40px',
+        border: '2px solid var(--color-text-dark)', 
+        borderRadius: '25px',     
+        padding: '10px 20px',     
+        boxSizing: 'border-box',
+        boxShadow: '0 4px 4px rgba(0,0,0,0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center', 
+        textAlign: 'center',
+    },
+  
+    messageRow: {
+        display: 'flex',
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'space-between', 
+    },
+
+    avatar: {
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%',
+        border: '2px solid var(--color-text-dark)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: '16px',
+        color: 'var(--color-text-dark)',
+        flexShrink: 0, 
+        fontFamily: "var(--font-family-primary)",
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    },
     chatText: {
         margin: 0,
         fontSize: '16px',

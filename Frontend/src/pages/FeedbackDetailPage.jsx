@@ -80,18 +80,18 @@ const FeedbackDetailPage = () => {
                 <style>
                     {`
                         .custom-scrollbar::-webkit-scrollbar {
-                            width: 14px; 
+                            width: 16px;
                         }
                         .custom-scrollbar::-webkit-scrollbar-track {
-                            background-color: transparent; 
-                            margin: 10px 0;
+                            background: var(--color-text-light); 
+                            border : 2px solid var(--color-text-dark);
+                            border-radius: 10px;
                         }
                         .custom-scrollbar::-webkit-scrollbar-thumb {
-                            background-color: var(--color-main);
+                            background: var(--color-main);
                             border-radius: 10px;
                             background-clip: padding-box;
-                            border: 3px solid transparent; 
-                        }
+                            border: 4px solid transparent;
                     `}
                 </style>
 
