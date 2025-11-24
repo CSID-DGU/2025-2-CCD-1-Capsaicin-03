@@ -61,20 +61,18 @@ const ChatListPage = () => {
                 <style>
                     {`
                         .custom-scrollbar::-webkit-scrollbar {
-                            width: 12px;
+                            width: 16px;
                         }
                         .custom-scrollbar::-webkit-scrollbar-track {
                             background: var(--color-text-light); 
-                            border : 1.7px solid var(--color-text-dark);
+                            border : 2px solid var(--color-text-dark);
                             border-radius: 10px;
-                            margin: 10px 0;
                         }
                         .custom-scrollbar::-webkit-scrollbar-thumb {
                             background: var(--color-main);
                             border-radius: 10px;
                             background-clip: padding-box;
-                            border: 3.5px solid transparent;
-                        }
+                            border: 4px solid transparent;
                     `}
                 </style>
 
@@ -117,7 +115,6 @@ const styles = {
         padding: '20px',
         position: 'relative',
         overflow: 'hidden',
-        alignItems: 'center', 
     },
     header: {
         display: 'flex',
@@ -125,8 +122,6 @@ const styles = {
         alignItems: 'center',
         marginBottom: '15px',
         paddingTop: '5px',
-        width: '100%', 
-        maxWidth: '732px', 
     },
     headerLeft: {
         display: 'flex',
@@ -155,26 +150,20 @@ const styles = {
         fontSize: '1.3rem',
         color: 'var(--color-text-dark)',
         margin: 0,
-        fontFamily: "var(--font-family-primary)",
     },
     listContainer: {
         flex: 1,
         position: 'relative',
         overflow: 'hidden', 
         marginBottom: '20px', 
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
     },
     scrollArea: {
         height: '100%',
-        width: '100%',
         overflowY: 'auto',
         paddingRight: '10px', 
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center', 
-        gap: '12px', 
+        gap: '10px',
         paddingBottom: '20px',
     },
     listItem: {
@@ -187,12 +176,9 @@ const styles = {
         alignItems: 'center',
         cursor: 'pointer',
         width: '100%',
-        maxWidth: '732px',
-        
         height: '58px',
         boxSizing: 'border-box',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        flexShrink: 0,
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
     },
     itemContent: {
         display: 'flex',
@@ -219,5 +205,4 @@ const styles = {
         marginTop: '50px',
     },
 };
-
 export default ChatListPage;

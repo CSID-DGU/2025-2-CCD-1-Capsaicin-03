@@ -61,19 +61,18 @@ const FeedbackListPage = () => {
                 <style>
                     {`
                         .custom-scrollbar::-webkit-scrollbar {
-                            width: 12px;
+                            width: 16px;
                         }
                         .custom-scrollbar::-webkit-scrollbar-track {
                             background: var(--color-text-light); 
-                            border : 1.7px solid var(--color-text-dark);
+                            border : 2px solid var(--color-text-dark);
                             border-radius: 10px;
-                            margin: 10px 0;
                         }
                         .custom-scrollbar::-webkit-scrollbar-thumb {
                             background: var(--color-main);
                             border-radius: 10px;
                             background-clip: padding-box;
-                            border: 3.5px solid transparent;
+                            border: 4px solid transparent;
                     `}
                 </style>
 
