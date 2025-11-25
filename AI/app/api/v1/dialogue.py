@@ -33,7 +33,7 @@ redis_service = get_redis_service()
 
 
 @router.post("/turn", response_model=DialogueTurnResponse)
-async def process_dialogue_turn(
+async def process_dialogue_turn_with_audio(
     session_id: str = Form(...),
     stage: Stage = Form(...),
     audio_file: Optional[UploadFile] = File(None),
@@ -51,7 +51,7 @@ async def process_dialogue_turn(
         child_text: 아동 발화 텍스트 (STT 변환된 텍스트) - 우선순위 2 (테스트용)
     
     Returns:
-        DialogueTurnResponse: 처리 결과
+        DialogueTurnResponse: 처리 결과 (S1의 경우 detected_emotion 필드 포함)
     """
     start_time = time.time()
     
@@ -62,6 +62,9 @@ async def process_dialogue_turn(
             f"audio_file={'있음' if audio_file else '없음'}, "
             f"child_text={'있음' if child_text else '없음'}"
         )
+        
+        # MARKER_TURN_WITH_AUDIO: 오디오 지원하는 /turn 엔드포인트
+        # S1의 경우 detected_emotion 필드를 응답에 포함합니다
         
         # 1. 세션 조회
         session = context_manager.get_session(session_id)
@@ -332,11 +335,20 @@ async def process_dialogue_turn(
             ai_response=ai_response_formatted
         )
         
+        # S1에서 감정 정보 추출
+        detected_emotion = None
+        if old_stage == Stage.S1_EMOTION_LABELING and "emotion_detected" in turn_result:
+            emotion_data = turn_result.get("emotion_detected")
+            if emotion_data:
+                detected_emotion = emotion_data
+                logger.info(f"💚 S1 감정 정보 포함: {detected_emotion}")
+        
         response = DialogueTurnResponse(
             success=True,
             session_id=session_id,
             stage=old_stage,  # Stage enum을 문자열로 변환
             result=turn_result_formatted,
+            detected_emotion=detected_emotion,  # S1에서만 값이 있음
             next_stage=next_stage_value.value if next_stage_value else None,  # S5 완료 시 None
             fallback_triggered=session.retry_count > 0,
             retry_count=session.retry_count,
@@ -448,24 +460,23 @@ async def start_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/test_turn", response_model=DialogueTurnResponse)
-async def process_dialogue_turn(
+async def process_test_dialogue_turn(
     session_id: str = Form(...),
     stage: Stage = Form(...),
     child_text: Optional[str] = Form(None)
 ):
     """
-    대화 턴 처리
+    대화 턴 처리 (테스트용 - 텍스트만)
     
-    Spring Boot(BE)에서 호출하는 메인 엔드포인트
+    Spring Boot(BE)에서 호출하는 테스트 엔드포인트
     
     Args:
         session_id: 세션 ID
         stage: 현재 Stage (S1~S5)
-        audio_file: 오디오 파일 (.wav) - 우선순위 1
-        child_text: 아동 발화 텍스트 (STT 변환된 텍스트) - 우선순위 2 (테스트용)
+        child_text: 아동 발화 텍스트 (STT 변환된 텍스트)
     
     Returns:
-        DialogueTurnResponse: 처리 결과
+        DialogueTurnResponse: 처리 결과 (S1의 경우 detected_emotion 필드 포함)
     """
     start_time = time.time()
     
@@ -475,6 +486,9 @@ async def process_dialogue_turn(
             f"stage={stage.value}, "
             f"child_text={'있음' if child_text else '없음'}"
         )
+        
+        # MARKER_TEST_TURN: 텍스트만 지원하는 /test_turn 엔드포인트
+        # S1의 경우 detected_emotion 필드를 응답에 포함합니다
         
         # 1. 세션 조회
         session = context_manager.get_session(session_id)
@@ -709,11 +723,20 @@ async def process_dialogue_turn(
             ai_response=ai_response_formatted
         )
         
+        # S1에서 감정 정보 추출
+        detected_emotion = None
+        if old_stage == Stage.S1_EMOTION_LABELING and "emotion_detected" in turn_result:
+            emotion_data = turn_result.get("emotion_detected")
+            if emotion_data:
+                detected_emotion = emotion_data
+                logger.info(f"💚 S1 감정 정보 포함: {detected_emotion}")
+        
         response = DialogueTurnResponse(
             success=True,
             session_id=session_id,
             stage=old_stage,  # Stage enum을 문자열로 변환
             result=turn_result_formatted,
+            detected_emotion=detected_emotion,  # S1에서만 값이 있음
             next_stage=next_stage_value.value if next_stage_value else None,  # S5 완료 시 None
             fallback_triggered=session.retry_count > 0,
             retry_count=session.retry_count,
@@ -749,7 +772,7 @@ async def process_dialogue_turn(
         )
 
 @router.post("/session/test_start")
-async def start_session(
+async def start_test_session(
     story_name: str = Form(...),
     child_name: str = Form(...),
     child_age: Optional[int] = Form(None),
@@ -935,6 +958,134 @@ async def get_emotion_history(session_id: str):
         raise
     except Exception as e:
         logger.error(f"감정 히스토리 조회 실패: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/feedback")
+async def generate_feedback(session_id: str = Form(...)):
+    """
+    세션의 전체 대화를 분석하여 부모 피드백 생성
+    
+    Args:
+        session_id: 세션 ID
+    
+    Returns:
+        아동 대화 분석 피드백 + 부모 행동 지침
+    """
+    from app.tools.feedback import FeedbackGeneratorTool
+    from datetime import datetime
+    
+    try:
+        # 세션 조회
+        session = context_manager.get_session(session_id)
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail=f"세션을 찾을 수 없습니다: {session_id}"
+            )
+        
+        logger.info(f"피드백 생성 - 세션 조회 완료: {session_id}")
+        logger.info(f"세션 key_moments 개수: {len(session.key_moments)}")
+        logger.info(f"세션 emotion_history 개수: {len(session.emotion_history)}")
+        
+        # 전체 대화 내용 구성 - Redis 우선, 실패 시 세션 메모리
+        conversation_history = []
+        emotion_history = []
+        
+        try:
+            full_data = redis_service.get_full_conversation(session_id)
+            if full_data:
+                conversation_history = full_data.get("conversation_history", [])
+                emotion_history = full_data.get("emotion_history", [])
+                logger.info(f"Redis에서 대화 조회: conversation={len(conversation_history)}, emotions={len(emotion_history)}")
+        except Exception as e:
+            logger.warning(f"Redis 조회 실패, 세션 메모리 사용: {e}")
+        
+        # Redis 실패 시 세션에서 직접 가져오기
+        if not conversation_history:
+            conversation_history = session.key_moments
+            logger.info(f"세션 메모리에서 대화 조회: {len(conversation_history)}개")
+        
+        if not emotion_history:
+            emotion_history = [e.value for e in session.emotion_history]
+            logger.info(f"세션 메모리에서 감정 조회: {len(emotion_history)}개")
+        
+        # 대화 텍스트 구성
+        conversation_text = []
+        for i, moment in enumerate(conversation_history):
+            logger.debug(f"moment[{i}]: {moment}")
+            
+            # key_moments 구조: {'stage': 'S2', 'turn': 2, 'content': '...'}
+            # 또는 {'role': 'child', 'content': '...'}
+            content = moment.get("content", "")
+            if not content:
+                continue
+            
+            # role이 있으면 사용, 없으면 stage 정보 사용
+            role = moment.get("role", "")
+            if not role:
+                stage = moment.get("stage", "")
+                turn = moment.get("turn", "")
+                role = f"{stage}_턴{turn}" if stage else "대화"
+            
+            conversation_text.append(f"{role}: {content}")
+        
+        logger.info(f"구성된 대화 텍스트 라인 수: {len(conversation_text)}")
+        
+        if not conversation_text:
+            # 디버깅을 위한 상세 정보
+            error_detail = {
+                "message": "대화 내용이 없습니다. 최소 1회 이상 대화를 진행해주세요.",
+                "debug_info": {
+                    "session_id": session_id,
+                    "key_moments_count": len(session.key_moments),
+                    "key_moments_sample": session.key_moments[:2] if session.key_moments else [],
+                    "emotion_history_count": len(session.emotion_history),
+                    "current_stage": session.current_stage.value,
+                    "current_turn": session.current_turn
+                }
+            }
+            logger.error(f"대화 내용 없음: {error_detail}")
+            raise HTTPException(
+                status_code=400,
+                detail=error_detail
+            )
+        
+        # 감정 정보
+        emotions = ", ".join(emotion_history)
+        logger.info(f"감정 정보: {emotions[:100]}...")
+        
+        # 프롬프트 구성
+        feedback_tool = FeedbackGeneratorTool()
+        
+        dialogue_text = "\n".join(conversation_text)
+        input_text = f"""[AI와 아동 대화 text]
+                {dialogue_text}
+
+                [아동 감정]
+                {emotions if emotions else '감정 정보 없음'}
+                """
+                        
+        logger.info(f"프롬프트 길이: {len(input_text)} 문자")
+        logger.info(f"피드백 생성 시작: session_id={session_id}")
+        
+        # 피드백 생성
+        result = feedback_tool.generate_feedback(input_text)
+        
+        logger.info(f"피드백 생성 완료: {result.get('child_analysis_feedback', '')[:50]}...")
+        
+        return {
+            "success": True,
+            "session_id": session_id,
+            "child_analysis_feedback": result.get("child_analysis_feedback", ""),
+            "parent_action_guide": result.get("parent_action_guide", ""),
+            "generated_at": datetime.now().isoformat()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"피드백 생성 실패: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
