@@ -447,7 +447,7 @@ async def start_session(
         logger.error(f"세션 시작 실패: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/turn_start", response_model=DialogueTurnResponse)
+@router.post("/test_turn", response_model=DialogueTurnResponse)
 async def process_dialogue_turn(
     session_id: str = Form(...),
     stage: Stage = Form(...),
