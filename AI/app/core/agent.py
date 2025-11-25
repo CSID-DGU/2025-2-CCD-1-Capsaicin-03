@@ -611,7 +611,7 @@ class DialogueAgent:
         character_name = story.get("character_name", "콩쥐")
         logger.info("_generate_ask_experience_retry_count_1")
         
-        # 격려하는 톤으로 재질문 (감정 단어 사용하지 않음)
+        # 격려하는 톤으로 재질문
         question = f"{child_name}아, 괜찮아. 천천히 생각해봐. {character_name}가 왜 그렇게 느꼈을 것 같아?"
         
         return AISpeech(text=question)

@@ -176,6 +176,9 @@ class DialogueTurnResponse(BaseModel):
     # 처리 결과
     result: TurnResult = Field(..., description="턴 처리 결과")
     
+    # 감정 정보 (S1에서만 제공)
+    detected_emotion: Optional[Dict] = Field(default=None, description="감지된 감정 정보 (S1만)")
+    
     # 상태 관리
     next_stage: Optional[str] = Field(..., description="다음 Stage (S1~S5, S5 완료 시 null)")
     fallback_triggered: bool = Field(default=False, description="Fallback 전략 사용 여부")
@@ -259,3 +262,9 @@ class StageConfig(BaseModel):
     fallback_strategy: Dict         # Fallback 전략
     max_retry: int = 3
 
+
+class Feedback(BaseModel):
+    """피드백 카드 스키마"""
+    title: str = Field(..., max_length=20, description="피드백 제목 (20자 이내)")
+    content: str = Field(..., max_length=100, description="피드백 내용 (100자 이내)")
+    suggestions: List[str] = Field(..., max_items=3, description="개선 제안 (최대 3개)")
