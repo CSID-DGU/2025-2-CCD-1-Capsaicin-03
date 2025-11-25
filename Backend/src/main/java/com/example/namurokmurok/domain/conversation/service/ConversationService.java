@@ -4,6 +4,8 @@ import com.example.namurokmurok.domain.conversation.dto.*;
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.conversation.entity.Dialogue;
 import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
+import com.example.namurokmurok.domain.conversation.enums.Speaker;
+import com.example.namurokmurok.domain.conversation.enums.Stage;
 import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
 import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
 import com.example.namurokmurok.domain.story.entity.Story;
@@ -99,6 +101,23 @@ public class ConversationService {
                 .build();
 
         conversationRepository.save(conversation);
+
+        // 인트로 질문 Dialogue에 저장
+        Dialogue introLog = Dialogue.builder()
+                .conversation(conversation)
+                .turnNumber(1)
+                .stage(Stage.INTRO)
+                .retryCount(0)
+                .speaker(Speaker.AI)
+                .content(response.getAi_intro())
+                .audioUrl(introAudioUrl)
+                .createdAt(LocalDateTime.now())
+                .isSafe(true)
+                .unsafeReason(null)
+                .fallbackTriggered(false)
+                .build();
+
+        dialogueRepository.save(introLog);
 
         return response;
     }
