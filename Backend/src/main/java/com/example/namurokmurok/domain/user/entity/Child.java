@@ -33,7 +33,7 @@ public class Child {
     private User user;
 
     @OneToMany(mappedBy = "child")
-    private List<Conversation> converstations = new ArrayList<>();
+    private List<Conversation> conversations = new ArrayList<>();
 
     public void linkUser(User user) {
         this.user = user;
