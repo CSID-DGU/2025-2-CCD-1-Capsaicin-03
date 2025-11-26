@@ -2,9 +2,12 @@ package com.example.namurokmurok.domain.feedback.service;
 
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
+import com.example.namurokmurok.domain.feedback.dto.FeedbackListResponseDto;
 import com.example.namurokmurok.domain.feedback.dto.FeedbackResponseDto;
 import com.example.namurokmurok.domain.feedback.entity.Feedback;
 import com.example.namurokmurok.domain.feedback.repository.FeedbackRepository;
+import com.example.namurokmurok.domain.user.entity.Child;
+import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.client.AiApiClient;
 import com.example.namurokmurok.global.common.enums.GenerationStatus;
 import com.example.namurokmurok.global.common.exception.CustomException;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -24,6 +28,7 @@ public class FeedbackService {
 
     private final ConversationRepository conversationRepository;
     private final FeedbackRepository feedbackRepository;
+    private final ChildRepository childRepository;
 
     private final AiApiClient aiApiClient;
 
@@ -86,5 +91,30 @@ public class FeedbackService {
 
             throw e;
         }
+    }
+
+    public List<FeedbackListResponseDto> getFeedbackList(Long userId) {
+
+        Child child = childRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        // 아이의 모든 Conversation 가져오기
+        List<Conversation> conversations =
+                conversationRepository.findAllByChildIdOrderByCreatedAtDesc(child.getId());
+
+        // Feedback이 존재하는 경우만 필터링 후 DTO 매핑
+        return conversations.stream()
+                .map(conversation -> feedbackRepository.findByConversationId(conversation.getId())
+                        .orElse(null)
+                )
+                .filter(feedback -> feedback != null)  // 피드백 없는 것 제외
+                .map(feedback -> FeedbackListResponseDto.builder()
+                        .id(feedback.getId())
+                        .date(feedback.getConversation().getCreatedAt().toLocalDate())
+                        .title(feedback.getConversation().getStory().getTitle())
+                        .status(feedback.getGenerationStatus())
+                        .build()
+                )
+                .toList();
     }
 }
