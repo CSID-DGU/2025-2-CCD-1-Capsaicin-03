@@ -1,6 +1,7 @@
 package com.example.namurokmurok.domain.conversation.entity;
 
 import com.example.namurokmurok.domain.conversation.enums.ConversationStatus;
+import com.example.namurokmurok.domain.feedback.entity.Feedback;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.user.entity.Child;
 import jakarta.persistence.*;
@@ -47,6 +48,9 @@ public class Conversation {
 
     @OneToMany(mappedBy = "conversation")
     private List<Dialogue> dialogues = new ArrayList<>();
+
+    @OneToOne(mappedBy = "conversation", fetch = FetchType.LAZY)
+    private Feedback feedback;
 
     public void updateStatus(ConversationStatus status) {
         this.status = status;

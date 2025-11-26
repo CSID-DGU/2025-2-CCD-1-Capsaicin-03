@@ -61,18 +61,8 @@ public class ConversationService {
                 .intro(introQuestion)
                 .build();
 
-        // FastAPI 세션 id 발급 요청
-        var form = BodyInserters
-                .fromFormData("story_name", request.getStory_name())
-                .with("child_name", request.getChild_name())
-                .with("child_age", String.valueOf(request.getChild_age()))
-                .with("intro", request.getIntro());
-
-        SessionStartResponse response = aiApiClient.postForm(
-                "/api/v1/dialogue/session/start",
-                form,
-                SessionStartResponse.class
-        );
+        // fastAPI 요청
+        SessionStartResponse response = aiApiClient.startSession(request);
 
         String introAudioBase64 = response.getAi_intro_audio_base64();
 
