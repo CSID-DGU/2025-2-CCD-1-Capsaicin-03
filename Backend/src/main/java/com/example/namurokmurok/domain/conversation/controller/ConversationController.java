@@ -69,13 +69,13 @@ public class ConversationController {
         return ApiResponse.success(conversationService.getConversationList(userPrincipal.getUserId()));
     }
 
-    @GetMapping("/{conversationId}")
+    @GetMapping("/{conversation-id}")
     @Operation(
             summary = "대화 상세(로그) 조회 API",
             description = "{conversationId}의 대화 로그를 조회합니다.")
     public ApiResponse<ConversationDetailResponseDto> getConversationDetail(
             @AuthenticationPrincipal CustomUserDetails userPrincipal,
-            @PathVariable String conversationId
+            @PathVariable("conversation-id") String conversationId
     ) {
         return ApiResponse.success(conversationService.getConversationDetail(userPrincipal.getUserId(), conversationId));
     }
