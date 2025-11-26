@@ -38,7 +38,11 @@ public enum ErrorCode {
 
     // Audio & File 관련
     AUDIO_CONVERSION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "오디오 파일 변환에 실패했습니다."),
-    FILE_SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "파일 입출력 처리 중 오류가 발생했습니다.");
+    FILE_SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "파일 입출력 처리 중 오류가 발생했습니다."),
+
+    // Feedback 관련
+    FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 피드백입니다"),
+    FEEDBACK_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 피드백에 접근 권한이 없습니다.")
     ;
 
     private final HttpStatus status;

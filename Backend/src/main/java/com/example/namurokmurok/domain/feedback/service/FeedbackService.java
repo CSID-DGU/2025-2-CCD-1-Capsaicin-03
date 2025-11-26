@@ -2,6 +2,7 @@ package com.example.namurokmurok.domain.feedback.service;
 
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
 import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
+import com.example.namurokmurok.domain.feedback.dto.FeedbackDetailResponseDto;
 import com.example.namurokmurok.domain.feedback.dto.FeedbackListResponseDto;
 import com.example.namurokmurok.domain.feedback.dto.FeedbackResponseDto;
 import com.example.namurokmurok.domain.feedback.entity.Feedback;
@@ -117,4 +118,28 @@ public class FeedbackService {
                 )
                 .toList();
     }
+
+    public FeedbackDetailResponseDto getFeedbackDetail(Long userId, Long feedbackId) {
+
+        Child child = childRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        Feedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FEEDBACK_NOT_FOUND));
+
+        Conversation conversation = feedback.getConversation();
+
+        // 권한 검증 (부모 → 자녀 → 그 자녀의 Conversation인지 확인)
+        if (!conversation.getChild().getId().equals(child.getId())) {
+            throw new CustomException(ErrorCode.FEEDBACK_ACCESS_DENIED);
+        }
+
+        return FeedbackDetailResponseDto.builder()
+                .id(feedback.getId())
+                .title(conversation.getStory().getTitle())
+                .conversationFeedback(feedback.getFeedbackContent())
+                .actionGuide(feedback.getActionGuide())
+                .build();
+    }
+
 }
