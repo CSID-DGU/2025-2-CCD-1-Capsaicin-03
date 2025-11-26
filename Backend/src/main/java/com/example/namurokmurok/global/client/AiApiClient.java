@@ -4,6 +4,7 @@ import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartRequest;
 import com.example.namurokmurok.domain.conversation.dto.DialogueTurnRequest;
 import com.example.namurokmurok.domain.conversation.dto.DialogueTurnResponse;
+import com.example.namurokmurok.domain.feedback.dto.FeedbackResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
@@ -85,6 +86,26 @@ public class AiApiClient {
                         res -> handleStatusError("/turn", res))
                 .bodyToMono(DialogueTurnResponse.class)
                 .onErrorResume(e -> handleException("/turn", e))
+                .block();
+    }
+
+    /**
+     * 피드백 생성 요청
+     */
+    public FeedbackResponseDto generateAiFeedback(String sessionId) {
+
+        BodyInserters.FormInserter<String> formData = BodyInserters
+                .fromFormData("session_id", sessionId);
+
+        return fastApiClient.post()
+                .uri("/api/v1/dialogue/feedback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(formData)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError,
+                        res -> handleStatusError("/feedback", res))
+                .bodyToMono(FeedbackResponseDto.class)
+                .onErrorResume(e -> handleException("/feedback", e))
                 .block();
     }
 }

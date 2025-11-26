@@ -10,6 +10,7 @@ import com.example.namurokmurok.domain.conversation.enums.Speaker;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
 import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
 import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
+import com.example.namurokmurok.domain.feedback.service.FeedbackService;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.audio.AudioConverter;
@@ -40,6 +41,8 @@ public class ConversationTurnService {
     private final AiApiClient aiApiClient;
     private final AudioConverter audioConverter;
     private final S3Uploader s3Uploader;
+
+    private final FeedbackService feedbackService;
 
     private static final int MAX_RETRY_COUNT = 3; // retry 최대 횟수
 
@@ -83,6 +86,11 @@ public class ConversationTurnService {
             conversation.updateStatus(ConversationStatus.COMPLETED);
             conversation.updateEndedAt(LocalDateTime.now());
             log.info("[Conversation] Status updated → COMPLETED, endedAt saved");
+
+            // 피드백 생성 요청
+            log.info("[FeedbackTrigger] Conversation completed. Triggering feedback generation...");
+            feedbackService.createFeedback(sessionId);
+            log.info("[FeedbackTrigger] Feedback created for session={}", sessionId);
         }
 
         // 8. 다음 스테이지 결정

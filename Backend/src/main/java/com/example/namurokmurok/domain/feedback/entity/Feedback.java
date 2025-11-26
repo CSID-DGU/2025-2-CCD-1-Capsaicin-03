@@ -23,10 +23,10 @@ public class Feedback {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "feedback_content", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "feedback_content", columnDefinition = "TEXT", nullable = true)
     private String feedbackContent;
 
-    @Column(name = "action_guide", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "action_guide", columnDefinition = "TEXT", nullable = true)
     private String actionGuide;
 
     @Enumerated(EnumType.STRING)
@@ -39,4 +39,15 @@ public class Feedback {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
+
+    public void updateContent(String content, String actionGuide, LocalDateTime createdAt, GenerationStatus status) {
+        this.feedbackContent = content;
+        this.actionGuide = actionGuide;
+        this.createdAt = createdAt;
+        this.generationStatus = status;
+    }
+
+    public void updateStatus(GenerationStatus status) {
+        this.generationStatus = status;
+    }
 }
