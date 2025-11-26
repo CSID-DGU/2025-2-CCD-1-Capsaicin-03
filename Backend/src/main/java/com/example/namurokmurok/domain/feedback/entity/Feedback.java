@@ -33,9 +33,6 @@ public class Feedback {
     @Column(name = "status", nullable = false)
     private GenerationStatus generationStatus;
 
-    @Column(name = "conversation_date", nullable = false)
-    private LocalDate conversationDate;
-
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
