@@ -89,8 +89,7 @@ public class ConversationTurnService {
 
             // 피드백 생성 요청
             log.info("[FeedbackTrigger] Conversation completed. Triggering feedback generation...");
-            feedbackService.createFeedback(sessionId);
-            log.info("[FeedbackTrigger] Feedback created for session={}", sessionId);
+            feedbackService.createFeedbackAsync(sessionId); // 비동기 피드백 생성 요청
         }
 
         // 8. 다음 스테이지 결정
