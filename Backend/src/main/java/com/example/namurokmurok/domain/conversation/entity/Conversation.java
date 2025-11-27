@@ -19,7 +19,13 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Builder
-@Table(name = "conversations")
+@Table(
+        name = "conversations",
+        indexes = {
+                @Index(name = "idx_conversation_status", columnList = "status"),
+                @Index(name = "idx_conversation_expire_at", columnList = "expire_at")
+        }
+)
 public class Conversation {
 
     @Id
