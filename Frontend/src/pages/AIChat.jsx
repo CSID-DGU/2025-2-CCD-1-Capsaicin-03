@@ -210,7 +210,7 @@ const AIChat = () => {
 
         } catch (err) {
             console.error("대화 처리 중 오류:", err);
-            alert("AI와의 연결이 원활하지 않습니다.");
+            alert("마이크를 다시 한번 꾹 누른 채로 대답해 주세요.");
         } finally {
             setIsResponding(false); 
         }
@@ -328,11 +328,18 @@ const AIChat = () => {
                 </div>
                 
                 <div style={styles.introTextSection}>
-                    <div style={styles.textContentWrapper}>
-                        <p style={{ ...styles.combinedText, whiteSpace: 'pre-line' }}>
-                            {sceneData.text_content}
-                        </p>
-                    </div>
+                    <style>
+                        {`
+                            .hide-scrollbar::-webkit-scrollbar {
+                                display: none; /* Webkit */
+                            }
+                        `}
+                    </style>
+                    <div className="hide-scrollbar" style={styles.textContentWrapper}> {/* 클래스 이름 변경 및 적용 */}
+                        <p style={{ ...styles.combinedText, whiteSpace: 'pre-line' }}>
+                            {sceneData.text_content}
+                        </p>
+                    </div>
                     
                     <div style={styles.buttonGroup}>            
                         <button onClick={handleReplay} style={styles.introSecondaryButton}>
@@ -356,17 +363,22 @@ const AIChat = () => {
         return (
             <div style={styles.dialogueContainer}>
                 <TopHomeButton />
-                <div style={styles.dialogueImageSection}>
-                    <img src={sceneData.img_url} alt="대화 캐릭터" style={styles.dialogueStoryImage} />
-                </div>
                 <div style={styles.dialogueTextSection}>
+                    <style>
+                        {`
+                            .hide-scrollbar::-webkit-scrollbar {
+                                display: none;
+                            }
+                        `}
+                    </style>
+
                     <div style={styles.dialogueBubbleZone}>
-                        <div style={styles.chatBubble}>
+                        <div className="hide-scrollbar" style={styles.chatBubble}>
                             <p>{sceneData.text_content}</p>
                         </div>
                     </div>
-                    
-                    <div style={styles.dialogueControlZone}>
+                    
+                    <div style={styles.dialogueControlZone}>
                         <button 
                             style={{
                                 ...styles.micButton,
@@ -545,17 +557,19 @@ const styles = {
         ...baseStyles.section, 
         flex: 1, 
         backgroundColor: 'var(--color-main)', 
-        padding: '20px', 
-        justifyContent: 'flex-start',
+        padding: '20px 20px 25px 20px', 
+        justifyContent: 'center',
         height: '100%',
         alignItems: 'center',
         wordBreak: 'keep-all'
     }, 
 
-    textContentWrapper: {
+    textContentWrapper: {
+        flex: 1,
         width: '100%',
-        overflowY: 'auto', 
-        paddingTop: '20px', 
+        overflowY: 'auto',
+        '-msOverflowStyle': 'none', 
+        'scrollbarWidth': 'none'
     },
     combinedText: {
         ...baseStyles.fontBase,
@@ -588,33 +602,28 @@ const styles = {
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
     },
     
-    dialogueContainer: { ...baseStyles.baseContainer, backgroundColor: 'var(--color-main)' },
-    dialogueImageSection: { 
-        ...baseStyles.section, 
-        flex: 1,
-        padding: '0', 
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    
+    dialogueContainer: { ...baseStyles.baseContainer, backgroundColor: 'var(--color-main)' }, 
     dialogueTextSection: { 
         ...baseStyles.section, 
-        flex: 1, 
-        backgroundColor: 'var(--color-main)', 
+        flex: 1, 
+        backgroundColor: 'var(--color-main)',
         padding: '20px', 
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
+        height: '100%'
     },
     dialogueBubbleZone: {
         flex: 1,                     
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',         
-        justifyContent: 'center',    
-        overflow: 'hidden',           
+        justifyContent: 'flex-start',
+        overflow: 'auto',           
         width: '100%',
-        paddingBottom: '10px',                     
+        paddingTop: '60px',
+        paddingBottom: '10px',
+        overflow: 'hidden'
     },
 
     dialogueControlZone: {
@@ -628,18 +637,20 @@ const styles = {
     },
     chatBubble: { 
         background: 'var(--color-main)',
-        padding: '3px 15px', 
+        padding: '5px 20px', 
         borderRadius: '50px',
         border: '3px solid var(--color-text-dark)',        
-        maxWidth: '100%', 
-        marginTop: '10px',
-        marginBottom: '20px', 
+        maxWidth: '95%',
+        maxHeight: '125px',
+        overflowY: 'auto',
         fontSize: '1.0rem', 
         fontFamily: 'var(--font-family-primary)', 
         lineHeight: '1.6', 
         color: 'var(--color-text-dark)',
         wordBreak: 'keep-all',
-        whiteSpace: 'pre-line'
+        whiteSpace: 'pre-line',
+        '-msOverflowStyle': 'none', 
+        'scrollbarWidth': 'none'
     },
     micButton: { 
         width: '70px', 
