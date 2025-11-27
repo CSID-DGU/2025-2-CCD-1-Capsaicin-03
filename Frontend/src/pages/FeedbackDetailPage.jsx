@@ -3,46 +3,29 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import leftArrowIcon from '../assets/left_arrow.svg';
-
-// --- Mock Data ---
-const MOCK_RESPONSE = {
-    success: true,
-    message: "요청이 성공적으로 처리되었습니다.",
-    data: {
-        id: 1,
-        title: "흥부와 놀부",
-        content: `처음에는 집중력이 조금 흐트러지며, 답변을 잘 못하는 모습을 보였어요.
-하지만, 집중하기 시작한 후부터는 아이가 제 질문에 솔직한 감정과 함께 잘 답변했어요.
-
-하람이는 또래에 비해 사용하는 단어가 풍부한 편이에요.
-지금처럼 책을 많이 읽으면, 사고력이 또래에 비해 높아질 수 있을 거예요.
-
-처음에는 집중력이 조금 흐트러지며, 답변을 잘 못하는 모습을 보였어요.
-하지만, 집중하기 시작한 후부터는 아이가 제 질문에 솔직한 감정과 함께 잘 답변했어요.
-
-하람이는 또래에 비해 사용하는 단어가 풍부한 편이에요.
-지금처럼 책을 많이 읽으면, 사고력이 또래에 비해 높아질 수 있을 거예요.
-
-(스크롤 테스트를 위한 추가 텍스트입니다)
-아이가 동화 속 인물의 감정을 아주 잘 이해하고 있어요.
-흥부가 박을 탈 때 어떤 기분이었을지 물어봤을 때 아주 창의적인 대답을 해주었답니다.
-앞으로도 꾸준히 독서 지도를 해주시면 좋을 것 같아요.`
-    }
-};
+import { getFeedbackDetail } from '../api/parentsApi';
 
 const FeedbackDetailPage = () => {
-    const { storyId } = useParams(); 
+    const { conversationId } = useParams();
     const navigate = useNavigate();
     const [feedback, setFeedback] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchFeedbackDetail = async () => {
+            if (!conversationId) return;
+
             setIsLoading(true);
             try {
-                // 나중에 실제 API 호출로 교체
-                await new Promise(resolve => setTimeout(resolve, 500));
-                setFeedback(MOCK_RESPONSE.data);
+                const response = await getFeedbackDetail(conversationId);
+
+                console.log("✅ 피드백 상세 응답:", response);
+
+                if (response && response.success) {
+                    setFeedback(response.data);
+                } else {
+                    console.error("데이터 로드 실패:", response?.message);
+                }
             } catch (error) {
                 console.error("피드백 상세 정보를 불러오는데 실패했습니다.", error);
             } finally {
@@ -51,10 +34,15 @@ const FeedbackDetailPage = () => {
         };
 
         fetchFeedbackDetail();
-    }, [storyId]);
+    }, [conversationId]);
 
     const handleBackClick = () => {
         navigate(-1);
+    };
+
+    const cleanText = (text) => {
+        if (!text) return "";
+        return text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
     };
 
     if (isLoading) {
@@ -97,17 +85,26 @@ const FeedbackDetailPage = () => {
 
                 <div style={styles.whiteBox}>
                     <div style={styles.scrollContent}>
-                        <span style={styles.contentTitle}>{feedback.title}의 피드백</span>
-                        <p style={styles.contentText}>
-                            {feedback.content}
-                        </p>
+                        {/* 대화 피드백 섹션 */}
+                        <div style={styles.section}>
+                            <span style={styles.subTitle}>💡 대화 피드백</span>
+                            <p style={styles.contentText}>
+                                {cleanText(feedback.conversation_feedback)}
+                            </p>
+                        </div>
+
+                        <div style={styles.divider}></div>
+
+                        {/* 행동 가이드 섹션 */}
+                        <div style={styles.section}>
+                            <span style={styles.subTitle}>🌱 지도 방향</span>
+                            <p style={styles.contentText}>
+                                {cleanText(feedback.action_guide)}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </main>
-
-            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
-                <div style={{ width: '100px', height: '5px', backgroundColor: '#333', borderRadius: '2.5px' }}></div>
-            </div>
         </div>
     );
 };
@@ -183,12 +180,30 @@ const styles = {
         boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
         marginBottom: '10px', 
     },
+
     scrollContent: {
-        padding: '30px', 
+        padding: '30px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '15px',
     },
-    contentTitle: {
-        fontSize: '1.3rem',
-        color: 'var(--color-text-dark)'
+
+    section: {
+        display: 'flex',
+        flexDirection: 'column'
+    },
+
+    subTitle: {
+        fontSize: '1.2rem',
+        color: 'var(--color-fourth)',
+        fontFamily: "var(--font-family-primary)",
+    },
+
+    divider: {
+        width: '100%',
+        height: '2px',
+        backgroundColor: '#eee', 
+        borderTop: '2px dashed var(--color-text-dark)', 
     },
     contentText: {
         fontSize: '18px',

@@ -70,7 +70,7 @@ const router = createBrowserRouter([
           },
           {
             // 특정 피드백 상세 보기
-            path: 'parents/feedback/:storyId',
+            path: 'parents/feedback/:conversationId',
             element: <FeedbackDetailPage />,
           },
           {
@@ -79,7 +79,7 @@ const router = createBrowserRouter([
           },
           {
             // 특정 대화 상세 보기
-            path: 'parents/chat/:storyId',
+            path: 'parents/chat/:conversationId',
             element: <ChatDetailPage />,
           },
         ],
