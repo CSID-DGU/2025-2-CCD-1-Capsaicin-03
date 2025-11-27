@@ -214,9 +214,16 @@ public class ConversationTurnService {
         boolean childSafe = true;
         String unsafeReason = null;
 
+        // childSafe, unsafeReason Null-safe 처리
         if (aiRes.getResult() != null && aiRes.getResult().getSafetyCheck() != null) {
             childSafe = aiRes.getResult().getSafetyCheck().isSafe();
             unsafeReason = aiRes.getResult().getSafetyCheck().getMessage();
+        }
+
+        // Emotion Null-safe 처리
+        String primaryEmotion = null;
+        if (aiRes.getDetectedEmotion() != null) {
+            primaryEmotion = aiRes.getDetectedEmotion().getPrimary();
         }
 
         // CHILD 로그 (아이 발화)
@@ -231,6 +238,7 @@ public class ConversationTurnService {
                 .createdAt(now)
                 .isSafe(childSafe)
                 .unsafeReason(unsafeReason)
+                .emotion(primaryEmotion)
                 .fallbackTriggered(aiRes.isFallbackTriggered())
                 .build();
 
@@ -246,6 +254,7 @@ public class ConversationTurnService {
                 .createdAt(now.plusNanos(1000000))
                 .isSafe(true)          // AI 답변은 기본적으로 safe 처리
                 .unsafeReason(null)
+                .emotion(null)
                 .fallbackTriggered(false)
                 .build();
 
