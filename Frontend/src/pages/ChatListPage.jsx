@@ -4,17 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import leftArrowIcon from '../assets/left_arrow.svg';
 import rightArrowIcon from '../assets/right_arrow.svg';
-
-// --- Mock Data ---
-const MOCK_CHAT_LIST = [
-    { id: 1, date: '25/10/01', title: '흥부와 놀부' },
-    { id: 2, date: '25/09/28', title: '콩쥐팥쥐' },
-    { id: 3, date: '25/08/26', title: '가난한 유산' },
-    { id: 4, date: '25/08/26', title: '가난한 유산 (2회차)' },
-    { id: 5, date: '25/08/20', title: '해와 달이 된 오누이' },
-    { id: 6, date: '25/08/15', title: '토끼와 거북이' },
-    { id: 7, date: '25/08/10', title: '선녀와 나무꾼' },
-];
+import { getChatList } from '../api/parentsApi';
 
 const ChatListPage = () => {
     const navigate = useNavigate();
@@ -25,9 +15,13 @@ const ChatListPage = () => {
         const fetchList = async () => {
             setIsLoading(true);
             try {
-                // 나중에 실제 대화 목록 API 호출로 교체
-                await new Promise(resolve => setTimeout(resolve, 500));
-                setChatList(MOCK_CHAT_LIST);
+                const response = await getChatList();
+
+                if (response && response.success) {
+                    setChatList(response.data);
+                } else {
+                    console.error("데이터를 불러오지 못했습니다:", response?.message);
+                }
             } catch (error) {
                 console.error("대화 목록을 불러오는데 실패했습니다.", error);
             } finally {
@@ -44,6 +38,12 @@ const ChatListPage = () => {
 
     const handleItemClick = (id) => {
         navigate(`/parents/chat/${id}`);
+    };
+
+    const formatDate = (dateString) => {
+        // 2025-11-25 -> 25/11/25 형태로 변환
+        if (!dateString) return '';
+        return dateString.replace(/-/g, '/').slice(2); 
     };
 
     return (
@@ -80,26 +80,27 @@ const ChatListPage = () => {
                     {isLoading ? (
                         <div style={styles.loadingText}>목록을 불러오는 중...</div>
                     ) : (
-                        chatList.map((item) => (
-                            <button 
-                                key={item.id} 
-                                style={styles.listItem}
-                                onClick={() => handleItemClick(item.id)}
-                            >
-                                <div style={styles.itemContent}>
-                                    <span style={styles.itemDate}>{item.date}</span>
-                                    <span style={styles.itemTitle}>{item.title}</span>
-                                </div>
-                                <img src={rightArrowIcon} alt="상세보기" style={styles.arrowIconImg} />
-                            </button>
-                        ))
+                        chatList.length > 0 ? (
+                            chatList.map((item) => (
+                                <button 
+                                    key={item.id} 
+                                    style={styles.listItem}
+                                    onClick={() => handleItemClick(item.id)}
+                                >
+                                    <div style={styles.itemContent}>
+                                        {/* API 데이터의 date 형식이 YYYY-MM-DD라면 formatDate 함수 사용 고려 */}
+                                        <span style={styles.itemDate}>{formatDate(item.date) || item.date}</span>
+                                        <span style={styles.itemTitle}>{item.title}</span>
+                                    </div>
+                                    <img src={rightArrowIcon} alt="상세보기" style={styles.arrowIconImg} />
+                                </button>
+                            ))
+                        ) : (
+                            <div style={styles.loadingText}>대화 목록이 없습니다.</div>
+                        )
                     )}
                 </div>
             </main>
-             
-            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)' }}>
-                <div style={{ width: '100px', height: '5px', backgroundColor: '#333', borderRadius: '2.5px' }}></div>
-            </div>
         </div>
     );
 };

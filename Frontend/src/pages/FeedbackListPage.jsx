@@ -4,17 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import leftArrowIcon from '../assets/left_arrow.svg';
 import rightArrowIcon from '../assets/right_arrow.svg';
-
-// --- Mock Data ---
-const MOCK_FEEDBACK_LIST = [
-    { id: 1, date: '25/10/01', title: '흥부와 놀부' },
-    { id: 2, date: '25/09/28', title: '콩쥐팥쥐' },
-    { id: 3, date: '25/08/26', title: '가난한 유산' },
-    { id: 4, date: '25/08/26', title: '가난한 유산 (2회차)' },
-    { id: 5, date: '25/08/20', title: '해와 달이 된 오누이' },
-    { id: 6, date: '25/08/15', title: '토끼와 거북이' },
-    { id: 7, date: '25/08/10', title: '선녀와 나무꾼' },
-];
+import { getFeedbackList } from '../api/parentsApi';
 
 const FeedbackListPage = () => {
     const navigate = useNavigate();
@@ -25,9 +15,16 @@ const FeedbackListPage = () => {
         const fetchList = async () => {
             setIsLoading(true);
             try {
-                // 나중에 실제 API 호출로 교체
-                await new Promise(resolve => setTimeout(resolve, 500));
-                setFeedbackList(MOCK_FEEDBACK_LIST);
+                const response = await getFeedbackList();
+                
+                console.log("✅ 피드백 목록 응답:", response);
+                console.log("📂 [데이터 확인] response.data:", response?.data);
+
+                if (response && response.success) {
+                    setFeedbackList(response.data);
+                } else {
+                    console.error("데이터를 불러오지 못했습니다:", response?.message);
+                }
             } catch (error) {
                 console.error("피드백 목록을 불러오는데 실패했습니다.", error);
             } finally {
@@ -44,6 +41,11 @@ const FeedbackListPage = () => {
 
     const handleItemClick = (id) => {
         navigate(`/parents/feedback/${id}`);
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        return dateString.replace(/-/g, '/').slice(2);
     };
 
     return (
@@ -87,7 +89,7 @@ const FeedbackListPage = () => {
                                 onClick={() => handleItemClick(item.id)}
                             >
                                 <div style={styles.itemContent}>
-                                    <span style={styles.itemDate}>{item.date}</span>
+                                    <span style={styles.itemDate}>{formatDate(item.date) || item.date}</span>
                                     <span style={styles.itemTitle}>{item.title}</span>
                                 </div>
                                 <img src={rightArrowIcon} alt="상세보기" style={styles.arrowIconImg} />
@@ -96,10 +98,6 @@ const FeedbackListPage = () => {
                     )}
                 </div>
             </main>
-             
-            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)' }}>
-                <div style={{ width: '100px', height: '5px', backgroundColor: '#333', borderRadius: '2.5px' }}></div>
-            </div>
         </div>
     );
 };
