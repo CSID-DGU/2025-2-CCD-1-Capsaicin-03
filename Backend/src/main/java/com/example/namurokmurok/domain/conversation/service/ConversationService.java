@@ -19,7 +19,7 @@ import com.example.namurokmurok.global.s3.S3Uploader;
 import com.example.namurokmurok.global.common.enums.GenerationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +38,7 @@ public class ConversationService {
     private final DialogueRepository dialogueRepository;
 
     // 세션 발급
+    @Transactional
     public SessionStartResponse startSession(Long storyId, Long childId) {
 
         Child child = childRepository.findById(childId)
@@ -141,6 +142,11 @@ public class ConversationService {
         if (conversation.getStatus() == ConversationStatus.COMPLETED) {
             return GenerationStatus.COMPLETED;
         }
+
+        if (conversation.getStatus() == ConversationStatus.FAILED) {
+            return GenerationStatus.FAILED;
+        }
+
         return GenerationStatus.GENERATING;
     }
 
@@ -176,6 +182,21 @@ public class ConversationService {
                 .id(conversationId)
                 .logs(logDtos)
                 .build();
+    }
+
+    @Transactional
+    // 대화 상태 FAILED 처리
+    public void failConversation(String conversationId) {
+        Conversation conv = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        // 이미 COMPLETED 또는 FAILED면 중복 수정 방지
+        if (conv.isFinished()) {
+            return ;
+        }
+
+        conv.updateStatus(ConversationStatus.FAILED);
+        conv.updateEndedAt(LocalDateTime.now());
     }
 
 }

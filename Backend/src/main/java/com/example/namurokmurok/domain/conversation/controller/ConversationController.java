@@ -79,4 +79,15 @@ public class ConversationController {
     ) {
         return ApiResponse.success(conversationService.getConversationDetail(userPrincipal.getUserId(), conversationId));
     }
+
+    @PatchMapping("/{conversationId}/fail")
+    @Operation(
+            summary = "대화 상태 FAILED 변경 API ",
+            description = "{conversationId}의 대화 상태를 FAILED로 변경합니다")
+    public ApiResponse<Void> failConversation(
+            @PathVariable String conversationId
+    ) {
+        conversationService.failConversation(conversationId);
+        return ApiResponse.success("대화 상태가 FAILED로 변경 되었습니다.", null);
+    }
 }
