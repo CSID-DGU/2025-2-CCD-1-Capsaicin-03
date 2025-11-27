@@ -68,4 +68,9 @@ public class Conversation {
     public void updateEndedAt(LocalDateTime endedAt) {
         this.endedAt = endedAt;
     }
+
+    public boolean isFinished() {
+        return this.status == ConversationStatus.COMPLETED
+                || this.status == ConversationStatus.FAILED;
+    }
 }
