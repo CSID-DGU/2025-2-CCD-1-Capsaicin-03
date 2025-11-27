@@ -55,6 +55,11 @@ public class Dialogue {
     @Column(name = "unsafe_reason", columnDefinition = "TEXT" ,nullable = true)
     private String unsafeReason;
 
+    @Column(name = "emotion", nullable = true)
+    private String emotion;
+
     @Column(name = "fallback_triggered", nullable = false)
     private boolean fallbackTriggered;
+
+
 }

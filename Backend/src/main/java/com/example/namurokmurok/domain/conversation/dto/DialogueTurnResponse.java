@@ -5,6 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.util.List;
+import java.util.Map;
+
 @Getter
 @NoArgsConstructor
 @ToString
@@ -32,6 +35,10 @@ public class DialogueTurnResponse {
     private String timestamp;
 
     private ResultData result;
+
+    @JsonProperty("detected_emotion")
+    private DetectedEmotion detectedEmotion;
+
 
     // 내부 클래스
     @Getter
@@ -85,5 +92,21 @@ public class DialogueTurnResponse {
 
         @JsonProperty("duration_ms")
         private Long durationMs;
+    }
+
+    // ⭐ 신규 추가된 DetectedEmotion DTO
+    @Getter
+    @NoArgsConstructor
+    @ToString
+    public static class DetectedEmotion {
+
+        private String primary;
+
+        private List<String> secondary;
+
+        private double confidence;
+
+        @JsonProperty("raw_scores")
+        private Map<String, Double> rawScores;
     }
 }
