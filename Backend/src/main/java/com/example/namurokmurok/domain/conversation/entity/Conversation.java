@@ -38,6 +38,9 @@ public class Conversation {
     @Column(name = "created_at" ,nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "expire_at" ,nullable = false)
+    private LocalDateTime expireAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "child_id", nullable = false)
     private Child child;

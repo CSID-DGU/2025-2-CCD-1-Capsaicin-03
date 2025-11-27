@@ -80,14 +80,18 @@ public class ConversationService {
         // s3에 업로드된 오디오 url로 교체
         response.setAi_intro_audio_base64(introAudioUrl);
 
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expireAt = now.plusHours(1); // 세션 만료 시간 : 발급 후 1시간
+
         // DB에 Conversation 저장
         Conversation conversation = Conversation.builder()
                 .id(response.getSession_id())
                 .child(child)
                 .story(story)
                 .status(ConversationStatus.STARTED)
-                .startedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
+                .startedAt(now)
+                .createdAt(now)
+                .expireAt(expireAt)
                 .build();
 
         conversationRepository.save(conversation);
