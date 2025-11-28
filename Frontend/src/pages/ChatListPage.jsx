@@ -36,9 +36,9 @@ const ChatListPage = () => {
         navigate(-1); 
     };
 
-    const handleItemClick = (id) => {
-        navigate(`/parents/chat/${id}`);
-    };
+    const handleItemClick = (item) => {
+    navigate(`/parents/chat/${item.id}`, { state: { status: item.status } });
+};
 
     const formatDate = (dateString) => {
         // 2025-11-25 -> 25/11/25 형태로 변환
@@ -81,20 +81,32 @@ const ChatListPage = () => {
                         <div style={styles.loadingText}>목록을 불러오는 중...</div>
                     ) : (
                         chatList.length > 0 ? (
-                            chatList.map((item) => (
-                                <button 
-                                    key={item.id} 
-                                    style={styles.listItem}
-                                    onClick={() => handleItemClick(item.id)}
-                                >
-                                    <div style={styles.itemContent}>
-                                        {/* API 데이터의 date 형식이 YYYY-MM-DD라면 formatDate 함수 사용 고려 */}
-                                        <span style={styles.itemDate}>{formatDate(item.date) || item.date}</span>
-                                        <span style={styles.itemTitle}>{item.title}</span>
-                                    </div>
-                                    <img src={rightArrowIcon} alt="상세보기" style={styles.arrowIconImg} />
-                                </button>
-                            ))
+                            chatList.map((item) => {
+                                // ✅ 수정 포인트 1: 중괄호 {}를 열고 로그를 찍은 뒤 return을 씁니다.
+                                console.log(`ID: ${item.id}, Title: ${item.title}, Status:`, item.status);
+
+                                return (
+                                    <button 
+                                        key={item.id} 
+                                        style={styles.listItem}
+                                        onClick={() => handleItemClick(item)}
+                                    >
+                                        <div style={styles.itemContent}>
+                                            <span style={styles.itemDate}>{formatDate(item.date) || item.date}</span>
+                                            <span style={styles.itemTitle}>{item.title}</span>
+                                        </div>
+
+                                        {/* ✅ 수정 포인트 2: 오른쪽 정렬 영역과 중단 메시지 코드 복구 */}
+                                        <div style={styles.itemRight}>
+                                            {/* status가 FAILED(대소문자 무관)일 때만 표시 */}
+                                            {(item.status?.toUpperCase() === 'FAILED' || item.status === 'failed') && (
+                                                <span style={styles.failedText}>대화 중단됨</span>
+                                            )}
+                                            <img src={rightArrowIcon} alt="상세보기" style={styles.arrowIconImg} />
+                                        </div>
+                                    </button>
+                                );
+                            })
                         ) : (
                             <div style={styles.loadingText}>대화 목록이 없습니다.</div>
                         )
@@ -193,6 +205,17 @@ const styles = {
         color: 'var(--color-text-dark)',
         fontFamily: "var(--font-family-primary)",
         marginRight: '10px'
+    },
+    itemRight: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+    },
+    failedText: {
+        fontSize: '13px',
+        color: '#999999',
+        fontFamily: "var(--font-family-primary)",
+        whiteSpace: 'nowrap'
     },
     arrowIconImg: {
         width: '24px',

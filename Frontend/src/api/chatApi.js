@@ -64,6 +64,14 @@ export const postConversationTurn = async ({
     throw error;
   }
 };
+export const failConversation = async (conversationId) => {
+    try {
+        const response = await apiClient.patch(`/api/conversations/${conversationId}/fail`);
+        return response.data;
+    } catch (error) {
+        console.error("대화 중단 처리 실패:", error);
+    }
+};
 
 export const fetchActionCard = async (storyId) => {
   if (!storyId) {

@@ -5,7 +5,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAudioPlayback } from '../hooks/useAudioPlayback';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { fetchStoryScene } from '../api/storyApi';
-import { fetchIntroQuestion, postConversationTurn, fetchActionCard } from '../api/chatApi';
+import { fetchIntroQuestion, postConversationTurn, fetchActionCard, failConversation } from '../api/chatApi';
 import { getChildProfile } from '../api/profileApi';
 import ReactGA from 'react-ga4';
 import homeIcon from '../assets/home_icon.svg';
@@ -20,6 +20,7 @@ const AIChat = () => {
 
     const questionAudioRef = useRef(null);
     const recordingStartTime = useRef(0);
+    const isCompletedRef = useRef(false);
 
     const [chatStep, setChatStep] = useState('intro'); 
     const [sceneData, setSceneData] = useState(null);
@@ -136,17 +137,24 @@ const AIChat = () => {
         }
     }, [chatStep, storyId, cardData]);
 
-    //컴포넌트 이동 시 오디오 정지 로직 추가
     useEffect(() => {
         return () => {
+            // 컴포넌트 언마운트(페이지 이동, 닫기 등) 시 실행
+            
             if (questionAudioRef.current) {
                 console.log("페이지 이동 감지: 오디오 정지");
-                questionAudioRef.current.pause();       // 오디오 일시정지
-                questionAudioRef.current.currentTime = 0; // 재생 위치 초기화
+                questionAudioRef.current.pause();       
+                questionAudioRef.current.currentTime = 0; 
                 questionAudioRef.current = null;        
             }
+
+            // 대화 중단 감지 (sessionId가 있고, 정상 종료가 아닌 경우)
+            if (sessionId && !isCompletedRef.current) {
+                console.log("🚫 대화 중도 이탈 감지! Failed 처리합니다.");
+                failConversation(sessionId); 
+            }
         };
-    }, []);
+    }, [sessionId, storyId]);
 
     const { handleReplay } = useAudioPlayback(
         sceneData?.audio_url, 
@@ -291,13 +299,17 @@ const AIChat = () => {
     };
     
     const finishChat = () => {
-            if (questionAudioRef.current) {
-            questionAudioRef.current.pause();
-            questionAudioRef.current.src = ""; 
-            questionAudioRef.current = null;
-        }
-        navigate(`/chat/${storyId}/card`);
-    };
+        // 정상 종료 여부 확인 (true면 언마운트 시 API 호출 안 함)
+        isCompletedRef.current = true;
+        console.log("✅ 대화 정상 종료 (Flag set to true)");
+
+        if (questionAudioRef.current) {
+            questionAudioRef.current.pause();
+            questionAudioRef.current.src = ""; 
+            questionAudioRef.current = null;
+        }
+        navigate(`/chat/${storyId}/card`);
+    };
     const TopHomeButton = () => (
         <button onClick={() => navigate('/stories')} style={styles.topHomeButton}>
             <img src={homeIcon} alt="홈으로" style={styles.homeIcon} />
