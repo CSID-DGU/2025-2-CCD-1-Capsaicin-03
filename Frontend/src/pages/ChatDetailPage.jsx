@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import leftArrowIcon from '../assets/left_arrow.svg';
 import { getChatDetail } from '../api/parentsApi';
-
+import warningIcon from '../assets/warning.svg';
 const ChatDetailPage = () => {
     const { conversationId } = useParams();
     const navigate = useNavigate();
@@ -88,12 +88,10 @@ const ChatDetailPage = () => {
 
                                     <div style={{
                                         ...styles.chatBubble,
-                                        backgroundColor: isViolated 
-                                            ? '#FFE082' 
-                                            : (isAi ? 'var(--color-third)' : 'var(--color-main)'),
+                                        backgroundColor: isAi ? 'var(--color-third)' : 'var(--color-main)',
                                         
                                         border: isViolated 
-                                            ? '2px solid #FF6F00' 
+                                            ? '2px solid var(--color-fourth)' 
                                             : '2px solid var(--color-text-dark)',
 
                                         marginLeft: isAi ? '10px' : '0',
@@ -101,10 +99,11 @@ const ChatDetailPage = () => {
                                     }}>
                                         <p style={{
                                             ...styles.chatText,
-                                            color: isViolated ? '#D84315' : 'var(--color-text-dark)',
-                                            fontWeight: isViolated ? 'bold' : 'normal'
+                                            color: isViolated ? 'var(--color-fourth)' : 'var(--color-text-dark)',
                                         }}>
-                                            {isViolated && <span style={{ marginRight: '5px' }}>⚠️</span>}
+                                            {isViolated && (
+                                                <img src={warningIcon} alt="warning" style={styles.warningIconImg} />
+                                            )}
                                             {log.content}
                                         </p>
                                     </div>
@@ -234,6 +233,11 @@ const styles = {
         color: 'var(--color-text-dark)',
         lineHeight: '1.4',
         wordBreak: 'keep-all',
+    },
+    warningIconImg: {
+        width: '18px',
+        height: '18px',
+        marginRight: '5px'
     },
     loadingText: {
         textAlign: 'center',
