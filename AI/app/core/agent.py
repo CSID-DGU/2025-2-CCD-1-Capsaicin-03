@@ -101,8 +101,8 @@ class DialogueAgent:
         
         if not safety_result.is_safe:
             logger.warning(f"안전 필터 감지: {safety_result.flagged_categories} - AI가 교육적으로 대응합니다")
-            # 에러가 아닌 AI의 교육적 응답으로 처리
-            return self._handle_safety_violation(safety_result, session, stage)
+            # [수정됨] stt_result를 함께 전달하여 원본 텍스트가 유지되도록 함
+            return self._handle_safety_violation(safety_result, session, stage, stt_result)
         
         # 2. Stage별 Tool 실행 및 대화 생성
         if stage == Stage.S1_EMOTION_LABELING:
@@ -814,7 +814,7 @@ class DialogueAgent:
         return " | ".join(summary_parts) 
     
     def _handle_safety_violation(
-        self, safety_result: SafetyCheckResult, session: DialogueSession, stage: Stage
+        self, safety_result: SafetyCheckResult, session: DialogueSession, stage: Stage, stt_result: STTResult
     ) -> Dict:
         """
         안전 필터 감지 시 교육적 대응
@@ -847,8 +847,24 @@ class DialogueAgent:
         
         logger.info(f"안전 필터 교육적 응답: {ai_text[:50]}...")
         
+        # stt_result 직렬화 (빈 텍스트가 아닌 원본 텍스트 유지)
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+            else:
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+        except Exception as e:
+            logger.error(f"❌ _handle_safety_violation: stt_result 직렬화 실패: {e}")
+            stt_dict = {"text": getattr(stt_result, 'text', '')}
+            
         return {
-            "stt_result": STTResult(text="", confidence=0.0, language="ko").dict(),
+            "stt_result": stt_dict,
             "safety_check": safety_result.dict(),
             "ai_response": {"text": ai_text, "tts_url": None, "duration_ms": None},
             "action_items": ActionItems(
