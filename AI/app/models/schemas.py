@@ -3,7 +3,7 @@ Pydantic 스키마 정의
 대화 턴, 세션, AI 응답 등 모든 데이터 구조를 정의
 """
 from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Dict, Literal
+from typing import Any, Optional, List, Dict, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -15,10 +15,12 @@ from enum import Enum
 class Stage(str, Enum):
     """대화 단계"""
     S1_EMOTION_LABELING = "S1"     # 감정 라벨링
-    S2_ASK_EXPERIENCE = "S2"     # 원인 탐색
-    S3_ACTION_SUGGESTION = "S3"     # 대안 제시
-    S4_LESSON_CONNECTION = "S4"     # 교훈 연결
-    S5_ACTION_CARD = "S5"           # 행동카드 생성
+    S2_ASK_REASON_EMOTION_1 = "S2"  # 원인 탐색 1
+    S3_ASK_EXPERIENCE = "S3"       # 경험 탐색
+    S4_REAL_WORLD_EMOTION = "S4"          # 감정 탐색
+    S5_ASK_REASON_EMOTION_2 = "S5" # 원인 탐색 2
+    S6_ACTION_CARD = "S6"          # 행동 카드 생성
+
 
 
 class ToolType(str, Enum):
@@ -229,6 +231,7 @@ class DialogueSession(BaseModel):
     # 컨텍스트 누적
     emotion_history: List[EmotionLabel] = []
     key_moments: List[Dict] = []  # {"stage": "S2", "content": "엄마가 화났어요"}
+    context: Dict[str, Any] = Field(default_factory=dict)
     
     # 메타데이터
     created_at: datetime = Field(default_factory=datetime.now)

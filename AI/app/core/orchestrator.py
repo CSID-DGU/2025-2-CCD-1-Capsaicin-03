@@ -46,13 +46,13 @@ class StageOrchestrator:
                 },
                 max_retry=3
             ),
-            Stage.S2_ASK_EXPERIENCE: StageConfig(
-                stage=Stage.S2_ASK_EXPERIENCE,
+            Stage.S2_ASK_REASON_EMOTION_1: StageConfig(
+                stage=Stage.S2_ASK_REASON_EMOTION_1,
                 required_tools=[
                     ToolType.CONTEXT_MANAGER,  # S1 감정 인출
                     ToolType.SAFETY_FILTER
                 ],
-                prompt_template="stage_s2_ask_experience",
+                prompt_template="stage_S2_ASK_REASON_EMOTION_1",
                 success_criteria="아동이 동화 캐릭터가 그런 감정을 느낀 이유를 설명",
                 fallback_strategy={
                     "retry_1": "간단한 재질문 (왜 그런 감정을 느꼈을까?)",
@@ -61,43 +61,63 @@ class StageOrchestrator:
                 },
                 max_retry=3
             ),
-            Stage.S3_ACTION_SUGGESTION: StageConfig(
-                stage=Stage.S3_ACTION_SUGGESTION,
+            Stage.S3_ASK_EXPERIENCE: StageConfig(
+                stage=Stage.S3_ASK_EXPERIENCE,
                 required_tools=[
                     ToolType.CONTEXT_MANAGER,  # S3 상황 인출
-                    ToolType.ACTION_CARD_GENERATOR  # 초안 생성
+                    ToolType.SAFETY_FILTER  # 초안 생성
                 ],
-                prompt_template="stage_s3_action_suggestion",
-                success_criteria="아동이 경험을 제시",
+                prompt_template="stage_S3_ASK_EXPERIENCE",
+                success_criteria="아동이 경험 유무(있다/없다)를 명확히 응답",
                 fallback_strategy={
-                    "retry_1": "간단한 재질문 (혹시 이런 경험이 있어?)",
-                    "retry_2": "2지선다 질문 (혹시 ~했던 적이 있어? 아니면 ~했어?)",
-                    "retry_3": "자동으로 S4로 전환"
+                    "retry_1": "경험 유무 재질문 (비슷한 일을 본 적이 있어?)",
+                    "retry_2": "명확한 선택 유도 (본 적이 있으면 '있다', 없으면 '없다'고 말해줄래?)",
+                    # 답변이 없거나 모호하면 '없다'로 간주하고 시나리오 모드(S4)로 이동
+                    "retry_3": "자동으로 S4로 전환 (Default: 경험 없음으로 간주)" 
                 },
                 max_retry=3
             ),
-            Stage.S4_LESSON_CONNECTION: StageConfig(
-                stage=Stage.S4_LESSON_CONNECTION,
+            Stage.S4_REAL_WORLD_EMOTION: StageConfig(
+                stage=Stage.S4_REAL_WORLD_EMOTION,
                 required_tools=[
-                    ToolType.CONTEXT_MANAGER  # 동화 교훈 매칭
+                    ToolType.CONTEXT_MANAGER,  # 동화 교훈 매칭
+                    ToolType.SAFETY_FILTER
                 ],
-                prompt_template="stage_s4_lesson_connection",
-                success_criteria="아동이 '네/알겠어요' 응답",
+                prompt_template="stage_S4_REAL_WORLD_EMOTION",
+                # 목표: 제시된 상황(새치기, 구경 등)에서의 감정을 추측해야 함
+                success_criteria="아동이 상황에 적절한 감정을 대답함",
                 fallback_strategy={
-                    "retry_1": "전략 3개 재진술",
-                    "retry_2": "전략 2개 진술",
-                    "retry_3": "자동으로 S5로 전환"
+                    "retry_1": "상황 재설명 및 감정 질문 (그 친구 표정이 어땠을까?)",
+                    "retry_2": "감정 선택지 제시 (화가 났을까? 슬펐을까?)",
+                    "retry_3": "자동으로 S5로 전환 (감정 추론 건너뛰기)"
                 },
-                max_retry=2  # 교훈은 빠르게 넘어감
+                max_retry=3
             ),
-            Stage.S5_ACTION_CARD: StageConfig(
-                stage=Stage.S5_ACTION_CARD,
+            # [추가됨] S5: 감정 이유 묻기 2 (S2와 동일 로직, 다음은 S6)
+            Stage.S5_ASK_REASON_EMOTION_2: StageConfig(
+                stage=Stage.S5_ASK_REASON_EMOTION_2,
+                required_tools=[
+                    ToolType.CONTEXT_MANAGER,
+                    ToolType.SAFETY_FILTER
+                ],
+                prompt_template="stage_S5_ASK_REASON_EMOTION_2",
+                # 목표: S4에서 답한 감정의 이유(상황적 맥락)를 설명
+                success_criteria="아동이 타인이 그런 감정을 느낀 이유를 설명함",
+                fallback_strategy={
+                    "retry_1": "이유 재질문 (어떤 일 때문에 그런 마음이 들었을까?)",
+                    "retry_2": "상황 기반 힌트 제공 (친구가 밀어서 그랬을까? 게임을 못해서?)",
+                    "retry_3": "자동으로 S6로 전환"
+                },
+                max_retry=3
+            ),
+            Stage.S6_ACTION_CARD: StageConfig(
+                stage=Stage.S6_ACTION_CARD,
                 required_tools=[
                     ToolType.CONTEXT_MANAGER,       # 전체 대화 로그
                     ToolType.ACTION_CARD_GENERATOR  # 최종 카드 생성
                 ],
-                prompt_template="stage_s5_action_card",
-                success_criteria="행동카드 자동 생성 (아동 응답 불필요)",
+                prompt_template="stage_S6_ACTION_CARD",
+                success_criteria="행동카드 자동 생성 및 대화 종료",
                 fallback_strategy={
                     "retry_1": "기본 템플릿으로 카드 생성",
                     "retry_2": "카드 생성 실패 알림"
@@ -143,21 +163,31 @@ class StageOrchestrator:
         logger.info(f"📊 평가 결과 - 규칙 기반: {rule_based_success}, LLM 평가: {llm_evaluation}")
         
         # 3. 최종 판단 (규칙 우선)
-        if current_stage == Stage.S5_ACTION_CARD:
-            logger.info(f"🏁 S5는 마지막 스테이지이므로 다음 Stage로 전환 없음")
-            return False  # S5는 마지막 스테이지
+        if current_stage == Stage.S6_ACTION_CARD:
+            logger.info(f"🏁 S6는 마지막 스테이지이므로 다음 Stage로 전환 없음")
+            return False  # S6는 마지막 스테이지
         
         if rule_based_success:
             logger.info(f"✅ {current_stage.value} 성공: 다음 Stage로 전환")
             return True
         
         # 4. 재시도 카운트 확인
-        if session.retry_count >= config.max_retry:
+        # max_retry가 3일 때, 현재 retry_count가 2이면 (0, 1, 2 총 3번 시도함)
+        # 이번이 마지막 기회였으므로 다음으로 넘어가야 합니다.
+        if session.retry_count >= config.max_retry - 1:
             logger.warning(
-                f"⚠️ {current_stage.value} 최대 재시도 초과 ({config.max_retry}회), "
-                f"Stage 스킵"
+                f"⚠️ {current_stage.value} 최대 재시도 도달 ({session.retry_count + 1}회 시도), "
+                f"다음 Stage로 강제 전환"
             )
             return True  # 강제 전환
+
+        # # 4. 재시도 카운트 확인
+        # if session.retry_count >= config.max_retry:
+        #     logger.warning(
+        #         f"⚠️ {current_stage.value} 최대 재시도 초과 ({config.max_retry}회), "
+        #         f"Stage 스킵"
+        #     )
+        #     return True  # 강제 전환
 
         # 5. 현재 Stage 유지
         logger.info(
@@ -173,7 +203,9 @@ class StageOrchestrator:
         
 
         if stage == Stage.S1_EMOTION_LABELING:
-            
+            stt_result = result.get("stt_result", {})
+            text = stt_result.get("text", "") if isinstance(stt_result, dict) else ""
+    
             happy_keywords = ["1", "일번", "일", "행복"]
             sad_keywords = ["2", "이번", "이", "슬픔"]
             angry_keywords = ["3", "삼번", "삼", "화남"]
@@ -186,14 +218,29 @@ class StageOrchestrator:
             if emotion_result is None:
                 logger.warning(f"❌ S1: emotion_result가 None입니다 (안전 필터 감지 등)")
                 return False
-            
             if emotion_result.get("primary") != EmotionLabel.NEUTRAL:
                 logger.info(emotion_result.get("primary"))
                 return True
+            
+            if any(keyword in text for keyword in happy_keywords):
+                    logger.info(f"✅ S1 성공: 감정(행복) 키워드 발견")
+                    return True
+            if any(keyword in text for keyword in sad_keywords):
+                    logger.info(f"✅ S1 성공: 감정(슬픔) 키워드 발견")
+                    return True
+            if any(keyword in text for keyword in angry_keywords):
+                    logger.info(f"✅ S1 성공: 감정(화남) 키워드 발견")
+                    return True
+            if any(keyword in text for keyword in fear_keywords):
+                    logger.info(f"✅ S1 성공: 감정(무서움) 키워드 발견")
+                    return True
+            if any(keyword in text for keyword in surprise_keywords):
+                    logger.info(f"✅ S1 성공: 감정(놀라움) 키워드 발견")
+                    return True
             else:
                 return False
         
-        elif stage == Stage.S2_ASK_EXPERIENCE:
+        elif stage == Stage.S2_ASK_REASON_EMOTION_1:
             # S2: 아이가 동화 캐릭터의 감정 원인을 설명했는가? (STT 텍스트 길이로 판단)
             stt_result = result.get("stt_result")
             if stt_result is None:
@@ -222,8 +269,9 @@ class StageOrchestrator:
                 logger.info(f"❌ S2 실패: 답변이 너무 짧거나 단순 응답 ('{text}', 길이: {text_length})")
                 return False
             
-        elif stage == Stage.S3_ACTION_SUGGESTION:    
+        elif stage == Stage.S3_ASK_EXPERIENCE:    
             
+            # S3 성공 로직: 긍정/부정 답변 모두 '성공'으로 처리하여 S4로 진입시킴
             stt_result = result.get("stt_result")
             if stt_result is None:
                 logger.warning(f"❌ S3: stt_result가 None입니다")
@@ -238,24 +286,41 @@ class StageOrchestrator:
             text_length = len(text.strip())
             logger.info(f"🔍 S3 성공 조건 체크: 텍스트='{text}', 길이={text_length}")
             
-            reason_keywords = ["적", "있어", "경험", "응", "그래서", "친구", "엄마", "아빠", "부모"]
+            # 긍정 키워드
+            positive_keywords = ["있어", "봤어", "응", "네", "기억나", "경험", "적", "친구", "엄마", "아빠"]
+            # 부정 키워드 (이 답변도 S4 예시 설명을 위해 성공으로 간주)
+            negative_keywords = ["없어", "아니", "몰라", "없었어", "기억안나", "모르겠어", "본 적 없어"]
             
-            # 2자 이상 발화면 성공으로 간주
-            if text_length >= 3:
-                logger.info(f"✅ S3 성공: 텍스트 길이 {text_length} >= 3")
+            has_positive = any(k in text_lower for k in positive_keywords)
+            has_negative = any(k in text_lower for k in negative_keywords)
+            
+            if has_positive:
+                logger.info(f"✅ S3 성공: 긍정 경험 응답 감지")
+                return True
+            elif has_negative:
+                logger.info(f"✅ S3 성공: 부정/없음 응답 감지 -> S4에서 예시 제시로 연결")
+                return True
+            elif text_length >= 5:
+                # 키워드가 없어도 문장이 길면 경험 설명으로 간주
+                logger.info(f"✅ S3 성공: 구체적 서술 감지")
+                return True
+            return False
+            # # 2자 이상 발화면 성공으로 간주
+            # if text_length >= 3:
+            #     logger.info(f"✅ S3 성공: 텍스트 길이 {text_length} >= 3")
                 
                
-                if any(keyword in text for keyword in reason_keywords):
-                    logger.info(f"✅ S3 성공: 경험 키워드 발견")
-                    return True
-                else:
-                    logger.info(f"❌ S3 실패: 경험 키워드 없음")
-                    return False
-            else:
-                logger.info(f"❌ S3 실패: 텍스트 길이 {text_length} < 2")
-                return False
+            #     if any(keyword in text for keyword in reason_keywords):
+            #         logger.info(f"✅ S3 성공: 경험 키워드 발견")
+            #         return True
+            #     else:
+            #         logger.info(f"❌ S3 실패: 경험 키워드 없음")
+            #         return False
+            # else:
+            #     logger.info(f"❌ S3 실패: 텍스트 길이 {text_length} < 2")
+            #     return False
             
-        elif stage == Stage.S4_LESSON_CONNECTION:
+        elif stage == Stage.S4_REAL_WORLD_EMOTION:
             # S3: 아이가 전략을 수락했는가?
             # S2에서 이미 경험을 설명했으므로, S3에서는 전략 수락/선택에 집중
             # 하지만 아이가 다시 경험을 말하거나 다른 응답을 해도 대화 참여로 간주 (S2와 유사한 관대한 기준)
@@ -268,136 +333,43 @@ class StageOrchestrator:
                 text = stt_result.get("text", "").strip()
                 text_lower = text.lower()
             else:
-                logger.warning(f"❌ S3: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
+                logger.warning(f"❌ S4: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
                 return False
             
             text_length = len(text)
             logger.info(f"🔍 S4 성공 조건 체크: 텍스트='{text}' (길이: {text_length})")
             
-            # 1. 전략 수락 키워드 (명시적 수락)
-            acceptance_keywords = [
-                "네", "좋아", "할게", "그럴게", "응", "해볼게", "해볼래", 
-                "그렇게 할게", "해보자", "시도해볼게", "할래", "좋아요",
-                "그럼 그렇게", "그렇게 하자", "그렇게 할래", "알겠어", "알겠어요",
-                "그렇게 해볼게", "해볼게요", "할게요", "그렇게 할게요"
-            ]
+            stt_result = result.get("stt_result", {})
+            text = stt_result.get("text", "") if isinstance(stt_result, dict) else ""
+            return len(text.strip()) >= 1 # 관대하게 판단
             
-            # 2. 전략 선택 키워드 (번호, 순서로 선택)
-            selection_keywords = [
-                "첫 번째", "첫번째", "1번", "하나", "첫번", "1",
-                "둘째", "둘번째", "2번", "둘번", "2",
-                "셋째", "셋번째", "3번", "셋번", "3",
-                "이거", "저거", "그거", "이것", "저것", "그것",
-                "이거 할래", "저거 할래", "그거 할래", "이거 해볼게",
-                "이거 좋아", "저거 좋아", "그거 좋아"
-            ]
+        # [추가됨] S5: S2와 동일한 성공 조건 로직 사용
+        elif stage == Stage.S5_ASK_REASON_EMOTION_2:
+            stt_result = result.get("stt_result")
+            if stt_result is None:
+                logger.warning(f"❌ S5: stt_result가 None입니다")
+                return False
             
-            # 3. 전략 키워드 매칭 (전략 내용이 텍스트에 포함)
-            strategies = result.get("strategies", [])
-            strategy_mentioned = False
-            strategy_keyword = None
-            if strategies and isinstance(strategies, list):
-                logger.info(f"🔍 S4: 전략 목록 확인 - {strategies}")
-                # 전략 중 하나라도 텍스트에 포함되어 있으면 선택한 것으로 간주
-                for strategy in strategies:
-                    if strategy and isinstance(strategy, str):
-                        # 전략의 핵심 키워드 추출 (동사, 명사 등)
-                        strategy_words = strategy.split()
-                        # 의미 있는 단어만 추출 (1글자 제외, 조사 제외)
-                        meaningful_words = [
-                            word for word in strategy_words 
-                            if len(word) > 1 and word not in ["을", "를", "이", "가", "은", "는", "의", "에", "에서"]
-                        ]
-                        # 전략의 앞 2-3개 단어 확인
-                        for keyword in meaningful_words[:3]:
-                            if keyword in text:
-                                strategy_mentioned = True
-                                strategy_keyword = keyword
-                                logger.info(f"🔍 S4: 전략 키워드 발견 - '{strategy}' (매칭 키워드: '{keyword}')")
-                                break
-                        if strategy_mentioned:
-                            break
+            if isinstance(stt_result, dict):
+                text = stt_result.get("text", "")
+            else:
+                logger.warning(f"❌ S5: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
+                return False
             
-            # 4. 성공 조건 판단
-            has_acceptance = any(keyword in text_lower for keyword in acceptance_keywords)
-            has_selection = any(keyword in text_lower for keyword in selection_keywords)
-            has_strategy_mention = strategy_mentioned
+            text_length = len(text.strip())
+            logger.info(f"🔍 S5 성공 조건 체크: 텍스트='{text}', 길이={text_length}")
             
-            # 5. S2와 유사한 관대한 기준: 의미 있는 응답 (경험 재언급 등도 허용)
-            # S2에서 이미 경험을 말했으므로, S3에서 다시 말하거나 다른 응답을 해도 대화 참여로 간주
-            # 단, 너무 짧은 응답("음", "어" 등)은 제외
-            short_responses = ["음", "어", "응", "네", "아", "그래", "아니", "몰라", "모르겠어"]
+            short_responses = ["음", "어", "응", "글쎄", "몰라", "모르겠어"]
+            text_lower = text.strip().lower()
             
-            # 무의미한 반복 문자 체크 (예: "아아ㅏ", "으으으", "ㅋㅋㅋ" 등)
-            # 같은 문자가 2번 이상 반복되면 무의미한 응답으로 간주
-            unique_chars = set(text)
-            is_repetitive = len(unique_chars) <= 2 and len(text) >= 3
-            
-            # 자음/모음만 있는지 체크 (예: "ㅏㅏㅏ", "ㄱㄱㄱ")
-            korean_consonants = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ"
-            korean_vowels = "ㅏㅑㅓㅕㅗㅛㅜㅠㅡㅣ"
-            is_only_jamo = all(c in korean_consonants + korean_vowels or c == ' ' for c in text)
-            
-            is_meaningful_response = (
-                text_length >= 3 and 
-                text not in short_responses and
-                text_lower not in [s.lower() for s in short_responses] and
-                not is_repetitive and  # 반복 문자 제외
-                not is_only_jamo  # 자음/모음만 있는 것 제외
-            )
-            
-            logger.info(
-                f"🔍 S4 평가: "
-                f"수락키워드={has_acceptance}, "
-                f"선택키워드={has_selection}, "
-                f"전략언급={has_strategy_mention}{f' (키워드: {strategy_keyword})' if strategy_keyword else ''}, "
-                f"의미있는응답={is_meaningful_response} (길이: {text_length})"
-            )
-            
-            # 성공 조건 우선순위:
-            # 1. 명시적 수락/선택 (가장 확실)
-            # 2. 전략 키워드 언급 (전략을 이해하고 언급)
-            # 3. 의미 있는 응답 (대화 참여, S2와 유사한 관대한 기준)
-            if has_acceptance:
-                logger.info(f"✅ S4 성공: 전략 수락 키워드 발견")
-                return True
-            elif has_selection:
-                logger.info(f"✅ S4 성공: 전략 선택 키워드 발견")
-                return True
-            elif has_strategy_mention:
-                logger.info(f"✅ S4 성공: 전략 키워드 언급 발견")
-                return True
-            elif is_meaningful_response:
-                # S2에서 이미 경험을 말했으므로, S3에서 의미 있는 응답이면 대화 참여로 간주
-                logger.info(f"✅ S4 성공: 의미 있는 응답 (길이: {text_length} >= 2, S2와 유사한 관대한 기준)")
+            if text_length >= 3 and text_lower not in short_responses:
+                logger.info(f"✅ S5 성공: 의미 있는 답변 (길이: {text_length})")
                 return True
             else:
-                logger.info(f"❌ S4 실패: 모든 조건 불만족 (길이: {text_length})")
+                logger.info(f"❌ S5 실패: 답변이 너무 짧거나 단순 응답 ('{text}', 길이: {text_length})")
                 return False
-        
-        # elif stage == Stage.S4_LESSON_CONNECTION:
-        #     # S4: 아이가 수락했는가?
-        #     stt_result = result.get("stt_result")
-        #     if stt_result is None:
-        #         logger.warning(f"❌ S4: stt_result가 None입니다")
-        #         return False
-            
-        #     if isinstance(stt_result, dict):
-        #         text = stt_result.get("text", "").lower()
-        #     else:
-        #         logger.warning(f"❌ S4: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
-        #         return False
-            
-        #     positive_keywords = ["네", "알겠", "응", "할래", "싶어"]
-        #     logger.info(f"🔍 S4 성공 조건 체크: 텍스트='{text}', 키워드={positive_keywords}")
-        #     if any(keyword in text for keyword in positive_keywords):
-        #         logger.info(f"✅ S4 성공: 긍정 키워드 발견")
-        #         return True
-        #     else:
-        #         logger.info(f"❌ S4 실패: 긍정 키워드 없음")
-        #         return False
-        
-        elif stage == Stage.S5_ACTION_CARD:
+                
+        elif stage == Stage.S6_ACTION_CARD:
             # return True  # S5는 항상 성공으로 간주 (대화 종료)
         
             stt_result = result.get("stt_result")
@@ -428,10 +400,11 @@ class StageOrchestrator:
         """다음 Stage 반환 (순차적)"""
         stage_order = [
             Stage.S1_EMOTION_LABELING,
-            Stage.S2_ASK_EXPERIENCE,
-            Stage.S3_ACTION_SUGGESTION,
-            Stage.S4_LESSON_CONNECTION,
-            Stage.S5_ACTION_CARD
+            Stage.S2_ASK_REASON_EMOTION_1,
+            Stage.S3_ASK_EXPERIENCE,
+            Stage.S4_REAL_WORLD_EMOTION,
+            Stage.S5_ASK_REASON_EMOTION_2,
+            Stage.S6_ACTION_CARD
         ]
         
         try:
@@ -461,7 +434,28 @@ class StageOrchestrator:
         result: Dict
     ) -> DialogueSession:
         """세션 상태 업데이트"""
-        
+        # 1. S3 -> S4 전환 시점: 아이의 답변 성향(긍정/부정) 분석 및 저장
+        if session.current_stage == Stage.S3_ASK_EXPERIENCE and should_transition:
+            stt_result = result.get("stt_result", {})
+            text = stt_result.get("text", "").strip()
+            text_lower = text.lower()
+            
+            # S3 답변 성향 판단 (S4 발화 생성을 위해)
+            negative_keywords = ["없어", "아니", "몰라", "없었어", "기억안나", "모르겠어"]
+            has_negative = any(k in text_lower for k in negative_keywords)
+            
+            # session.context가 없다면 딕셔너리로 초기화 가정 (Pydantic 모델에 필드 필요)
+            if not hasattr(session, "context") or session.context is None:
+                session.context = {}
+            
+            if has_negative:
+                session.context["s3_answer_type"] = "negative"
+                logger.info("📝 S3 결과 기록: 부정(경험 없음) -> S4에서 예시 제시 예정")
+            else:
+                session.context["s3_answer_type"] = "positive"
+                session.context["s3_answer_content"] = text  # 아이의 경험 내용 저장
+                logger.info("📝 S3 결과 기록: 긍정(경험 있음) -> S4에서 공감 및 질문 예정")
+                
         if should_transition:
             # Stage 전환
             next_stage = self.get_next_stage(session.current_stage)
@@ -503,5 +497,5 @@ class StageOrchestrator:
     
     def is_session_complete(self, session: DialogueSession) -> bool:
         """세션이 완료되었는지 확인"""
-        return not session.is_active or session.current_stage == Stage.S5_ACTION_CARD
+        return not session.is_active or session.current_stage == Stage.S6_ACTION_CARD
 
