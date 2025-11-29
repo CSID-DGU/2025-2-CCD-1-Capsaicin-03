@@ -166,20 +166,21 @@ async def process_dialogue_turn_with_audio(
             session.current_stage, turn_result, stt_result.text
         )
         
-        if(session.current_stage != Stage.S5_ACTION_CARD):
+        if(session.current_stage != Stage.S6_ACTION_CARD):
             logger.info(f"🔍 Stage 전환 판단 시작: Stage={session.current_stage.value}")
             should_transition = orchestrator.should_transition_to_next_stage(
                 session, turn_result, agent_evaluation
             )
             logger.info(f"🔍 Stage 전환 결정: {session.current_stage.value} → {'✅ 전환' if should_transition else '❌ 유지'}")
         else:
-            # S5는 다음 스테이지가 없으므로 전환하지 않음
+            # S6는 다음 스테이지가 없으므로 전환하지 않음
             should_transition = False
-            logger.info(f"🔍 S5는 다음 스테이지가 없으므로 전환하지 않음")
-
+            logger.info(f"🔍 S6는 다음 스테이지가 없으므로 전환하지 않음")
+                
         # 6. 세션 상태 업데이트
         old_stage = session.current_stage
         old_retry_count = session.retry_count
+        ## 여기서 Orchestrator가 S3->S4 전환 시 session.context에 's3_answer_type'을 저장함
         session = orchestrator.update_session_state(
             session, should_transition, turn_result
         )
@@ -188,6 +189,7 @@ async def process_dialogue_turn_with_audio(
         logger.info(f"🔍 세션 상태 업데이트: {old_stage.value} → {new_stage.value}, retry_count={old_retry_count} → {new_retry_count}")
 
         # 7. Stage 전환 실패 시 fallback 응답 재생성
+        ## (전환되지 않고 retry 카운트만 늘어난 경우)
         if not should_transition and new_retry_count > old_retry_count:
             logger.info(f"🔄 Fallback 응답 재생성: Stage={new_stage.value}, retry_count={new_retry_count}")
             fallback_response = agent.generate_fallback_response(
@@ -222,16 +224,16 @@ async def process_dialogue_turn_with_audio(
 
         context_manager.save_session(session)
         
-        # 7. 다음 Stage 결정
+        # 9. 다음 Stage 결정
         if should_transition:
             # Stage 전환 성공: session.current_stage가 다음 스테이지
             next_stage_value = new_stage
-            # S5로 전환된 경우, 아직 S5 대화를 시작하지 않았으므로 next_stage는 S5
+            # S6로 전환된 경우, 아직 S6 대화를 시작하지 않았으므로 next_stage는 S6
             logger.info(f"✅ Stage 전환 완료: {old_stage.value} → 다음 Stage = {next_stage_value.value}")
-        elif old_stage.value == Stage.S5_ACTION_CARD and not should_transition:
-            # S5는 다음 스테이지가 없음
+        elif old_stage.value == Stage.S6_ACTION_CARD and not should_transition:
+            # S6는 다음 스테이지가 없음
             next_stage_value = None
-            logger.info("🏁 S5 완료: next_stage = null")
+            logger.info("🏁 S6 완료: next_stage = null")
         else:
             # Stage 유지: 다음에도 같은 Stage
             next_stage_value = new_stage
@@ -377,7 +379,7 @@ async def process_dialogue_turn_with_audio(
                     "code": "PROCESSING_ERROR",
                     "message": str(e),
                     "retry_strategy": "RETRY_WITH_SAME_STAGE",
-                    "fallback_options": ["다시 한번 말해줄래?"]
+                    "fallback_options": ["편하게 말해줘."]
                 },
                 "processing_time_ms": processing_time
             }
@@ -411,7 +413,8 @@ async def start_session(
             child_name=first_name,
             story_name=story_name,
             current_stage=Stage.S1_EMOTION_LABELING,
-            current_turn=1
+            current_turn=1,
+            context={}  # 명시적 초기화
         )
         context_manager.save_session(session)
         
@@ -573,24 +576,24 @@ async def process_test_dialogue_turn(
             session.current_stage, turn_result, stt_result.text
         )
         
-        if(session.current_stage != Stage.S5_ACTION_CARD):
+        if(session.current_stage != Stage.S6_ACTION_CARD):
             logger.info(f"🔍 Stage 전환 판단 시작: Stage={session.current_stage.value}")
             should_transition = orchestrator.should_transition_to_next_stage(
                 session, turn_result, agent_evaluation
             )
             logger.info(f"🔍 Stage 전환 결정: {session.current_stage.value} → {'✅ 전환' if should_transition else '❌ 유지'}")
         else:
-            # S5는 다음 스테이지가 없으므로 전환하지 않음
+            # S6는 다음 스테이지가 없으므로 전환하지 않음
             should_transition = False
-            logger.info(f"🔍 S5는 다음 스테이지가 없으므로 전환하지 않음")
-
+            logger.info(f"🔍 S6는 다음 스테이지가 없으므로 전환하지 않음")
+        
         # 6. 세션 상태 업데이트
         old_stage = session.current_stage
         old_retry_count = session.retry_count
         session = orchestrator.update_session_state(
             session, should_transition, turn_result
         )
-        new_stage = session.current_stage
+        new_stage = session.current_stage        
         new_retry_count = session.retry_count
         logger.info(f"🔍 세션 상태 업데이트: {old_stage.value} → {new_stage.value}, retry_count={old_retry_count} → {new_retry_count}")
 
@@ -616,10 +619,10 @@ async def process_test_dialogue_turn(
             next_stage_value = new_stage
             # S5로 전환된 경우, 아직 S5 대화를 시작하지 않았으므로 next_stage는 S5
             logger.info(f"✅ Stage 전환 완료: {old_stage.value} → 다음 Stage = {next_stage_value.value}")
-        elif old_stage.value == Stage.S5_ACTION_CARD and not should_transition:
-            # S5는 다음 스테이지가 없음
+        elif old_stage.value == Stage.S6_ACTION_CARD and not should_transition:
+            # S6는 다음 스테이지가 없음
             next_stage_value = None
-            logger.info("🏁 S5 완료: next_stage = null")
+            logger.info("🏁 S6 완료: next_stage = null")
         else:
             # Stage 유지: 다음에도 같은 Stage
             next_stage_value = new_stage
@@ -765,7 +768,7 @@ async def process_test_dialogue_turn(
                     "code": "PROCESSING_ERROR",
                     "message": str(e),
                     "retry_strategy": "RETRY_WITH_SAME_STAGE",
-                    "fallback_options": ["다시 한번 말해줄래?"]
+                    "fallback_options": ["편하게 말해줘."]
                 },
                 "processing_time_ms": processing_time
             }
@@ -798,7 +801,8 @@ async def start_test_session(
             child_name=first_name,
             story_name=story_name,
             current_stage=Stage.S1_EMOTION_LABELING,
-            current_turn=1
+            current_turn=1,
+            context={}  # 명시적 초기화
         )
         context_manager.save_session(session)
         

@@ -15,19 +15,22 @@ logger = logging.getLogger(__name__)
 SEL_CHARACTERS = {
     "콩쥐팥쥐": {
         "character_name": "콩쥐",
-        "scene": "새어머니가 콩쥐에게 구멍 난 항아리에 물을 다 채우라고 시키며 괴롭히는 상황",
-        "intro": "새어머니가 나한테 구멍 난 항아리에 물을 채우라고 했어. 이 장면을 보고 어떤 기분이 들었어?",
-        "sel_skill": "자기인식 (자신과 타인의 감정을 분별하고 인식하기)",
+        "scene": "나는 콩쥐야. 오늘 새엄마가 내 몸만한 항아리에 물을 가득 채워 놓으라고 했어. 지금 물을 몇 시간째 붓고 있는데 아무리 물을 부어도 독에 물이 차지 않아. 곧 있으면 새엄마가 올텐데 어쩌지?",
+        "intro": "나는 콩쥐야. 오늘 새엄마가 내 몸만한 항아리에 물을 가득 채워 놓으라고 했어. 지금 물을 몇 시간째 붓고 있는데 아무리 물을 부어도 독에 물이 차지 않아. 이 상황에서 나는 어떤 마음일까?",
+        "sel_skill": "사회인식",
         "safe_tags": ["Sequenced", "Focused"],
-        "lesson": "감정을 표현하고 이해하는 것이 중요해요",
+        "lesson": "타인의 감정을 이해하고 공감하는 것이 중요해요",
         "action_card": {
-            "title": "지금 감정 말로 표현하기",
+            "title": "친구가 힘들 때 도와주는 방법",
             "strategies": [
-                "속상해 말하기",
-                "좋았던 일 말하기",
-                "감정 그림으로 그리기"
+                "옆에 있어주기: 말 걸기 어려울 때는 친구 옆에 잠깐 가만히 있어보자",
+                "도와줄까 말해보기: 누가 힘들어 보이면 '도와줄까?' 하고 말해보자",
+                "마음 물어보기: 친구가 슬퍼 보이면 '괜찮아?' 하고 살짝 물어보자"
             ]
-        }
+        },
+        "s2_prompt_type": "social_awareness",
+        "s3_prompt_type": "social_awareness",
+        "s4_prompt_type": "social_awareness"
     },
     "가난한 유산": {
         "character_name": "아버지",
@@ -64,7 +67,7 @@ SEL_CHARACTERS = {
     "해님 달님": {
         "character_name": "누나",
         "scene": "호랑이가 오누이를 쫓아와 누나가 동생과 함께 도망치는 긴박한 순간",
-        "intro": "호랑이가 우리를 쫓아와서 동생 손을 꼭 잡고 달렸어. 그때 내 마음은 어땠을까?",
+        "intro": "호랑이가 우리를 쫓아와서 동생 손을 꼭 잡고 달렸어. 이 장면을 볼 때 어떤 기분이 들었어?",
         "sel_skill": "사회적 인식 (타인이 어떻게 느끼는지 판단하기 위해 사회적 단서 해석하기)",
         "safe_tags": ["Active", "Focused"],
         "lesson": "위험할 때 서로 도와야 해요",
@@ -212,18 +215,18 @@ class ContextManagerTool:
         if stage == Stage.S1_EMOTION_LABELING:
             context["instruction"] = "아이의 감정을 파악하고 공감하세요"
         
-        elif stage == Stage.S2_ASK_EXPERIENCE:
+        elif stage == Stage.S2_ASK_REASON_EMOTION_1:
             # S1에서 파악한 감정
             if session.emotion_history:
                 context["identified_emotion"] = session.emotion_history[-1].value
         
-        elif stage == Stage.S3_ACTION_SUGGESTION:
+        elif stage == Stage.S3_ASK_EXPERIENCE:
             # S2에서 파악한 상황
             s2_moments = [m for m in session.key_moments if m.get("stage") == "S2"]
             if s2_moments:
                 context["situation"] = s2_moments[-1].get("content")
         
-        elif stage == Stage.S4_LESSON_CONNECTION:
+        elif stage == Stage.S4_REAL_WORLD_EMOTION:
             # 동화 교훈 + 동화에 정의된 행동카드 하위 전략들 제공
             if story_context:
                 action_card = story_context.get("action_card")
@@ -235,8 +238,13 @@ class ContextManagerTool:
                 else:
                     context["action_card"] = action_card
                     context["action_card_strategies"] = []
-        
-        elif stage == Stage.S5_ACTION_CARD:
+                    
+        elif stage == Stage.S5_ASK_REASON_EMOTION_2:
+            # S1에서 파악한 감정
+            if session.emotion_history:
+                context["identified_emotion"] = session.emotion_history[-1].value
+                
+        elif stage == Stage.S6_ACTION_CARD:
             # 전체 대화 요약
             context["all_turns"] = session.key_moments
         

@@ -101,24 +101,28 @@ class DialogueAgent:
         
         if not safety_result.is_safe:
             logger.warning(f"안전 필터 감지: {safety_result.flagged_categories} - AI가 교육적으로 대응합니다")
-            # [수정됨] stt_result를 함께 전달하여 원본 텍스트가 유지되도록 함
+            # 에러가 아닌 AI의 교육적 응답으로 처리
             return self._handle_safety_violation(safety_result, session, stage, stt_result)
+            # return self._handle_safety_violation(safety_result, session, stage)
         
         # 2. Stage별 Tool 실행 및 대화 생성
         if stage == Stage.S1_EMOTION_LABELING:
             return self._execute_s1(request, session, child_text, stt_result)
         
-        elif stage == Stage.S2_ASK_EXPERIENCE:
+        elif stage == Stage.S2_ASK_REASON_EMOTION_1:
             return self._execute_s2(request, session, child_text, stt_result)
         
-        elif stage == Stage.S3_ACTION_SUGGESTION:
+        elif stage == Stage.S3_ASK_EXPERIENCE:
             return self._execute_s3(request, session, child_text, stt_result)
         
-        elif stage == Stage.S4_LESSON_CONNECTION:
+        elif stage == Stage.S4_REAL_WORLD_EMOTION:
             return self._execute_s4(request, session, child_text, stt_result)
-        
-        elif stage == Stage.S5_ACTION_CARD:
+        # [추가됨] S5: 감정 이유 묻기 2
+        elif stage == Stage.S5_ASK_REASON_EMOTION_2:
             return self._execute_s5(request, session, child_text, stt_result)
+        
+        elif stage == Stage.S6_ACTION_CARD:
+            return self._execute_s6(request, session, child_text, stt_result)
         
         else:
             logger.error(f"알 수 없는 Stage: {stage}")
@@ -131,13 +135,54 @@ class DialogueAgent:
         """S1: 감정 라벨링"""
         logger.info("S1 실행: 감정 라벨링")
         
-        # 1. 감정 분류
-        emotion_result = self.emotion_classifier.classify(child_text)
-        logger.info(emotion_result)
-        # 2. 컨텍스트 구성
+        # 컨텍스트 구성
         context = self.context_manager.build_context_for_prompt(
             session, Stage.S1_EMOTION_LABELING
         )
+        
+        # Max retry 체크: retry_count >= 2이면 자연스럽게 다음 단계로 전환
+        if session.retry_count >= 3:
+            logger.info(f"🔄 S1 max retry 도달 (retry_count={session.retry_count}), 자연스럽게 S2로 전환")
+            ai_response = self._generate_s1_max_retry_transition(
+                child_name=session.child_name,
+                context=context
+            )
+            
+            # stt_result 직렬화
+            try:
+                if hasattr(stt_result, 'model_dump'):
+                    stt_dict = stt_result.model_dump()
+                elif hasattr(stt_result, 'dict'):
+                    stt_dict = stt_result.dict()
+                else:
+                    stt_dict = {
+                        "text": getattr(stt_result, 'text', ''),
+                        "confidence": getattr(stt_result, 'confidence', 1.0),
+                        "language": getattr(stt_result, 'language', 'ko')
+                    }
+            except Exception as e:
+                logger.error(f"❌ _execute_s1: stt_result 직렬화 실패: {e}")
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+            
+            return {
+                "stt_result": stt_dict,
+                "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+                "ai_response": ai_response.dict(),
+                "action_items": ActionItems(
+                    type="open_question",
+                    instruction="다음 단계로 넘어가기"
+                ).dict()
+            }
+        
+        # 1. 감정 분류
+        emotion_result = self.emotion_classifier.classify(child_text)
+        logger.info(emotion_result)
+        # 2. 컨텍스트 구성 (이미 위에서 했지만 기존 코드 흐름 유지)
+        # context는 이미 위에서 구성됨
         
         # 3. AI 응답 생성 (일반 공감 응답)
         ai_response = self._generate_empathic_response(
@@ -155,7 +200,7 @@ class DialogueAgent:
                 emotion_result.primary.value,
                 *[e.value for e in emotion_result.secondary]
             ][:3],  # 최대 3개
-            instruction=f"{session.child_name}아 어떤 기분이 들었어?"
+            instruction=f"{session.child_name}아 어떤 기분이 들었을 것 같아?"
         )
         
         # stt_result 직렬화
@@ -191,7 +236,7 @@ class DialogueAgent:
         self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S2: 원인 탐색"""
-        logger.info("S2 실행: 경험 탐색")
+        logger.info("S2 실행: 감정 이유 탐색")
         
         # stt_result 검증 및 로깅
         if stt_result is None:
@@ -200,6 +245,49 @@ class DialogueAgent:
         
         logger.info(f"🔍 _execute_s2: 받은 stt_result.text='{stt_result.text}' (길이: {len(stt_result.text) if stt_result.text else 0})")
         logger.info(f"🔍 _execute_s2: 받은 child_text='{child_text}' (길이: {len(child_text) if child_text else 0})")
+        
+        # 1. 컨텍스트 (S1에서 파악한 감정)
+        context = self.context_manager.build_context_for_prompt(
+            session, Stage.S2_ASK_REASON_EMOTION_1
+        )
+        
+        # Max retry 체크: retry_count >= 3이면 자연스럽게 다음 단계로 전환
+        if session.retry_count >= 3:
+            logger.info(f"🔄 S2 max retry 도달 (retry_count={session.retry_count}), 자연스럽게 S3로 전환")
+            ai_response = self.generate_fallback_response(
+                child_name=session.child_name,
+                context=context
+            )
+            
+            # stt_result 직렬화
+            try:
+                if hasattr(stt_result, 'model_dump'):
+                    stt_dict = stt_result.model_dump()
+                elif hasattr(stt_result, 'dict'):
+                    stt_dict = stt_result.dict()
+                else:
+                    stt_dict = {
+                        "text": getattr(stt_result, 'text', ''),
+                        "confidence": getattr(stt_result, 'confidence', 1.0),
+                        "language": getattr(stt_result, 'language', 'ko')
+                    }
+            except Exception as e:
+                logger.error(f"❌ _execute_s2: stt_result 직렬화 실패: {e}")
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+            
+            return {
+                "stt_result": stt_dict,
+                "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+                "ai_response": ai_response.dict(),
+                "action_items": ActionItems(
+                    type="open_question",
+                    instruction="다음 단계로 넘어가기"
+                ).dict()
+            }
         
         # stt_result 직렬화 (Pydantic v2는 model_dump(), v1은 dict())
         try:
@@ -226,11 +314,6 @@ class DialogueAgent:
                 "language": getattr(stt_result, 'language', 'ko')
             }
             logger.warning(f"⚠️ _execute_s2: 예외 처리 후 수동으로 stt_dict 생성={stt_dict}")
-        
-        # 1. 컨텍스트 (S1에서 파악한 감정)
-        context = self.context_manager.build_context_for_prompt(
-            session, Stage.S2_ASK_EXPERIENCE
-        )
         
         # 2. 아이의 현재 답변 평가 (제대로 답변했는지 확인)
         text_length = len(child_text.strip()) if child_text else 0
@@ -296,8 +379,8 @@ class DialogueAgent:
     def _execute_s3(
         self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
-        """S3: 대안 제시"""
-        logger.info("S3 실행: 대안 제시")
+        """S3: 경험 질문"""
+        logger.info("S3 실행: 경험 질문")
         
         # stt_result 검증 및 로깅
         if stt_result is None:
@@ -309,8 +392,46 @@ class DialogueAgent:
         
         # 1. 컨텍스트 (S2에서 파악한 상황)
         context = self.context_manager.build_context_for_prompt(
-            session, Stage.S3_ACTION_SUGGESTION
+            session, Stage.S3_ASK_EXPERIENCE
         )
+        
+        # Max retry 체크: retry_count >= 3이면 자연스럽게 다음 단계로 전환
+        if session.retry_count >= 3:
+            logger.info(f"🔄 S3 max retry 도달 (retry_count={session.retry_count}), 자연스럽게 S4로 전환")
+            ai_response = self.generate_fallback_response(
+                child_name=session.child_name,
+                context=context
+            )
+            
+            # stt_result 직렬화
+            try:
+                if hasattr(stt_result, 'model_dump'):
+                    stt_dict = stt_result.model_dump()
+                elif hasattr(stt_result, 'dict'):
+                    stt_dict = stt_result.dict()
+                else:
+                    stt_dict = {
+                        "text": getattr(stt_result, 'text', ''),
+                        "confidence": getattr(stt_result, 'confidence', 1.0),
+                        "language": getattr(stt_result, 'language', 'ko')
+                    }
+            except Exception as e:
+                logger.error(f"❌ _execute_s3: stt_result 직렬화 실패: {e}")
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+            
+            return {
+                "stt_result": stt_dict,
+                "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+                "ai_response": ai_response.dict(),
+                "action_items": ActionItems(
+                    type="open_question",
+                    instruction="다음 단계로 넘어가기"
+                ).dict()
+            }
         
         emotion = session.emotion_history[-1].value if session.emotion_history else "감정"
         situation = context.get("situation", child_text)
@@ -332,38 +453,62 @@ class DialogueAgent:
         
         logger.info(f"🔍 _execute_s3: 생성된 전략들={strategies}")
         
-        # 아이의 현재 답변 평가 (제대로 답변했는지 확인)
+        # 아이의 현재 답변 평가
         text_length = len(child_text.strip()) if child_text else 0
-        short_responses = ["음", "어", "응", "글쎄", "몰라", "모르겠어", "없어"]
-        is_proper_answer = text_length >= 3 and child_text.strip() not in short_responses
+        child_text_lower = child_text.strip().lower()
+        
+        # "없어", "없다", "없는데", "없음" 등 부정 답변 감지
+        negative_responses = ["아니", "없어", "없다", "없는데", "없음", "없었어", "모르겠어", "몰라"]
+        has_negative = any(neg in child_text_lower for neg in negative_responses)
+        
+        # "있어", "있다", "있었어" 등 긍정 답변 감지
+        positive_responses = ["응", "있어", "있다", "있었어", "본 적", "했어", "했던"]
+        # has_positive = any(pos in child_text_lower for pos in positive_responses) or text_length >= 5
+        has_positive = (any(pos in child_text_lower for pos in positive_responses) or 
+                        (not has_negative and text_length >= 5))
+        
+        story_context = self.context_manager.get_story_context(session.story_name)
+        prompt_type = story_context.get("s3_prompt_type", "default") if story_context else "default"
+        
+        logger.info(f"🔍 S3 답변 분석: has_negative={has_negative}, has_positive={has_positive}, retry_count={session.retry_count}")
         
         # 3. AI 응답 생성
-        if is_proper_answer:
-            # 제대로 된 답변: 전략 제안 (retry_count 무관)
-            ai_response = self._generate_strategy_suggestion(
+        if has_positive:
+            # 경험이 있다고 함 -> S4로 넘어가서 구체적인 감정 묻기
+            # (다음 턴에서 Orchestrator가 S4로 넘기도록 유도하는 응답)
+            ai_response = self._generate_social_awareness_situation_summary(
                 child_name=session.child_name,
-                strategies=strategies,
+                child_text=child_text,
                 context=context
             )
-        elif session.retry_count == 0:
-            # 초기: 비슷한 경험이 있는지 물어보기
-            ai_response = self._generate_ask_similar_experience(
-                child_name=session.child_name,
-                context=context
-            )
+            instruction = "그때 그 친구 기분은?"
+            
+        elif has_negative:
+            # 경험이 없다고 함 -> S4로 넘어가서 예시 시나리오 1 제시
+            if session.retry_count == 0:
+                 ai_response = self._generate_social_awareness_scenario_1(session.child_name, context)
+            else:
+                 ai_response = self._generate_social_awareness_scenario_2(session.child_name, context)
+            instruction = "이야기 듣고 감정 맞추기"
+            
         else:
-            # retry 시: 전략 제안
-            ai_response = self._generate_strategy_suggestion(
-                child_name=session.child_name,
-                strategies=strategies,
-                context=context
+            # 답변이 모호하거나, 재질문이 필요한 경우 (Retry)
+            # 요청하신 멘트를 출력하여 경험 유무를 다시 묻습니다.
+            story = context.get("story", {})
+            character_name = story.get("character_name", "콩쥐")
+            
+            # 요청하신 멘트 적용
+            retry_text = (
+                f"너도 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어? "
+                f"{character_name}가 힘들어했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?"
             )
-        
-        # 4. 액션 아이템 (선택지 제공)
+            ai_response = AISpeech(text=retry_text)
+            instruction = "경험 유무(있다/없다) 대답하기"
+
+        # 4. 액션 아이템 (전략 선택 삭제 -> 개방형 질문으로 변경)
         action_items = ActionItems(
-            type="emotion_selection",  # 전략 선택
-            options=strategies,
-            instruction="어떤 방법을 해볼까?"
+            type="open_question",
+            instruction=instruction
         )
         
         # stt_result 직렬화
@@ -391,29 +536,113 @@ class DialogueAgent:
             "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
             "ai_response": ai_response.dict(),
             "action_items": action_items.dict(),
-            "strategies": strategies  # 전략 목록 포함 (orchestrator에서 사용)
         }
         
         # 반환 전 최종 확인
         result_stt = result_dict.get("stt_result", {})
         result_text = result_stt.get("text", "") if isinstance(result_stt, dict) else ""
-        result_strategies = result_dict.get("strategies", [])
         logger.info(f"🔍 _execute_s3: 반환할 result_dict['stt_result']['text']='{result_text}' (길이: {len(result_text)})")
-        logger.info(f"🔍 _execute_s3: 반환할 result_dict['strategies']={result_strategies}")
         
         return result_dict
     
+    ##################################### S4 #####################################
     def _execute_s4(
         self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
         """S4: 교훈 연결 + 행동카드 생성"""
-        logger.info("S4 실행: 교훈 연결 + 행동카드 생성")
+        logger.info("S4 실행: 실생활 감정 라벨링")
         
+        # 1. 감정 분류
+        emotion_result = self.emotion_classifier.classify(child_text)
+        logger.info(emotion_result)
+        # 2. 컨텍스트 구성 (이미 위에서 했지만 기존 코드 흐름 유지)
+        # context는 이미 위에서 구성됨
+
+
         # 1. 컨텍스트 (동화 교훈)
         context = self.context_manager.build_context_for_prompt(
-            session, Stage.S4_LESSON_CONNECTION
+            session, Stage.S4_REAL_WORLD_EMOTION
         )
         
+        # Max retry 체크: S4는 max_retry=2이므로 retry_count >= 3면 S5로 전환
+        if session.retry_count >= 3:
+            logger.info(f"🔄 S4 max retry 도달 (retry_count={session.retry_count}), 자연스럽게 S5로 전환")
+            ai_response = self.generate_fallback_response(
+                child_name=session.child_name,
+                context=context
+            )
+            
+            # stt_result 직렬화
+            try:
+                if hasattr(stt_result, 'model_dump'):
+                    stt_dict = stt_result.model_dump()
+                elif hasattr(stt_result, 'dict'):
+                    stt_dict = stt_result.dict()
+                else:
+                    stt_dict = {
+                        "text": getattr(stt_result, 'text', ''),
+                        "confidence": getattr(stt_result, 'confidence', 1.0),
+                        "language": getattr(stt_result, 'language', 'ko')
+                    }
+            except Exception as e:
+                logger.error(f"❌ _execute_s4: stt_result 직렬화 실패: {e}")
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+            
+            return {
+                "stt_result": stt_dict,
+                "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+                "ai_response": ai_response.dict(),
+                "action_items": ActionItems(
+                    type="open_question",
+                    instruction="다음 단계로 넘어가기"
+                ).dict()
+            }
+        
+        story_context = self.context_manager.get_story_context(session.story_name)
+        prompt_type = story_context.get("s4_prompt_type", "default") if story_context else "default"
+        
+        # 사회인식 스킬: 먼저 "왜 그렇게 생각했어?" 질문
+        if prompt_type == "social_awareness" and session.retry_count == 0:
+            ai_response = AISpeech(text="왜 그렇게 생각했어? 그 친구가 그런 감정을 느꼈을 거라고 생각한 이유가 있을까?")
+            
+            action_items = ActionItems(
+                type="open_question",
+                instruction="생각을 말해봐"
+            )
+            
+            # stt_result 직렬화
+            try:
+                if hasattr(stt_result, 'model_dump'):
+                    stt_dict = stt_result.model_dump()
+                elif hasattr(stt_result, 'dict'):
+                    stt_dict = stt_result.dict()
+                else:
+                    stt_dict = {
+                        "text": getattr(stt_result, 'text', ''),
+                        "confidence": getattr(stt_result, 'confidence', 1.0),
+                        "language": getattr(stt_result, 'language', 'ko')
+                    }
+            except Exception as e:
+                logger.error(f"❌ _execute_s4: stt_result 직렬화 실패: {e}")
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+            
+            return {
+                "stt_result": stt_dict,
+                "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+                "emotion_detected": emotion_result.dict(),
+                "ai_response": ai_response.dict(),
+                "action_items": action_items.dict()
+            }
+        
+        # 기본 또는 사회인식 두 번째 턴: 행동카드 생성
         lesson = context.get("lesson")
         
         # 2. 대화 요약 및 정보 추출
@@ -431,7 +660,6 @@ class DialogueAgent:
                 selected_strategy = moment.get("content", "")
         
         # 3. 행동카드 생성
-        story_context = self.context_manager.get_story_context(session.story_name)
         action_card_data = story_context.get("action_card", {}) if story_context else {}
         action_card_title = action_card_data.get("title") if isinstance(action_card_data, dict) else action_card_data
         
@@ -486,16 +714,161 @@ class DialogueAgent:
             "action_items": action_items.dict(),
             "action_card": action_card.dict()
         }
-    
+        
+    ######################################## s5 ########################################
     def _execute_s5(
         self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
     ) -> Dict:
+        """S5: 원인 탐색"""
+        logger.info("S5 실행: 경험 감정 이유 탐색")
+        
+        # stt_result 검증 및 로깅
+        if stt_result is None:
+            logger.error("❌ _execute_s5: stt_result가 None입니다!")
+            raise ValueError("stt_result가 None입니다")
+        
+        logger.info(f"🔍 _execute_s5: 받은 stt_result.text='{stt_result.text}' (길이: {len(stt_result.text) if stt_result.text else 0})")
+        logger.info(f"🔍 _execute_s5: 받은 child_text='{child_text}' (길이: {len(child_text) if child_text else 0})")
+        
+        # 1. 컨텍스트 (S1에서 파악한 감정)
+        context = self.context_manager.build_context_for_prompt(
+            session, Stage.S5_ASK_REASON_EMOTION_2
+        )
+        
+        # Max retry 체크: retry_count >= 3이면 자연스럽게 다음 단계로 전환
+        if session.retry_count >= 3:
+            logger.info(f"🔄 S5 max retry 도달 (retry_count={session.retry_count}), 자연스럽게 S6로 전환")
+            ai_response = self.generate_fallback_response(
+                child_name=session.child_name,
+                context=context
+            )
+            
+            # stt_result 직렬화
+            try:
+                if hasattr(stt_result, 'model_dump'):
+                    stt_dict = stt_result.model_dump()
+                elif hasattr(stt_result, 'dict'):
+                    stt_dict = stt_result.dict()
+                else:
+                    stt_dict = {
+                        "text": getattr(stt_result, 'text', ''),
+                        "confidence": getattr(stt_result, 'confidence', 1.0),
+                        "language": getattr(stt_result, 'language', 'ko')
+                    }
+            except Exception as e:
+                logger.error(f"❌ _execute_s5: stt_result 직렬화 실패: {e}")
+                stt_dict = {
+                    "text": getattr(stt_result, 'text', ''),
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+            
+            return {
+                "stt_result": stt_dict,
+                "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+                "ai_response": ai_response.dict(),
+                "action_items": ActionItems(
+                    type="open_question",
+                    instruction="다음 단계로 넘어가기"
+                ).dict()
+            }
+        
+        # stt_result 직렬화 (Pydantic v2는 model_dump(), v1은 dict())
+        try:
+            if hasattr(stt_result, 'model_dump'):
+                stt_dict = stt_result.model_dump()
+                logger.info(f"🔍 _execute_s5: stt_result.model_dump()={stt_dict}")
+            elif hasattr(stt_result, 'dict'):
+                stt_dict = stt_result.dict()
+                logger.info(f"🔍 _execute_s5: stt_result.dict()={stt_dict}")
+            else:
+                # 수동으로 dict 생성
+                stt_dict = {
+                    "text": stt_result.text,
+                    "confidence": getattr(stt_result, 'confidence', 1.0),
+                    "language": getattr(stt_result, 'language', 'ko')
+                }
+                logger.warning(f"⚠️ _execute_s5: 수동으로 stt_dict 생성={stt_dict}")
+        except Exception as e:
+            logger.error(f"❌ _execute_s5: stt_result 직렬화 실패: {e}")
+            # 수동으로 dict 생성
+            stt_dict = {
+                "text": getattr(stt_result, 'text', ''),
+                "confidence": getattr(stt_result, 'confidence', 1.0),
+                "language": getattr(stt_result, 'language', 'ko')
+            }
+            logger.warning(f"⚠️ _execute_s5: 예외 처리 후 수동으로 stt_dict 생성={stt_dict}")
+        
+        # 2. 아이의 현재 답변 평가 (제대로 답변했는지 확인)
+        text_length = len(child_text.strip()) if child_text else 0
+        short_responses = ["음", "어", "응", "글쎄", "몰라", "모르겠어"]
+        is_proper_answer = text_length >= 3 and child_text.strip() not in short_responses
+        
+        # 3. AI 응답 생성
+        if is_proper_answer:
+            # 제대로 된 답변: 공감 + 비슷한 경험 질문 (retry_count 무관)
+            ai_response = self._generate_s5_empathy_and_ask_experience(
+                child_name=session.child_name,
+                child_text=child_text,
+                context=context
+            )
+        elif session.retry_count == 1:
+            # retry_1: 간단한 재질문
+            ai_response = self._generate_ae_rc1(
+                child_name=session.child_name,
+                context=context
+            )
+        elif session.retry_count == 2:
+            # retry_2: 2지선다 질문
+            ai_response = self._generate_ae_rc2(
+                child_name=session.child_name,
+                context=context
+            )
+        else:
+            # retry_count == 0: 초기 질문 - "왜 그런 감정이 들었을까?"
+            ai_response = self._generate_ask_experience_question(
+                child_name=session.child_name,
+                context=context
+            )
+        # identified_emotion = context.get("identified_emotion", "감정")
+        
+        # 2. AI 응답 생성 (원인 탐색 질문)
+        # ai_response = self._generate_ask_experience_question(
+        #     child_name=session.child_name,
+        #     # emotion=identified_emotion,
+        #     context=context
+        # )
+        
+        # 3. 액션 아이템 (개방형 질문)
+        action_items = ActionItems(
+            type="open_question",
+            instruction="비슷한 경험이 있어?"
+        )
+        
+        result_dict = {
+            "stt_result": stt_dict,
+            "safety_check": SafetyCheckResult(is_safe=True, flagged_categories=[]).dict(),
+            "ai_response": ai_response.dict(),
+            "action_items": action_items.dict()
+        }
+        
+        # 반환 전 최종 확인
+        result_stt = result_dict.get("stt_result", {})
+        result_text = result_stt.get("text", "") if isinstance(result_stt, dict) else ""
+        logger.info(f"🔍 _execute_s5: 반환할 result_dict['stt_result']['text']='{result_text}' (길이: {len(result_text)})")
+        
+        return result_dict
+    
+    ######################################## s6 ########################################
+    def _execute_s6(
+        self, request: DialogueTurnRequest, session: DialogueSession, child_text: str, stt_result: STTResult
+    ) -> Dict:
         """S5: 마무리"""
-        logger.info("S5 실행: 마무리")
+        logger.info("S6 실행: 마무리")
         
         # 1. 컨텍스트
         context = self.context_manager.build_context_for_prompt(
-            session, Stage.S5_ACTION_CARD
+            session, Stage.S6_ACTION_CARD
         )
         
         # 2. AI 응답 (마무리 인사)
@@ -574,7 +947,7 @@ class DialogueAgent:
         # emotion_verb = emotion_verb_map.get(emotion, f"{emotion}을 느꼈을")
         
         # 공감 + 왜 그런 감정이 들었는지 질문
-        response_text = f"그랬구나. 왜 그런 감정이 들었어?"
+        response_text = f"그랬구나. 왜 그런 감정이 들었을 것 같아?"
         
         return AISpeech(text=response_text)
     
@@ -585,9 +958,14 @@ class DialogueAgent:
         """원인 탐색 질문 생성 (S2) - 동화 캐릭터가 왜 그런 감정을 느꼈는지 묻기"""
         story = context.get("story", {})
         character_name = story.get("character_name", "콩쥐")
+        prompt_type = story.get("s2_prompt_type", "default")
         
-        # 직접 질문 생성 (감정 단어 사용하지 않음)
-        question = f"{character_name}가 왜 그렇게 느꼈을 것 같아?"
+        # 사회인식 스킬의 경우: 감정 설명하기
+        if prompt_type == "social_awareness":
+            question = f"{character_name}가 왜 그렇게 느꼈다고 생각해? 그 이유를 한 번 말해볼까?"
+        else:
+            # 기본: 왜 그렇게 느꼈는지 물어보는 질문 (감정 단어 사용하지 않음)
+            question = f"{character_name}가 왜 그렇게 느꼈을 것 같아?"
         
         return AISpeech(text=question)
     
@@ -595,9 +973,16 @@ class DialogueAgent:
         self, child_name: str, child_text: str, context: Dict
     ) -> AISpeech:
         """S2에서 제대로 된 답변을 받았을 때: 공감 + 비슷한 경험 질문"""
+        story = context.get("story", {})
+        character_name = story.get("character_name", "콩쥐")
+        prompt_type = story.get("s2_prompt_type", "default")
         
-        # 공감 + 비슷한 경험 질문 (감정 단어 반복하지 않음)
-        response = f"그랬구나. {child_name}이도 그런 경험이 있어?"
+        # 사회인식 스킬의 경우: 내 경험 말해보기
+        if prompt_type == "social_awareness":
+            response = f"그렇지! 너도 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어? 내가 힘들어한 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까? 있다면 나에게 말해줘."
+        else:
+            # 기본: 공감 + 비슷한 경험 질문 (감정 단어 반복하지 않음)
+            response = f"그랬구나. {child_name}이도 그런 경험이 있어?"
         
         return AISpeech(text=response)
                 
@@ -608,11 +993,11 @@ class DialogueAgent:
     ) -> AISpeech:
         """예시 상황 제시 (S2) - retry_1에서 간단한 재질문"""
         story = context.get("story", {})
-        character_name = story.get("character_name", "콩쥐")
+        # character_name = story.get("character_name", "콩쥐")
         logger.info("_generate_ask_experience_retry_count_1")
         
         # 격려하는 톤으로 재질문
-        question = f"{child_name}아, 괜찮아. 천천히 생각해봐. {character_name}가 왜 그렇게 느꼈을 것 같아?"
+        question = f"{child_name}아, 괜찮아. 천천히 생각해봐. 내가 왜 그렇게 느꼈을 것 같아?"
         
         return AISpeech(text=question)
     
@@ -656,21 +1041,59 @@ class DialogueAgent:
         self, child_name: str, context: Dict
     ) -> AISpeech:
         """비슷한 경험이 있는지 묻기 (S3 초기 질문)"""
-        
-        # 비슷한 경험 질문 (감정 단어 반복하지 않음)
+        # 기본: 비슷한 경험 질문 (감정 단어 반복하지 않음)
         question = f"{child_name}이도 그런 경험이 있어?"
-        
         return AISpeech(text=question)
+    
+    def _generate_social_awareness_scenario_1(
+        self, child_name: str, context: Dict
+    ) -> AISpeech:
+        """사회인식: '없다'고 답했을 때 첫 번째 일상 시나리오"""
+        scenario = """그럼 내가 하나 알려줄게.
+
+        급식 줄에 친구들이 서 있는데 앞에서 서로 밀었다고 싸우고 있어.
+        '왜 밀어!' 하고 화내는 친구는 어떤 마음이었을까?"""
+        return AISpeech(text=scenario)
+    
+    def _generate_social_awareness_scenario_2(
+        self, child_name: str, context: Dict
+    ) -> AISpeech:
+        """사회인식: '없다'고 또 답했을 때 두 번째 일상 시나리오"""
+        scenario = """그럼 다른 상황을 말해줄게.
+
+        쉬는 시간, 보드게임은 딱 4명만 할 수 있는데
+        한 친구가 옆에서 조용히 서서 구경만 하고 있어.
+        그 친구는 어떤 마음이었을까?"""
+        return AISpeech(text=scenario)
+    
+    def _generate_social_awareness_situation_summary(
+        self, child_name: str, child_text: str, context: Dict
+    ) -> AISpeech:
+        """사회인식: '있다'고 답했을 때 아동 상황 정리"""
+        # 아동이 말한 내용을 그대로 활용
+        response = f"""아까 너가 말해준 상황을 다시 말해보면, 그때 그 친구는 어떤 마음이었을까?"""
+        return AISpeech(text=response)
     
     def _generate_s3_rc2(
         self, child_name: str, context: Dict
     ) -> AISpeech:
-        """2지선다 질문 (S3 retry_2) - 비슷한 경험 2가지 예시 제시"""
+        """2지선다 질문 (S3 retry_2) - 비슷한 경험 2가지 예시 제시 또는 두 번째 시나리오"""
         story = context.get("story", {})
         character_name = story.get("character_name", "콩쥐")
         story_intro = story.get("intro", "")
         story_scene = story.get("scene", "")
+        prompt_type = story.get("s3_prompt_type", "default")
         
+        # 사회인식 스킬: 두 번째 일상 시나리오 제공
+        if prompt_type == "social_awareness":
+            question = """그럼 다른 상황을 말해줄게.
+
+            쉬는 시간, 보드게임은 딱 4명만 할 수 있는데
+            한 친구가 옆에서 조용히 서서 구경만 하고 있어.
+            그 친구는 어떤 마음이었을까?"""
+            return AISpeech(text=question)
+        
+        # 기본: 2가지 경험 예시 질문
         prompt = ChatPromptTemplate.from_messages([
             ("system", f"""
             아이에게 비슷한 경험이 있는지 2가지 구체적인 예시를 들어 질문해야 해.
@@ -694,13 +1117,32 @@ class DialogueAgent:
         response = self.llm.invoke(prompt.format_messages())
         return AISpeech(text=response.content.strip())
     
+    def _generate_s5_empathy_and_ask_experience(
+        self, child_name: str, child_text: str, context: Dict
+    ) -> AISpeech:
+        """S5에서 제대로 된 답변을 받았을 때: 공감 + 비슷한 경험 질문"""
+        story = context.get("story", {})
+        character_name = story.get("character_name", "콩쥐")
+        prompt_type = story.get("s5_prompt_type", "default")
+        
+        # 사회인식 스킬의 경우: 내 경험 말해보기
+        if prompt_type == "social_awareness":
+            response = f"그렇지!"
+        else:
+            # 기본: 공감 + 비슷한 경험 질문 (감정 단어 반복하지 않음)
+            response = f"그랬구나. {child_name}이 오늘 정말 잘했어! 행동카드를 줄게"
+        
+        return AISpeech(text=response)
+                
+                
     def _generate_strategy_suggestion(
         self, child_name: str, strategies: List[str], context: Dict
     ) -> AISpeech:
-        """전략 제안 생성 (S3)"""
+        """전략 제안 생성 (S3) - 기본 시나리오용"""
         story = context.get("story", {})
         character_name = story.get("character_name", "콩쥐")
         
+        # 기본: 전략 제안
         strategies_text = ", ".join(strategies)
         
         prompt = ChatPromptTemplate.from_messages([
@@ -726,6 +1168,7 @@ class DialogueAgent:
         response = self.llm.invoke(prompt.format_messages())
         return AISpeech(text=response.content.strip())
     
+    ##################################### Legacy Functions #####################################
     
     def _generate_lesson_connection(
         self, child_name: str, lesson: str, context: Dict
@@ -922,9 +1365,12 @@ class DialogueAgent:
             elif next_retry_count == 2:
                 # retry_2: 감정 선택지 3개 제시
                 logger.info("🔄 S1 retry_2: 감정 선택지 제시")
-                return AISpeech(text=f"{session.child_name}아, 괜찮아. 천천히 생각해봐. 1번은 행복, 2번은 슬픔, 3번은 화남이야. 어떤 기분이 들었어?")
-        
-        elif stage == Stage.S2_ASK_EXPERIENCE:
+                return AISpeech(text=f"{session.child_name}아, 1번은 행복, 2번은 슬픔, 3번은 화남, 4번은 무서움, 5번은 놀라움이야. 이중에서 어떤 기분이 들었을 것 같아?")
+            # else:
+            #     logger.info("🔄 S1 retry_3: 다음 단계로 건너뛰기")
+            #     return AISpeech(text=f"{session.child_name}아 괜찮아! 감정을 말로 표현하는게 어려울 수 있어. 그럼 우리 다른 이야기를 해볼까?")
+
+        elif stage == Stage.S2_ASK_REASON_EMOTION_1:
             if next_retry_count == 1:
                 # retry_1: 간단한 재질문
                 logger.info("🔄 S2 retry_1: 간단한 재질문")
@@ -933,42 +1379,123 @@ class DialogueAgent:
                 # retry_2: 2지선다 질문 (캐릭터가 감정을 느낀 이유 2가지)
                 logger.info("🔄 S2 retry_2: 2지선다 질문")
                 return self._generate_ae_rc2(session.child_name, context)
+            else:
+                logger.info("🔄 S2 retry_3: 다음 단계로 건너뛰기")
+                return AISpeech(text=f"그렇구나, {session.child_name}아. 왜 그랬을지 생각하는 게 쉽지 않지? 괜찮아! 그럼 이제 {character_name}가 어떻게 하면 좋을지 같이 생각해볼까?")
         
-        elif stage == Stage.S3_ACTION_SUGGESTION:
+        elif stage == Stage.S3_ASK_EXPERIENCE:
             if next_retry_count == 1:
                 # retry_1: 간단한 재질문
                 logger.info("🔄 S3 retry_1: 간단한 재질문")
-                return AISpeech(text=f"{session.child_name}아, 괜찮아. 혹시 이런 경험이 있어?")
+                return AISpeech(text=f"{session.child_name}아, 괜찮아. 혹시 콩쥐가 힘들어했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?")
             elif next_retry_count == 2:
                 # retry_2: 2지선다 질문
                 logger.info("🔄 S3 retry_2: 2지선다 질문")
-                return self._generate_s3_rc2(session.child_name, context)
-        
-        elif stage == Stage.S4_LESSON_CONNECTION:
+                return AISpeech(text=f"{session.child_name}아, 혹시 너 친구가 우는 걸 본 적이 있었을까?")
+                # return self._generate_s3_rc2(session.child_name, context)
+            else:
+                logger.info("🔄 S3 retry_3: 다음 단계로 건너뛰기")
+                return AISpeech(text=f"그렇구나. 그럼 내가 예시를 줄게!")
+            
+        elif stage == Stage.S4_REAL_WORLD_EMOTION:
             # SEL_CHARACTERS에서 동화별 action_card strategies 가져오기
             story_context = self.context_manager.get_story_context(session.story_name)
-            action_card_data = story_context.get("action_card", {}) if story_context else {}
-            
-            if isinstance(action_card_data, dict):
-                strategies = action_card_data.get("strategies", [])
-            else:
-                strategies = []
-            
-            # strategies가 없으면 기본 전략 사용
-            if not strategies:
-                strategies = ["감정을 말로 표현하기", "깊게 숨쉬기", "좋아하는 것 생각하기"]
             
             if next_retry_count == 1:
                 # retry_1: 전략 3개 재진술
-                logger.info("🔄 S4 retry_1: 전략 3개 재진술")
-                strategies_text = ", ".join(strategies[:3])
-                return AISpeech(text=f"{session.child_name}아, 다시 말해줄게. {strategies_text} 중에서 어떤 걸 해볼까?")
+                logger.info("🔄 S4 retry_1: 상황 재설명 및 감정 질문")
+                return AISpeech(text=f"{session.child_name}아, 다시 말해줄게. ** 이전 질문 다시하기, 마지막 질문은 그 아이 표정은 어땠을까?로 변경해서 **")
             elif next_retry_count == 2:
                 # retry_2: 전략 2개 진술
-                logger.info("🔄 S4 retry_2: 전략 2개 진술")
-                strategies_text = "이랑 ".join(strategies[:2])
-                return AISpeech(text=f"{session.child_name}아, {strategies_text} 중에서 하나만 골라볼래?")
+                logger.info("🔄 S4 retry_2: 감정 선택지 제시 (** 화난 표정이었을까, 슬픈표정이었을까? ** )")
+            else:
+                logger.info("🔄 S4 retry_3: 다음 단계로 건너뛰기")
+                return AISpeech(text=f"괜찮아, {session.child_name}아! ** 정답 말해주기 **")
         
+        # [추가됨] S5 Fallback (S2와 유사)
+        elif stage == Stage.S5_ASK_REASON_EMOTION_2:
+            if next_retry_count == 1:
+                logger.info("🔄 S5 retry_1")
+                return AISpeech(text=f"괜찮아, 그 친구가 왜 그런 표정을 지었을 것 같아?")
+            elif next_retry_count == 2:
+                logger.info("🔄 S5 retry_2")
+                return AISpeech(text=f"** 선택지 제시(이지선다 / 삼지선다 등등) **")
+            else:
+                logger.info("🔄 S5 retry_3")
+                return AISpeech(text=f"** 조금 어려웠지? 내가 너에게 행동카드를 줄건데 연습해보자 등등 .. 자연스럽게 행동카드 얘기로 넘어가도록 **")
+            
         # 기본 응답
-        return AISpeech(text=f"{session.child_name}아, 다시 한번 말해줄래?")
+        return AISpeech(text=f"{session.child_name}아, 난 너의 친구야. 편하게 이야기해줘.")
 
+##################################### Max Retry Transitions #####################################
+
+    def generate_max_retry_transition_response(
+            self, 
+            child_name: str, 
+            prev_stage: Stage, 
+            next_stage: Stage
+        ) -> AISpeech:
+            """
+            Max Retry 도달로 인한 강제 전환 시, 아이를 위로하고 다음 단계로 자연스럽게 잇는 멘트 생성
+            """
+            logger.info(f"🌉 강제 전환 브릿지 멘트 생성: {prev_stage.value} -> {next_stage.value}")
+
+            # S1(감정 라벨링) -> S2(원인 묻기) 전환 시
+            if prev_stage == Stage.S1_EMOTION_LABELING:
+                text = (
+                    f"{child_name}아, 괜찮아! 감정을 말로 표현하는 게 조금 어려울 수 있어. " # 위로 (S1 마무리)
+                    "그럼 우리 다른 이야기를 해볼까? " # 연결
+                    "혹시 콩쥐가 왜 그런 행동을 했을지 생각해본 적 있어?" # S2 진입
+                )
+                return AISpeech(text=text)
+
+            # S2 -> S3 전환 시
+            elif prev_stage == Stage.S2_ASK_REASON_EMOTION_1:
+                text = (
+                    f"그렇구나, {child_name}아. 왜 그랬을지 생각하는 게 쉽지 않지? 괜찮아! "
+                    "그럼 혹시 너도 비슷한 일을 겪은 적이 있는지 이야기해볼까?"
+                )
+                return AISpeech(text=text)
+                
+            # 기본 멘트
+            return AISpeech(text=f"{child_name}아, 우리 다음 이야기로 넘어가보자!")
+    
+    # ## 정답을 알려주는 프롬프팅 작업 필요 ##
+    # def _generate_s1_max_retry_transition(
+    #     self, child_name: str, context: Dict
+    # ) -> AISpeech:
+    #     """S1에서 max retry 도달: 감정 파악이 어려울 때 자연스럽게 다음 단계로"""
+    #     response = f"{child_name}아, 괜찮아! 감정을 말로 표현하는 게 어려울 수 있어. 그럼 우리 다른 방법으로 이야기해볼까?"
+    #     return AISpeech(text=response)
+    
+    # def _generate_s2_max_retry_transition(
+    #     self, child_name: str, context: Dict
+    # ) -> AISpeech:
+    #     """S2에서 max retry 도달: 원인 탐색이 어려울 때 자연스럽게 다음 단계로"""
+    #     story = context.get("story", {})
+    #     character_name = story.get("character_name", "콩쥐")
+        
+    #     response = f"그렇구나, {child_name}아. 왜 그랬을지 생각하는 게 쉽지 않지? 너의 경험을 삼아 이야기하면 쉬워질거야!"
+    #     return AISpeech(text=response)
+    
+    # def _generate_s3_max_retry_transition(
+    #     self, child_name: str, context: Dict
+    # ) -> AISpeech:
+    #     """S3에서 max retry 도달: 대안 제시가 어려울 때 자연스럽게 다음 단계로"""
+    #     response = f"{child_name}아, 충분히 생각해봤어! 이제 우리가 오늘 배운 것을 정리해볼까?"
+    #     return AISpeech(text=response)
+    
+    # def _generate_s4_max_retry_transition(
+    #     self, child_name: str, context: Dict
+    # ) -> AISpeech:
+    #     """S4에서 max retry 도달: 교훈 연결이 어려울 때 자연스럽게 다음 단계로"""
+    #     response = f"괜찮아, {child_name}아! 오늘 우리가 이야기 나눈 것만으로도 충분해. 이제 마지막으로 행동카드를 만들어볼까?"
+    #     return AISpeech(text=response)
+    
+    # # [추가됨] S5 Max Retry Transition
+    # def _generate_s5_max_retry_transition(
+    #     self, child_name: str, context: Dict
+    # ) -> AISpeech:
+    #     """S5에서 max retry 도달: S6(행동카드)로 전환"""
+    #     response = f"{child_name}아, 충분히 잘 이야기해줬어! 이제 마지막으로 멋진 행동카드를 만들어볼까?"
+    #     return AISpeech(text=response)
