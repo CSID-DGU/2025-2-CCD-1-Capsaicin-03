@@ -82,7 +82,6 @@ const ChatListPage = () => {
                     ) : (
                         chatList.length > 0 ? (
                             chatList.map((item) => {
-                                // ✅ 수정 포인트 1: 중괄호 {}를 열고 로그를 찍은 뒤 return을 씁니다.
                                 console.log(`ID: ${item.id}, Title: ${item.title}, Status:`, item.status);
 
                                 return (
@@ -96,11 +95,12 @@ const ChatListPage = () => {
                                             <span style={styles.itemTitle}>{item.title}</span>
                                         </div>
 
-                                        {/* ✅ 수정 포인트 2: 오른쪽 정렬 영역과 중단 메시지 코드 복구 */}
                                         <div style={styles.itemRight}>
                                             {/* status가 FAILED(대소문자 무관)일 때만 표시 */}
                                             {(item.status?.toUpperCase() === 'FAILED' || item.status === 'failed') && (
-                                                <span style={styles.failedText}>대화 중단됨</span>
+                                                <div style={styles.failedBadge}>
+                                                진행 중 이탈
+                                                </div>
                                             )}
                                             <img src={rightArrowIcon} alt="상세보기" style={styles.arrowIconImg} />
                                         </div>
@@ -211,11 +211,21 @@ const styles = {
         alignItems: 'center',
         gap: '12px',
     },
-    failedText: {
-        fontSize: '13px',
-        color: '#999999',
+    failedBadge: {
+        backgroundColor: 'var(--color-third)', 
+        border: '2px solid var(--color-text-dark)', 
+        borderRadius: '20px', 
+        padding: '2px 10px', 
+        fontSize: '12px', 
+        color: 'var(--color-text-dark)', 
         fontFamily: "var(--font-family-primary)",
-        whiteSpace: 'nowrap'
+        whiteSpace: 'nowrap', 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '26px', 
+        boxSizing: 'border-box', 
+        boxShadow: '0 1px 2px rgba(0,0,0,0.1)', 
     },
     arrowIconImg: {
         width: '24px',

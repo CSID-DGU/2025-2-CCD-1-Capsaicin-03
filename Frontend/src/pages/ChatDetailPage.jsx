@@ -9,6 +9,7 @@ const ChatDetailPage = () => {
     const { conversationId } = useParams();
     const navigate = useNavigate();
     const [chatLogs, setChatLogs] = useState([]);
+    const [chatStatus, setChatStatus] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -24,6 +25,7 @@ const ChatDetailPage = () => {
 
                 if (response && response.success) {
                     setChatLogs(response.data.logs);
+                    setChatStatus(response.data.status);
                 } else {
                     console.error("데이터를 불러오지 못했습니다:", response?.message);
                 }
@@ -68,6 +70,7 @@ const ChatDetailPage = () => {
                             border-radius: 10px;
                             background-clip: padding-box;
                             border: 4px solid transparent;
+                        }
                     `}
                 </style>
 
@@ -75,46 +78,31 @@ const ChatDetailPage = () => {
                     {isLoading ? (
                         <div style={styles.loadingText}>대화를 불러오는 중...</div>
                     ) : (
-                        chatLogs.map((log) => {
-                            const isAi = log.speaker === 'AI';
-                            const isViolated = log.is_violated;
-                            return (
-                                <div key={log.log_id} style={styles.messageRow}>
-                                    {isAi && (
-                                        <div style={{...styles.avatar, backgroundColor: 'var(--color-third)'}}>
-                                            AI
+                        <>
+                            {chatLogs.map((log) => {
+                                const isAi = log.speaker === 'AI';
+                                const isViolated = log.is_violated;
+                                return (
+                                    <div key={log.log_id} style={styles.messageRow}>
+                                        {isAi && ( <div style={{...styles.avatar, backgroundColor: 'var(--color-third)'}}> AI </div> )}
+                                        <div style={{ ...styles.chatBubble, backgroundColor: isAi ? 'var(--color-third)' : 'var(--color-main)', border: isViolated ? '2px solid var(--color-fourth)' : '2px solid var(--color-text-dark)', marginLeft: isAi ? '10px' : '0', marginRight: isAi ? '0' : '10px' }}>
+                                                <p style={{ ...styles.chatText, color: isViolated ? 'var(--color-fourth)' : 'var(--color-text-dark)', }}>
+                                                    {isViolated && ( <img src={warningIcon} alt="warning" style={styles.warningIconImg} /> )}
+                                                    {log.content}
+                                                </p>
                                         </div>
-                                    )}
-
-                                    <div style={{
-                                        ...styles.chatBubble,
-                                        backgroundColor: isAi ? 'var(--color-third)' : 'var(--color-main)',
-                                        
-                                        border: isViolated 
-                                            ? '2px solid var(--color-fourth)' 
-                                            : '2px solid var(--color-text-dark)',
-
-                                        marginLeft: isAi ? '10px' : '0',
-                                        marginRight: isAi ? '0' : '10px'
-                                    }}>
-                                        <p style={{
-                                            ...styles.chatText,
-                                            color: isViolated ? 'var(--color-fourth)' : 'var(--color-text-dark)',
-                                        }}>
-                                            {isViolated && (
-                                                <img src={warningIcon} alt="warning" style={styles.warningIconImg} />
-                                            )}
-                                            {log.content}
-                                        </p>
+                                        {!isAi && ( <div style={{...styles.avatar, backgroundColor: 'var(--color-main)'}}> 아이 </div> )}
                                     </div>
-                                    {!isAi && (
-                                        <div style={{...styles.avatar, backgroundColor: 'var(--color-main)'}}>
-                                            아이
-                                        </div>
-                                    )}
+                                );
+                            })}
+                            
+                            {chatStatus === 'FAILED' && (
+                                <div style={styles.failedNotice}>
+                                    ---------- 학습 도중 이탈로 대화 내용은 진행된 부분까지만 저장됩니다. ----------
                                 </div>
-                            );
-                        })
+                            )}
+                            
+                        </>
                     )}
                 </div>
             </main>
@@ -233,6 +221,8 @@ const styles = {
         color: 'var(--color-text-dark)',
         lineHeight: '1.4',
         wordBreak: 'keep-all',
+        display: 'flex',
+        alignItems: 'center'
     },
     warningIconImg: {
         width: '18px',
@@ -245,6 +235,13 @@ const styles = {
         fontSize: '1.2rem',
         marginTop: '50px',
     },
+    failedNotice: {
+        textAlign: 'center',
+        color: 'var(--color-text-dark)',
+        marginTop: '20px',
+        marginBottom: '10px',
+        fontFamily: "var(--font-family-primary)"
+    }
 };
 
 export default ChatDetailPage;
