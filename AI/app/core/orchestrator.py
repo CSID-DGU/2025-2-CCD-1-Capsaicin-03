@@ -153,22 +153,23 @@ class StageOrchestrator:
         
         logger.info(f"🔍 Stage 전환 판단 시작: {current_stage.value}, 재시도 횟수: {session.retry_count}/{config.max_retry}")
         
-        # 1. 규칙 기반 성공 판단
-        rule_based_success = self._check_rule_based_success(
-            current_stage, current_result
-        )
-        
-        # 2. LLM 기반 평가 (보조)
-        llm_evaluation = agent_evaluation.get("success", False)
-        logger.info(f"📊 평가 결과 - 규칙 기반: {rule_based_success}, LLM 평가: {llm_evaluation}")
-        
-        # 3. 최종 판단 (규칙 우선)
+        # 최종 판단
         if current_stage == Stage.S6_ACTION_CARD:
             logger.info(f"🏁 S6는 마지막 스테이지이므로 다음 Stage로 전환 없음")
             return False  # S6는 마지막 스테이지
         
+        # 1차: 규칙 기반 평가 (빠른 성공 판단)
+        rule_based_success = self._check_rule_based_success(current_stage, current_result)
+        logger.info(f"📊 규칙 기반 평가 결과: {rule_based_success}")
         if rule_based_success:
-            logger.info(f"✅ {current_stage.value} 성공: 다음 Stage로 전환")
+            logger.info(f"✅ {current_stage.value} 성공 (규칙 기반): 다음 Stage로 전환")
+            return True
+        
+        # 2차: LLM 평가 (규칙 기반에서 실패한 경우 정밀 평가)
+        agent_success = current_result.get("llm_evaluation", {}).get("success", False)
+        logger.info(f"📊 Agent LLM 평가 결과: {agent_success}")
+        if agent_success:
+            logger.info(f"✅ {current_stage.value} 성공 (Agent LLM 평가): 다음 Stage로 전환")
             return True
         
         # 4. 재시도 카운트 확인
@@ -202,72 +203,25 @@ class StageOrchestrator:
         """규칙 기반 성공 조건 체크"""
 
         if stage == Stage.S1_EMOTION_LABELING:
-            stt_result = result.get("stt_result", {})
-            text = stt_result.get("text", "") if isinstance(stt_result, dict) else ""
-    
-            happy_keywords = ["1", "1번", "일번", "일", "행복"]
-            sad_keywords = ["2", "2번", "이번", "이", "슬픔"]
-            angry_keywords = ["3", "3번", "삼번", "삼", "화남"]
-            fear_keywords = ["4", "4번", "사번", "사", "무서움"]
-            surprise_keywords = ["5", "5번", "오번", "오", "놀라움", "신기"]
-            
-            # S1: 감정이 분류되었는가?
+            # S1: 감정이 분류되었는가? (키워드 체크 제거, 감정 분류기만 사용)
             emotion_result = result.get("emotion_detected")
             
             # 안전 필터 감지 시 emotion_result가 None일 수 있음
             if emotion_result is None:
                 logger.warning(f"❌ S1: emotion_result가 None입니다 (안전 필터 감지 등)")
                 return False
+            
             if emotion_result.get("primary") != EmotionLabel.NEUTRAL:
-                logger.info(emotion_result.get("primary"))
+                logger.info(f"✅ S1 성공: 감정 분류됨 ({emotion_result.get('primary')})")
                 return True
             
-            if any(keyword in text for keyword in happy_keywords):
-                    logger.info(f"✅ S1 성공: 감정(행복) 키워드 발견")
-                    return True
-            if any(keyword in text for keyword in sad_keywords):
-                    logger.info(f"✅ S1 성공: 감정(슬픔) 키워드 발견")
-                    return True
-            if any(keyword in text for keyword in angry_keywords):
-                    logger.info(f"✅ S1 성공: 감정(화남) 키워드 발견")
-                    return True
-            if any(keyword in text for keyword in fear_keywords):
-                    logger.info(f"✅ S1 성공: 감정(무서움) 키워드 발견")
-                    return True
-            if any(keyword in text for keyword in surprise_keywords):
-                    logger.info(f"✅ S1 성공: 감정(놀라움) 키워드 발견")
-                    return True
-            else:
-                return False
+            logger.info(f"❌ S1 실패: NEUTRAL 감정")
+            return False
         
         elif stage == Stage.S2_ASK_REASON_EMOTION_1:
-            # S2: 아이가 동화 캐릭터의 감정 원인을 설명했는가? (STT 텍스트 길이로 판단)
-            stt_result = result.get("stt_result")
-            if stt_result is None:
-                logger.warning(f"❌ S2: stt_result가 None입니다")
-                return False
-            
-            # stt_result가 dict인지 확인
-            if isinstance(stt_result, dict):
-                text = stt_result.get("text", "")
-            else:
-                logger.warning(f"❌ S2: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
-                return False
-            
-            text_length = len(text.strip())
-            logger.info(f"🔍 S2 성공 조건 체크: 텍스트='{text}', 길이={text_length}")
-            
-            # 단순 응답 제외 ("음", "어", "글쎄" 등)
-            short_responses = ["음", "어", "응", "글쎄", "몰라", "모르겠어"]
-            text_lower = text.strip().lower()
-            
-            # 3자 이상이고 단순 응답이 아니면 성공
-            if text_length >= 3 and text_lower not in short_responses:
-                logger.info(f"✅ S2 성공: 의미 있는 답변 (길이: {text_length})")
-                return True
-            else:
-                logger.info(f"❌ S2 실패: 답변이 너무 짧거나 단순 응답 ('{text}', 길이: {text_length})")
-                return False
+            # S2: LLM 평가 사용 (이 함수는 호출되지 않아야 함)
+            logger.warning(f"⚠️ S2는 LLM 평가를 사용해야 합니다")
+            return False
             
         elif stage == Stage.S3_ASK_EXPERIENCE:    
             
@@ -300,10 +254,6 @@ class StageOrchestrator:
             elif has_negative:
                 logger.info(f"✅ S3 성공: 부정/없음 응답 감지 -> S4에서 예시 제시로 연결")
                 return True
-            elif text_length >= 5:
-                # 키워드가 없어도 문장이 길면 경험 설명으로 간주
-                logger.info(f"✅ S3 성공: 구체적 서술 감지")
-                return True
             return False
             
             
@@ -321,71 +271,26 @@ class StageOrchestrator:
                 logger.warning(f"❌ S4: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
                 return False
             
-            text_length = len(text)
-            logger.info(f"🔍 S4 성공 조건 체크: 텍스트='{text}' (길이: {text_length})")
+            logger.info(f"🔍 S4 성공 조건 체크: 텍스트='{text}'")
             
-            # S1과 동일: 감정 키워드 감지
-            happy_keywords = ["1", "1번", "일번", "일", "행복"]
-            sad_keywords = ["2", "2번", "이번", "이", "슬픔"]
-            angry_keywords = ["3", "3번", "삼번", "삼", "화남"]
-            fear_keywords = ["4", "4번", "사번", "사", "무서움"]
-            surprise_keywords = ["5", "5번", "오번", "오", "놀라움", "신기"]
-            
-            # S4 감정 분류 결과 확인
+            # S4 감정 분류 결과 확인 (키워드 체크 제거, 감정 분류기만 사용)
             emotion_result = result.get("emotion_detected")
             if emotion_result is None:
                 logger.warning(f"❌ S4: emotion_result가 None입니다")
                 return False
             
-            # 중립이 아닌 감정이 분류되었거나, 감정 키워드가 있으면 성공
+            # 중립이 아닌 감정이 분류되었으면 성공
             if emotion_result.get("primary") != EmotionLabel.NEUTRAL:
                 logger.info(f"✅ S4 성공: 감정 분류됨 ({emotion_result.get('primary')})")
                 return True
             
-            if any(keyword in text_lower for keyword in happy_keywords):
-                logger.info(f"✅ S4 성공: 감정(행복) 키워드 발견")
-                return True
-            if any(keyword in text_lower for keyword in sad_keywords):
-                logger.info(f"✅ S4 성공: 감정(슬픔) 키워드 발견")
-                return True
-            if any(keyword in text_lower for keyword in angry_keywords):
-                logger.info(f"✅ S4 성공: 감정(화남) 키워드 발견")
-                return True
-            if any(keyword in text_lower for keyword in fear_keywords):
-                logger.info(f"✅ S4 성공: 감정(무서움) 키워드 발견")
-                return True
-            if any(keyword in text_lower for keyword in surprise_keywords):
-                logger.info(f"✅ S4 성공: 감정(놀라움) 키워드 발견")
-                return True
-            
-            logger.info(f"❌ S4 실패: 감정 키워드 미감지")
+            logger.info(f"❌ S4 실패: NEUTRAL 감정")
             return False
             
-        # [추가됨] S5: S2와 동일한 성공 조건 로직 사용
+        # [추가됨] S5: LLM 평가 사용 (이 함수는 호출되지 않아야 함)
         elif stage == Stage.S5_ASK_REASON_EMOTION_2:
-            stt_result = result.get("stt_result")
-            if stt_result is None:
-                logger.warning(f"❌ S5: stt_result가 None입니다")
-                return False
-            
-            if isinstance(stt_result, dict):
-                text = stt_result.get("text", "")
-            else:
-                logger.warning(f"❌ S5: stt_result가 dict가 아닙니다. 타입: {type(stt_result)}")
-                return False
-            
-            text_length = len(text.strip())
-            logger.info(f"🔍 S5 성공 조건 체크: 텍스트='{text}', 길이={text_length}")
-            
-            short_responses = ["음", "어", "응", "글쎄", "몰라", "모르겠어"]
-            text_lower = text.strip().lower()
-            
-            if text_length >= 3 and text_lower not in short_responses:
-                logger.info(f"✅ S5 성공: 의미 있는 답변 (길이: {text_length})")
-                return True
-            else:
-                logger.info(f"❌ S5 실패: 답변이 너무 짧거나 단순 응답 ('{text}', 길이: {text_length})")
-                return False
+            logger.warning(f"⚠️ S5는 LLM 평가를 사용해야 합니다")
+            return False
                 
         elif stage == Stage.S6_ACTION_CARD:
             # return True  # S5는 항상 성공으로 간주 (대화 종료)
@@ -459,20 +364,26 @@ class StageOrchestrator:
             text_lower = text.lower()
             
             # S3 답변 성향 판단 (S4 발화 생성을 위해)
-            negative_keywords = ["없어", "아니", "몰라", "없었어", "기억안나", "모르겠어"]
+            # _check_rule_based_success와 동일한 키워드 사용
+            positive_keywords = ["있어", "봤어", "응", "네", "기억나", "경험", "적", "친구", "엄마", "아빠"]
+            negative_keywords = ["없어", "아니", "몰라", "없었어", "기억안나", "모르겠어", "본 적 없어"]
+            
+            has_positive = any(k in text_lower for k in positive_keywords)
             has_negative = any(k in text_lower for k in negative_keywords)
             
             # session.context가 없다면 딕셔너리로 초기화 가정 (Pydantic 모델에 필드 필요)
             if not hasattr(session, "context") or session.context is None:
                 session.context = {}
             
-            if has_negative:
-                session.context["s3_answer_type"] = "negative"
-                logger.info("📝 S3 결과 기록: 부정(경험 없음) -> S4에서 예시 제시 예정")
-            else:
+            # 명확한 긍정 키워드가 있는 경우만 긍정으로 처리
+            if has_positive and not has_negative:
                 session.context["s3_answer_type"] = "positive"
                 session.context["s3_answer_content"] = text  # 아이의 경험 내용 저장
                 logger.info("📝 S3 결과 기록: 긍정(경험 있음) -> S4에서 공감 및 질문 예정")
+            else:
+                # 부정 키워드가 있거나, 긍정/부정 둘 다 없거나, 짧은 답변인 경우 -> 부정으로 간주
+                session.context["s3_answer_type"] = "negative"
+                logger.info("📝 S3 결과 기록: 부정(경험 없음) -> S4에서 예시 제시 예정")
                 
         if should_transition:
             # Stage 전환
