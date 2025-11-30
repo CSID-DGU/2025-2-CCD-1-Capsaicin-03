@@ -180,6 +180,7 @@ public class ConversationService {
 
         return ConversationDetailResponseDto.builder()
                 .id(conversationId)
+                .status(conversation.getStatus())
                 .logs(logDtos)
                 .build();
     }
