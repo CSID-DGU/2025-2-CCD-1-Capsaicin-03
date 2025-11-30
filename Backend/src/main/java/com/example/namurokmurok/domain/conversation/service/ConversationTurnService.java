@@ -44,8 +44,6 @@ public class ConversationTurnService {
 
     private final FeedbackService feedbackService;
 
-    private static final int MAX_RETRY_COUNT = 3; // retry 최대 횟수
-
     /**
      * 실시간 대화 턴 처리 (메인 로직)
      */
@@ -79,7 +77,7 @@ public class ConversationTurnService {
         saveDialogueLog(conversation, stage, currentRetryCount, aiRes, ttsUrl);
 
         // 7. 종료 여부 판단
-        boolean isEnd = determineIsEnd(stage, aiRes, currentRetryCount);
+        boolean isEnd = determineIsEnd(stage, aiRes);
 
         // 종료시 COMPLETED & endedAt 저장
         if (isEnd) {
@@ -173,28 +171,27 @@ public class ConversationTurnService {
         return null;
     }
 
-
     // 7. 종료 조건 판단
     /**
-     * [Stage 5]
+     * [Stage 6]
      * - next_stage == null → 종료
      */
-    private boolean determineIsEnd(Stage stage, DialogueTurnResponse aiRes, int currentRetryCount) {
+    private boolean determineIsEnd(Stage stage, DialogueTurnResponse aiRes) {
 
         String nextStage = aiRes.getNextStage();
 
-        // Stage 1~4: 종료 없음
-        if (stage != Stage.S5) {
+        // Stage 1~5: 종료 없음
+        if (stage != Stage.S6) {
             return false;
         }
 
-        // Stage 5: next_stage == null → 종료
+        // Stage 6: next_stage == null → 종료
         if (nextStage == null) {
             log.info("[Logic] S5 & next_stage=null → End conversation.");
             return true;
         }
 
-        // Stage 5: next_stage != null → 종료 아님
+        // Stage 6: next_stage != null → 종료 아님
         log.info("[Logic] S5 & next_stage exists → Continue conversation.");
         return false;
     }
