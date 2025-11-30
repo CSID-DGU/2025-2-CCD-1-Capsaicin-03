@@ -200,17 +200,17 @@ class StageOrchestrator:
         self, stage: Stage, result: Dict
     ) -> bool:
         """규칙 기반 성공 조건 체크"""
-        
 
         if stage == Stage.S1_EMOTION_LABELING:
             stt_result = result.get("stt_result", {})
             text = stt_result.get("text", "") if isinstance(stt_result, dict) else ""
     
-            happy_keywords = ["1", "일번", "일", "행복"]
-            sad_keywords = ["2", "이번", "이", "슬픔"]
-            angry_keywords = ["3", "삼번", "삼", "화남"]
-            fear_keywords = ["4", "사번", "사", "무서움"]
-            surprise_keywords = ["5", "오번", "오", "놀라움", "신기"]
+            happy_keywords = ["1", "1번", "일번", "일", "행복"]
+            sad_keywords = ["2", "2번", "이번", "이", "슬픔"]
+            angry_keywords = ["3", "3번", "삼번", "삼", "화남"]
+            fear_keywords = ["4", "4번", "사번", "사", "무서움"]
+            surprise_keywords = ["5", "5번", "오번", "오", "놀라움", "신기"]
+            
             # S1: 감정이 분류되었는가?
             emotion_result = result.get("emotion_detected")
             
@@ -305,25 +305,10 @@ class StageOrchestrator:
                 logger.info(f"✅ S3 성공: 구체적 서술 감지")
                 return True
             return False
-            # # 2자 이상 발화면 성공으로 간주
-            # if text_length >= 3:
-            #     logger.info(f"✅ S3 성공: 텍스트 길이 {text_length} >= 3")
-                
-               
-            #     if any(keyword in text for keyword in reason_keywords):
-            #         logger.info(f"✅ S3 성공: 경험 키워드 발견")
-            #         return True
-            #     else:
-            #         logger.info(f"❌ S3 실패: 경험 키워드 없음")
-            #         return False
-            # else:
-            #     logger.info(f"❌ S3 실패: 텍스트 길이 {text_length} < 2")
-            #     return False
+            
             
         elif stage == Stage.S4_REAL_WORLD_EMOTION:
-            # S3: 아이가 전략을 수락했는가?
-            # S2에서 이미 경험을 설명했으므로, S3에서는 전략 수락/선택에 집중
-            # 하지만 아이가 다시 경험을 말하거나 다른 응답을 해도 대화 참여로 간주 (S2와 유사한 관대한 기준)
+            # S4: 아이가 실생활 상황에서 타인의 감정을 말했는가? (S1과 동일하게 감정 키워드 기반)
             stt_result = result.get("stt_result")
             if stt_result is None:
                 logger.warning(f"❌ S4: stt_result가 None입니다")
@@ -339,9 +324,42 @@ class StageOrchestrator:
             text_length = len(text)
             logger.info(f"🔍 S4 성공 조건 체크: 텍스트='{text}' (길이: {text_length})")
             
-            stt_result = result.get("stt_result", {})
-            text = stt_result.get("text", "") if isinstance(stt_result, dict) else ""
-            return len(text.strip()) >= 1 # 관대하게 판단
+            # S1과 동일: 감정 키워드 감지
+            happy_keywords = ["1", "1번", "일번", "일", "행복"]
+            sad_keywords = ["2", "2번", "이번", "이", "슬픔"]
+            angry_keywords = ["3", "3번", "삼번", "삼", "화남"]
+            fear_keywords = ["4", "4번", "사번", "사", "무서움"]
+            surprise_keywords = ["5", "5번", "오번", "오", "놀라움", "신기"]
+            
+            # S4 감정 분류 결과 확인
+            emotion_result = result.get("emotion_detected")
+            if emotion_result is None:
+                logger.warning(f"❌ S4: emotion_result가 None입니다")
+                return False
+            
+            # 중립이 아닌 감정이 분류되었거나, 감정 키워드가 있으면 성공
+            if emotion_result.get("primary") != EmotionLabel.NEUTRAL:
+                logger.info(f"✅ S4 성공: 감정 분류됨 ({emotion_result.get('primary')})")
+                return True
+            
+            if any(keyword in text_lower for keyword in happy_keywords):
+                logger.info(f"✅ S4 성공: 감정(행복) 키워드 발견")
+                return True
+            if any(keyword in text_lower for keyword in sad_keywords):
+                logger.info(f"✅ S4 성공: 감정(슬픔) 키워드 발견")
+                return True
+            if any(keyword in text_lower for keyword in angry_keywords):
+                logger.info(f"✅ S4 성공: 감정(화남) 키워드 발견")
+                return True
+            if any(keyword in text_lower for keyword in fear_keywords):
+                logger.info(f"✅ S4 성공: 감정(무서움) 키워드 발견")
+                return True
+            if any(keyword in text_lower for keyword in surprise_keywords):
+                logger.info(f"✅ S4 성공: 감정(놀라움) 키워드 발견")
+                return True
+            
+            logger.info(f"❌ S4 실패: 감정 키워드 미감지")
+            return False
             
         # [추가됨] S5: S2와 동일한 성공 조건 로직 사용
         elif stage == Stage.S5_ASK_REASON_EMOTION_2:
