@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import leftArrowIcon from '../assets/left_arrow.svg';
 import rightArrowIcon from '../assets/right_arrow.svg';
 import { getFeedbackList } from '../api/parentsApi';
+import warningIcon from '../assets/warning_dark.svg'; 
 
 const FeedbackListPage = () => {
     const navigate = useNavigate();
@@ -63,6 +64,14 @@ const FeedbackListPage = () => {
                 <div className="custom-scrollbar" style={styles.scrollArea}>
                     {isLoading ? (
                         <div style={styles.loadingText}>목록을 불러오는 중...</div>
+                    ) : feedbackList.length === 0 ? (
+                            <div style={styles.emptyContainer}>
+                            <img src={warningIcon} alt="알림" style={styles.warningIcon} />
+                            <p style={styles.emptyText}>
+                                아동의 답변이 충분하지 않아<br />
+                                피드백이 제공되지 않아요
+                            </p>
+                        </div>
                     ) : (
                         feedbackList.map((item) => (
                             <button 
@@ -98,21 +107,21 @@ const styles = {
     },
     header: {
         display: 'flex',
-        justifyContent: 'flex-start', // 왼쪽 정렬 유지
+        justifyContent: 'flex-start', 
         alignItems: 'center',
         marginBottom: 'clamp(5px, 2vh, 10px)',
         padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
-        width: '100%', // 전체 너비 사용
-        alignSelf: 'center', // 중앙 정렬
+        width: '100%', 
+        alignSelf: 'center', 
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
+        gap: 'clamp(10px, 3vw, 15px)',
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', 
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
@@ -121,7 +130,7 @@ const styles = {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', 
     },
     backIconImg: {
         width: '60%', 
@@ -152,8 +161,8 @@ const styles = {
     },
     listItem: {
         backgroundColor: 'var(--color-text-light)',
-        border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
-        borderRadius: 'clamp(20px, 5vw, 30px)', // 모서리 반응형
+        border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)', 
+        borderRadius: 'clamp(20px, 5vw, 30px)', 
         padding: 'clamp(10px, 3vw, 13px) clamp(20px, 4vw, 30px)',
         display: 'flex',
         justifyContent: 'space-between',
@@ -163,7 +172,7 @@ const styles = {
         height: 'clamp(60px, 7vh, 70px)',
         boxSizing: 'border-box',
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        textAlign: 'left', // button 태그 기본값 리셋
+        textAlign: 'left',
     },
     itemContent: {
         display: 'flex',
@@ -183,10 +192,9 @@ const styles = {
     itemRight: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(8px, 2vw, 15px)', // 간격 반응형
+        gap: 'clamp(8px, 2vw, 15px)', 
     },
     arrowIconImg: {
-        // ✨ [수정] 아이콘 크기 반응형
         width: 'clamp(20px, 4vw, 28px)',
         height: 'clamp(20px, 4vw, 28px)',
         objectFit: 'contain',
@@ -194,12 +202,33 @@ const styles = {
     loadingText: {
         textAlign: 'center',
         color: 'var(--color-text-light)',
-        
-        // ✨ [수정] 폰트 크기 반응형
         fontSize: 'clamp(1rem, 4vw, 1.5rem)',
-        
         marginTop: '50px',
         fontFamily: "var(--font-family-primary)",
+    },
+
+    emptyContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%', 
+        textAlign: 'center',
+        color: 'var(--color-text-dark)',
+        opacity: 0.8,
+    },
+    warningIcon: {
+        width: 'clamp(30px, 8vw, 50px)',
+        height: 'clamp(30px, 8vw, 50px',
+        marginBottom: 'clamp(15px, 3vh, 25px)', 
+        objectFit: 'contain',
+    },
+    emptyText: {
+        fontSize: 'clamp(0.9rem, 3.0vw, 1.2rem)', 
+        lineHeight: '1.6', 
+        fontFamily: "var(--font-family-primary)",
+        margin: 0,
+        whiteSpace: 'pre-line',
     },
 };
 
