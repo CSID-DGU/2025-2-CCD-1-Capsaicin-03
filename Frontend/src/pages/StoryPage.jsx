@@ -271,7 +271,7 @@ const styles = {
     position: 'absolute',
     bottom: '5%', 
     width: 'clamp(30px, 8vw, 40px)', 
-    height: 'clamp(30px, 8vw, 40px)', 
+    height: 'auto',
     borderRadius: '50%',
     backgroundColor: 'var(--color-fourth)',
     color: 'var(--color-text-dark)', 
