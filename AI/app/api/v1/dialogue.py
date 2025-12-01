@@ -18,7 +18,7 @@ from app.services.stt_service import STTService
 from app.services.tts_service import get_tts_service
 from app.tools.context_manager import get_context_manager
 from app.services.redis_service import get_redis_service
-from app.utils.name_utils import extract_first_name
+from app.utils.name_utils import extract_first_name, format_name_with_vocative
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -428,7 +428,7 @@ async def start_session(
         
         # AI 인트로 생성 (백엔드에서 전달받은 intro 사용)
         character_name = story_context["character_name"]
-        ai_intro = f"{first_name}아, {intro}"
+        ai_intro = f"{format_name_with_vocative(first_name)}, {intro}"
         
         # AI 인트로를 TTS로 변환
         ai_intro_audio_base64 = None
@@ -816,7 +816,7 @@ async def start_test_session(
         
         # AI 인트로 생성 (백엔드에서 전달받은 intro 사용)
         character_name = story_context["character_name"]
-        ai_intro = f"{first_name}아, {intro}"
+        ai_intro = f"{format_name_with_vocative(first_name)}, {intro}"
         
         # AI 인트로를 TTS로 변환
         # ai_intro_audio_base64 = None

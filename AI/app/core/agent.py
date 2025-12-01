@@ -6,6 +6,7 @@ L2 Agent: LLM 기반 Tool 실행 및 평가
 - Fallback 전략 실행
 """
 from http import client
+from multiprocessing import context
 from typing import Dict, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -22,6 +23,7 @@ from app.tools import (
     ContextManagerTool,
     ActionCardGeneratorTool
 )
+from app.utils.name_utils import format_name_with_vocative, format_name_with_subject, format_name_with_topic
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +169,7 @@ class DialogueAgent:
         
         # Stage별 평가 프롬프트
         if stage == Stage.S1_EMOTION_LABELING:
-            question = f"{session.story_name} 동화에서 {character_name}가 어떤 감정을 느꼈을까?"
+            question = f"{session.story_name} 동화에서 {format_name_with_subject(character_name)} 어떤 감정을 느꼈을까?"
             evaluation_criteria = """
             평가 기준:
             - 감정 단어(행복, 슬픔, 화남, 무서움, 놀라움 등)를 말했는가?
@@ -179,7 +181,7 @@ class DialogueAgent:
             중요: 감정과 관련된 단어나 표현이 있으면 성공. 정확한 감정이 아니어도 감정을 표현하려 시도했다면 성공.
             """
         elif stage == Stage.S2_ASK_REASON_EMOTION_1:
-            question = f"{session.story_name} 동화에서 {character_name}가 왜 그런 감정을 느꼈을까?"
+            question = f"{session.story_name} 동화에서 {format_name_with_subject(character_name)} 왜 그런 감정을 느꼈을까?"
             evaluation_criteria = f"""
             동화 장면: {story_scene}
             
@@ -395,7 +397,7 @@ class DialogueAgent:
                 emotion_result.primary.value,
                 *[e.value for e in emotion_result.secondary]
             ][:3],  # 최대 3개
-            instruction=f"{session.child_name}아 어떤 기분이 들었을 것 같아?"
+            instruction=f"{format_name_with_vocative(session.child_name)} 어떤 기분이 들었을 것 같아?"
         )
         
         # stt_result 직렬화
@@ -713,7 +715,7 @@ class DialogueAgent:
             
         elif has_negative:
             # 경험이 없다고 함 -> 항상 scenario_1 제시
-            ai_response = self._generate_social_awareness_scenario_1(child_name=session.child_name, context=context)
+            ai_response = self._generate_social_awareness_scenario_1(child_name=session.child_name, context=context, session=session)
             instruction = "이야기 듣고 감정 맞추기"
             
         else:
@@ -725,7 +727,7 @@ class DialogueAgent:
             # 요청하신 멘트 적용
             retry_text = (
                 f"너도 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어? "
-                f"{character_name}가 힘들어했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?"
+                f"{format_name_with_vocative(character_name)} 힘들어했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?"
             )
             ai_response = AISpeech(text=retry_text)
             instruction = "경험 유무(있다/없다) 대답하기"
@@ -896,7 +898,7 @@ class DialogueAgent:
                 emotion_result.primary.value,
                 *[e.value for e in emotion_result.secondary]
             ][:3],  # 최대 3개
-            instruction=f"{session.child_name}아 그 친구는 어떤 기분이었을 것 같아?"
+            instruction=f"{format_name_with_vocative(session.child_name)} 그 친구는 어떤 기분이었을 것 같아?"
         )
         
         # stt_result 직렬화
@@ -1048,7 +1050,7 @@ class DialogueAgent:
         else:
             # 실패 시 retry: 재질문
             if session.retry_count == 1:
-                ai_response = AISpeech(text=f"{session.child_name}아, 다시 한 번 생각해볼까? 그 친구는 왜 그런 기분이 들었을까?")
+                ai_response = AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 다시 한 번 생각해볼까? 그 친구는 왜 그런 기분이 들었을까?")
             elif session.retry_count == 2:
                 # retry_2: 아이가 말한 경험 기반 이지선다 질문
                 ai_response = self._generate_s5_rc2(
@@ -1117,7 +1119,7 @@ class DialogueAgent:
         
         # 2. AI 응답 (마무리 인사)
         ai_response = AISpeech(
-            text=f"{session.child_name}아, 오늘 정말 잘했어! 행동카드를 언제든 사용해봐!",
+            text=f"{format_name_with_vocative(session.child_name)}, 오늘 정말 잘했어! 행동카드를 언제든 사용해봐!",
             tts_url=None,
             duration_ms=None
         )
@@ -1206,10 +1208,10 @@ class DialogueAgent:
         
         # 사회인식 스킬의 경우: 감정 설명하기
         if prompt_type == "social_awareness":
-            question = f"{character_name}가 왜 그렇게 느꼈다고 생각해? 그 이유를 한 번 말해볼까?"
+            question = f"{format_name_with_subject(character_name)} 왜 그렇게 느꼈다고 생각해? 그 이유를 한 번 말해볼까?"
         else:
             # 기본: 왜 그렇게 느꼈는지 물어보는 질문 (감정 단어 사용하지 않음)
-            question = f"{character_name}가 왜 그렇게 느꼈을 것 같아?"
+            question = f"{format_name_with_subject(character_name)} 왜 그렇게 느꼈을 것 같아?"
         
         return AISpeech(text=question)
     
@@ -1248,11 +1250,11 @@ class DialogueAgent:
     ) -> AISpeech:
         """예시 상황 제시 (S2) - retry_1에서 간단한 재질문"""
         story = context.get("story", {})
-        # character_name = story.get("character_name", "콩쥐")
+        character_name = story.get("character_name", "콩쥐")
         logger.info("_generate_ask_experience_retry_count_1")
         
         # 격려하는 톤으로 재질문
-        question = f"{child_name}아, 천천히 생각해봐. 내가 왜 그렇게 느꼈을 것 같아?"
+        question = f"{format_name_with_vocative(child_name)}, 천천히 생각해봐. {format_name_with_subject(character_name)} 왜 그렇게 느꼈을 것 같아?"
         
         return AISpeech(text=question)
     
@@ -1279,7 +1281,7 @@ class DialogueAgent:
             동화 장면: {story_scene}
             
             중요:
-            1. 아이를 부르면서 시작. 예시) "{child_name}아,"
+            1. 아이를 부르면서 시작. 예시) "{child_name}(받침에 따라 아/야),"
             2. story_scene의 구체적인 상황을 반영해서 이유 2가지를 만들어야 해
             3. 두 이유는 모두 story_scene에서 실제로 일어난 일이거나 추론 가능한 일이어야 해
             4. 질문 한 문장만 출력
@@ -1290,7 +1292,7 @@ class DialogueAgent:
 
             좋은 예시 (콩쥐팥쥐):
             - story_scene: "물을 몇 시간째 붓고 있는데 아무리 물을 부어도 독에 물이 차지 않아. 곧 있으면 새엄마가 올텐데 어쩌지?"
-            - 출력: "{child_name}아, 혹시 아무리 해도 물이 안 차서 그랬을까? 아니면 새엄마가 화낼까봐 무서워서 그랬을까?"
+            - 출력: "{format_name_with_vocative(child_name)}, 혹시 아무리 해도 물이 안 차서 그랬을까? 아니면 새엄마가 화낼까봐 무서워서 그랬을까?"
             
             나쁜 예시:
             - "혹시 힘들어서 그랬을까? 아니면 슬퍼서 그랬을까?" (story_scene과 무관하고 감정 언급)
@@ -1312,14 +1314,15 @@ class DialogueAgent:
         # S3에서 아이가 말한 자신의 경험 가져오기
         s3_answer_content = session.context.get('s3_answer_content', '') if hasattr(session, 'context') and session.context else ''
         
-        # S4에서 AI가 물어본 감정 질문 내용 또는 시나리오 가져오기
-        s4_scenario = session.context.get('s4_scenario', '그 상황') if hasattr(session, 'context') and session.context else '그 상황'
-        
+        # S4 시나리오 (context_manager가 제공)
+        s4_scenario = context.get('s4_scenario', '그 상황')
+           
         logger.info(f"🔍 S5 retry_2: s3_answer_content='{s3_answer_content[:50] if s3_answer_content else '없음'}...'")
         logger.info(f"🔍 S5 retry_2: s4_scenario='{s4_scenario[:50]}...'")
         
         # 아이가 S3에서 자신의 경험을 말했으면 그것을 사용
         if s3_answer_content:
+            logger.info(f"🔍 아이가 자신의 경험을 말함'")
             prompt = ChatPromptTemplate.from_messages([
                 ("system", f"""
                 너는 6살~9살 아이와 대화하는 따뜻하고 친절한 동화 선생님이야.
@@ -1334,48 +1337,28 @@ class DialogueAgent:
                 두 번째 재시도야. 아이가 말한 경험 속 친구가 그런 감정을 느낀 이유 2가지를 제시해줘.
                 
                 중요:
-                1. "{child_name}아," 로 시작
+                1. "{child_name}(받침에 따라 아/야)," 로 시작
                 2. 아이가 말한 상황을 참고해서 구체적인 이유 2가지 제시
                 3. 질문 한 문장만 출력
                 4. 6살~9살 아이가 이해할 수 있는 단어 사용
                 5. 형식: "혹시 [이유1]해서 그랬을까? 아니면 [이유2]해서 그랬을까?"
                 
                 예시: 
-                - 아이가 "친구가 혼자 있었어"라고 했다면 → "{child_name}아, 혹시 친구들이 같이 안 놀아줘서 그랬을까? 아니면 하고 싶은 게 없어서 그랬을까?"
-                - 아이가 "친구가 울었어"라고 했다면 → "{child_name}아, 혹시 누가 놀렸어서 그랬을까? 아니면 무언가를 잃어버려서 그랬을까?"
+                - 아이가 "친구가 혼자 있었어"라고 했다면 → "(아이이름+아/야), 혹시 친구들이 같이 안 놀아줘서 그랬을까? 아니면 하고 싶은 게 없어서 그랬을까?"
+                - 아이가 "친구가 울었어"라고 했다면 → "{format_name_with_vocative(child_name)}, 혹시 누가 놀렸어서 그랬을까? 아니면 무언가를 잃어버려서 그랬을까?"
                 """),
                 ("user", "아이가 말한 경험 속 친구가 그런 감정을 느낀 이유 2가지를 선택지로 제시하는 질문 한 문장만 출력해.")
             ])
+            response = self.llm.invoke(prompt.format_messages())
+            return AISpeech(text=response.content.strip())
         else:
-            # 아이가 경험을 말하지 않았거나, AI가 제시한 시나리오인 경우
-            prompt = ChatPromptTemplate.from_messages([
-                ("system", f"""
-                너는 6살~9살 아이와 대화하는 따뜻하고 친절한 동화 선생님이야.
-                
-                아이가 실생활 상황에서 다른 사람의 감정 이유를 잘 설명하지 못하고 있어.
-                지금은 두 번째 재시도야.
-                
-                상황: {s4_scenario}
-                
-                중요:
-                1. "{child_name}아," 로 시작
-                2. 질문 한 문장만 출력
-                3. 격려하는 톤 사용
-                4. 아이가 이해하기 쉬운 단어 사용
-                5. 형식: "혹시 [이유1]해서 그랬을까? 아니면 [이유2]해서 그랬을까?"
-                
-                예시: "{child_name}아, 혹시 친구들이 자기를 안 끼워줘서 그랬을까? 아니면 게임을 하고 싶은데 못해서 그랬을까?"
-                """),
-                ("user", "실생활 상황에서 타인이 그런 감정을 느낀 이유 2가지를 선택지로 제시하는 질문 한 문장만 출력해.")
-            ])
-        
-        response = self.llm.invoke(prompt.format_messages())
-        return AISpeech(text=response.content.strip())
+            logger.info(f"🔍 아이가 자신의 경험을 말하지 않음 - scenario_1 기반 질문")
+            # AI가 제시한 scenario_1 시나리오에 대한 이유 2가지 제시
+            # 시나리오: "체육 시간에 짝을 지어야 하는데 모두 이미 짝이 정해져 있어서, 한 아이만 운동장 한쪽에서 줄넘기를 들고 조용히 서 있는 상황."
+            question = f"{format_name_with_vocative(child_name)}, 혹시 친구들이 자기랑 짝이 되기 싫어서 그랬을까? 아니면 짝을 같이 할 친구가 없어서 그랬을까?"
+            return AISpeech(text=question)
     
 
-        
-    
-    
     def _generate_ask_similar_experience(
         self, child_name: str, context: Dict
     ) -> AISpeech:
@@ -1385,14 +1368,21 @@ class DialogueAgent:
         return AISpeech(text=question)
     
     def _generate_social_awareness_scenario_1(
-        self, child_name: str, context: Dict
+        self, child_name: str, context: Dict, session: DialogueSession = None
     ) -> AISpeech:
         """사회인식: '없다'고 또 답했을 때 두 번째 일상 시나리오"""
         scenario = """그럼 다른 상황을 말해줄게.
 
-        쉬는 시간, 보드게임은 딱 4명만 할 수 있는데
-        한 친구가 옆에서 조용히 서서 구경만 하고 있어.
-        그 친구는 어떤 마음이었을까?"""
+        체육 시간에 짝을 지어야 하는데 모두 이미 짝이 정해져 있어서, 한 아이만 운동장 한쪽에서 조용히 서 있었어.
+        그 아이는 어떤 마음이었을까?"""
+        
+        # s4_scenario를 session.context에 저장
+        s4_scenario_text = "체육 시간에 짝을 지어야 하는데 모두 이미 짝이 정해져 있어서, 한 아이만 운동장 한쪽에서 조용히 서 있는 상황."
+        if session and hasattr(session, 'context'):
+            if session.context is None:
+                session.context = {}
+            session.context['s4_scenario'] = s4_scenario_text
+        
         return AISpeech(text=scenario)
     
     def _generate_social_awareness_scenario_2(
@@ -1610,11 +1600,11 @@ class DialogueAgent:
         
         # 카테고리별 교육적 응답 생성
         category_prompts = {
-            "self_harm": f"{child_name}아, 많이 힘들구나. 그런 생각이 들 때는 어른에게 꼭 말해야 해. 지금은 나랑 이야기하면서 마음을 풀어보자. 어떤 일이 있었는지 천천히 말해줄래?",
-            "violence": f"{child_name}아, 화가 많이 났구나. 하지만 그런 표현보다는 '화가 났어', '속상했어'라고 말하면 더 좋을 것 같아. 무슨 일이 있었는지 다시 말해줄래?",
-            "hate": f"{child_name}아, 속상한 마음은 이해해. 하지만 친구나 다른 사람을 미워하는 말은 사용하지 않는 게 좋아. 대신 어떤 점이 속상했는지 말해볼까?",
-            "harassment": f"{child_name}아, 누군가를 괴롭히는 말은 듣는 사람도 말하는 사람도 마음이 아파. 다른 방식으로 이야기해볼 수 있을까?",
-            "sexual": f"{child_name}아, 그 이야기는 조금 어려운 주제야. 우리는 {story_name}의 이야기로 돌아가자. 어떤 기분이 들었는지 말해줄래?"
+            "self_harm": f"{format_name_with_vocative(child_name)}, 많이 힘들구나. 그런 생각이 들 때는 어른에게 꼭 말해야 해. 지금은 나랑 이야기하면서 마음을 풀어보자. 어떤 일이 있었는지 천천히 말해줄래?",
+            "violence": f"{format_name_with_vocative(child_name)}, 화가 많이 났구나. 하지만 그런 표현보다는 '화가 났어', '속상했어'라고 말하면 더 좋을 것 같아. 무슨 일이 있었는지 다시 말해줄래?",
+            "hate": f"{format_name_with_vocative(child_name)}, 속상한 마음은 이해해. 하지만 친구나 다른 사람을 미워하는 말은 사용하지 않는 게 좋아. 대신 어떤 점이 속상했는지 말해볼까?",
+            "harassment": f"{format_name_with_vocative(child_name)}, 누군가를 괴롭히는 말은 듣는 사람도 말하는 사람도 마음이 아파. 다른 방식으로 이야기해볼 수 있을까?",
+            "sexual": f"{format_name_with_vocative(child_name)}, 그 이야기는 조금 어려운 주제야. 우리는 {story_name}의 이야기로 돌아가자. 어떤 기분이 들었는지 말해줄래?"
         }
         
         # 첫 번째 flagged category에 대한 응답 선택
@@ -1700,14 +1690,14 @@ class DialogueAgent:
             if next_retry_count == 1:
                 # retry_1: 개방형 질문 재시도
                 logger.info("🔄 S1 retry_1: 개방형 질문 재시도")
-                return AISpeech(text=f"{session.child_name}아, 괜찮아. 천천히 생각해봐. 어떤 기분이 들 것 같아?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. 천천히 생각해봐. 어떤 기분이 들 것 같아?")
             elif next_retry_count == 2:
                 # retry_2: 감정 선택지 3개 제시
                 logger.info("🔄 S1 retry_2: 감정 선택지 제시")
-                return AISpeech(text=f"{session.child_name}아, 내가 기뻤을 것 같아? 아니면 내가 화났을 것 같아?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, {format_name_with_subject(character_name)} 기뻤을 것 같아? 아니면 {format_name_with_subject(character_name)} 슬펐을 것 같아?")
             # else:
             #     logger.info("🔄 S1 retry_3: 다음 단계로 건너뛰기")
-            #     return AISpeech(text=f"{session.child_name}아 괜찮아! 감정을 말로 표현하는게 어려울 수 있어. 그럼 우리 다른 이야기를 해볼까?")
+            #     return AISpeech(text=f"{format_name_with_vocative(session.child_name)} 괜찮아! 감정을 말로 표현하는게 어려울 수 있어. 그럼 우리 다른 이야기를 해볼까?")
 
         elif stage == Stage.S2_ASK_REASON_EMOTION_1:
             if next_retry_count == 1:
@@ -1720,22 +1710,22 @@ class DialogueAgent:
                 return self._generate_s2_rc2(session.story_name, session.child_name, context)
             else:
                 logger.info("🔄 S2 retry_3: 다음 단계로 건너뛰기")
-                return AISpeech(text=f"그렇구나, {session.child_name}아. 이유를 대답하는 게 쉽지 않지? 좀 더 쉽게 대답할 수 있게 내가 도와줄게! 너는 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}. 이유를 대답하는 게 쉽지 않지? 좀 더 쉽게 대답할 수 있게 내가 도와줄게! 너는 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어?")
         
         elif stage == Stage.S3_ASK_EXPERIENCE:
             if next_retry_count == 1:
                 # retry_1: 간단한 재질문
                 logger.info("🔄 S3 retry_1: 간단한 재질문")
-                return AISpeech(text=f"{session.child_name}아, 괜찮아. 내가 힘들어하고 슬퍼했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. {format_name_with_subject(character_name)} 힘들어하고 슬퍼했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?")
             elif next_retry_count == 2:
                 # retry_2: 2지선다 질문
                 logger.info("🔄 S3 retry_2: 2지선다 질문")
-                return AISpeech(text=f"{session.child_name}아, 혹시 너 친구가 우는 걸 본 적이 있었을까?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 혹시 너 친구가 우는 걸 본 적이 있었을까?")
                 # return self._generate_s3_rc2(session.child_name, context)
             else:
                 # retry_3: 예시 시나리오 제공
                 logger.info("🔄 S3 retry_3: 예시 시나리오 제공하면서 다음 단계로 건너뛰기")
-                return self._generate_social_awareness_scenario_1(session.child_name, context)
+                return self._generate_social_awareness_scenario_1(session.child_name, context, session)
             
         elif stage == Stage.S4_REAL_WORLD_EMOTION:
             # SEL_CHARACTERS에서 동화별 action_card strategies 가져오기
@@ -1744,16 +1734,16 @@ class DialogueAgent:
             if next_retry_count == 1:
                 # retry_1: 전략 3개 재진술
                 logger.info("🔄 S4 retry_1: 상황 재설명 및 감정 질문")
-                return AISpeech(text=f"{session.child_name}아, 좀 더 쉽게 말해줄게. 그 아이 표정을 봤을 때 어떤 기분이었을 것 같았어?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 좀 더 쉽게 말해줄게. 그 친구가 어떤 기분이었을 것 같았어?")
             elif next_retry_count == 2:
                 # retry_2: 감정 선택지 제시 (2지선다)
                 logger.info("🔄 S4 retry_2: 감정 선택지 제시")
-                return AISpeech(text=f"{session.child_name}아, 그 친구는 화났을까, 아니면 슬펐을까?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 그 친구는 화났을까, 아니면 슬펐을까?")
             else:
                 # retry_3 이상: 정답 감정 알려주고 이유 묻기
                 logger.info("🔄 S4 retry_3: 정답 감정 알려주고 이유 묻기")
                 s4_emotion_ans = story.get("s4_emotion_ans_1", "슬픔")
-                return AISpeech(text=f"괜찮아, {session.child_name}아! 그 친구는 {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?")
+                return AISpeech(text=f"괜찮아, {format_name_with_vocative(session.child_name)}! 그 친구는 {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?")
         
         # S5 Fallback (S2와 유사)
         elif stage == Stage.S5_ASK_REASON_EMOTION_2:
@@ -1762,7 +1752,7 @@ class DialogueAgent:
             if next_retry_count == 1:
                 # retry_1: 간단한 재질문
                 logger.info("🔄 S5 retry_1: 간단한 재질문")
-                return AISpeech(text=f"{session.child_name}아, 괜찮아. 그 친구가 왜 그런 표정을 지었을 것 같아?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. 그 친구가 왜 그렇게 느꼈을 것 같아?")
             elif next_retry_count == 2:
                 # retry_2: 2지선다 질문 (프롬프팅)
                 logger.info("🔄 S5 retry_2: 2지선다 질문 (프롬프팅)")
@@ -1770,10 +1760,10 @@ class DialogueAgent:
             else:
                 # retry_3: 자연스럽게 행동카드로 전환
                 logger.info("🔄 S5 retry_3: 행동카드로 전환")
-                return AISpeech(text=f"{session.child_name}아, 조금 어려웠지? 괜찮아! 그럼 이제 내가 {session.child_name}이에게 특별한 행동카드를 줄게. 이 카드를 보면서 연습해보자!")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 조금 어려웠지? 괜찮아! 그럼 이제 내가 {format_name_with_vocative(session.child_name)}에게 특별한 행동카드를 줄게. 이 카드를 보면서 연습해보자!")
             
         # 기본 응답
-        return AISpeech(text=f"{session.child_name}아, 난 너의 친구야. 편하게 이야기해줘.")
+        return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 난 너의 친구야. 편하게 이야기해줘.")
 
 ##################################### Max Retry Transitions #####################################
 
@@ -1791,7 +1781,7 @@ class DialogueAgent:
             # S1(감정 라벨링) -> S2(원인 묻기) 전환 시
             if prev_stage == Stage.S1_EMOTION_LABELING:
                 text = (
-                    f"{child_name}아, 괜찮아! 감정을 말로 표현하는 게 조금 어려울 수 있어. " # 위로 (S1 마무리)
+                    f"{format_name_with_vocative(child_name)}, 괜찮아! 감정을 말로 표현하는 게 조금 어려울 수 있어. " # 위로 (S1 마무리)
                     "그럼 우리 다른 이야기를 해볼까? " # 연결
                     "혹시 콩쥐가 왜 그런 행동을 했을지 생각해본 적 있어?" # S2 진입
                 )
@@ -1800,7 +1790,7 @@ class DialogueAgent:
             # S2 -> S3 전환 시
             elif prev_stage == Stage.S2_ASK_REASON_EMOTION_1:
                 text = (
-                    f"그렇구나, {child_name}아. 왜 그랬을지 생각하는 게 쉽지 않지? 괜찮아! "
+                    f"그렇구나, {format_name_with_vocative(child_name)}. 왜 그랬을지 생각하는 게 쉽지 않지? 괜찮아! "
                     "그럼 혹시 너도 비슷한 일을 겪은 적이 있는지 이야기해볼까?"
                 )
                 return AISpeech(text=text)
@@ -1811,7 +1801,7 @@ class DialogueAgent:
             #     # return AISpeech(text=text)
                 
             # 기본 멘트
-            return AISpeech(text=f"{child_name}아, 우리 다음 이야기로 넘어가보자!")
+            return AISpeech(text=f"{format_name_with_vocative(child_name)}, 우리 다음 이야기로 넘어가보자!")
     
     def _generate_s1_max_retry_transition(
         self, child_name: str, context: Dict
@@ -1821,21 +1811,21 @@ class DialogueAgent:
         character_name = story.get("character_name", "콩쥐")
         emotion_ans = story.get("emotion_ans", "슬픔")
         
-        response = f"{child_name}아, 괜찮아! {character_name}는 {emotion_ans}을 느꼈을 거야. 왜 {emotion_ans}을 느꼈을 것 같아?"
+        response = f"{format_name_with_vocative(child_name)}, 괜찮아! {format_name_with_vocative(character_name)} {emotion_ans}을 느꼈을 거야. 왜 {emotion_ans}을 느꼈을 것 같아?"
         return AISpeech(text=response)
     
     def _generate_s2_max_retry_transition(
         self, child_name: str, context: Dict
     ) -> AISpeech:
         """S2에서 max retry 도달: 자연스럽게 S3(경험 묻기)로 전환"""
-        response = f"그렇구나, {child_name}아. 이유를 대답하는 게 쉽지 않지? 좀 더 쉽게 대답할 수 있게 내가 도와줄게! 너는 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어?"
+        response = f"그렇구나, {format_name_with_vocative(child_name)}. 이유를 대답하는 게 쉽지 않지? 좀 더 쉽게 대답할 수 있게 내가 도와줄게! 너는 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어?"
         return AISpeech(text=response)
     
     def _generate_s3_max_retry_transition(
         self, child_name: str, context: Dict
     ) -> AISpeech:
         """S3에서 max retry 도달: scenario_1 제시하며 S4로 전환"""
-        return self._generate_social_awareness_scenario_1(child_name, context)
+        return self._generate_social_awareness_scenario_1(child_name, context, session=None)
 
     def _generate_s4_max_retry_transition(
         self, child_name: str, context: Dict
@@ -1844,14 +1834,14 @@ class DialogueAgent:
         story = context.get("story", {})
         s4_emotion_ans = story.get("s4_emotion_ans_1", "슬픔")
         
-        response = f"괜찮아, {child_name}아! 그 친구는 {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?"
+        response = f"괜찮아, {format_name_with_vocative(child_name)}! 그 친구는 {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?"
         return AISpeech(text=response)
     
     def _generate_s5_max_retry_transition(
         self, child_name: str, context: Dict
     ) -> AISpeech:
         """S5에서 max retry 도달: 자연스럽게 행동카드(S6)로 전환"""
-        response = f"{child_name}아, 조금 어려웠지? 괜찮아! 그럼 이제 내가 {child_name}이에게 특별한 행동카드를 줄게. 이 카드를 보면서 연습해보자!"
+        response = f"{format_name_with_vocative(child_name)}, 조금 어려웠지? 괜찮아! 그럼 이제 내가 {child_name}이에게 특별한 행동카드를 줄게. 이 카드를 보면서 연습해보자!"
         return AISpeech(text=response)
     
     # def _generate_s2_max_retry_transition(
@@ -1861,21 +1851,21 @@ class DialogueAgent:
     #     story = context.get("story", {})
     #     character_name = story.get("character_name", "콩쥐")
         
-    #     response = f"그렇구나, {child_name}아. 왜 그랬을지 생각하는 게 쉽지 않지? 너의 경험을 삼아 이야기하면 쉬워질거야!"
+    #     response = f"그렇구나, {format_name_with_vocative(child_name)}. 왜 그랬을지 생각하는 게 쉽지 않지? 너의 경험을 삼아 이야기하면 쉬워질거야!"
     #     return AISpeech(text=response)
     
     # def _generate_s3_max_retry_transition(
     #     self, child_name: str, context: Dict
     # ) -> AISpeech:
     #     """S3에서 max retry 도달: 대안 제시가 어려울 때 자연스럽게 다음 단계로"""
-    #     response = f"{child_name}아, 충분히 생각해봤어! 이제 우리가 오늘 배운 것을 정리해볼까?"
+    #     response = f"{format_name_with_vocative(child_name)}, 충분히 생각해봤어! 이제 우리가 오늘 배운 것을 정리해볼까?"
     #     return AISpeech(text=response)
     
     # def _generate_s4_max_retry_transition(
     #     self, child_name: str, context: Dict
     # ) -> AISpeech:
     #     """S4에서 max retry 도달: 교훈 연결이 어려울 때 자연스럽게 다음 단계로"""
-    #     response = f"괜찮아, {child_name}아! 오늘 우리가 이야기 나눈 것만으로도 충분해. 이제 마지막으로 행동카드를 만들어볼까?"
+    #     response = f"괜찮아, {format_name_with_vocative(child_name)}! 오늘 우리가 이야기 나눈 것만으로도 충분해. 이제 마지막으로 행동카드를 만들어볼까?"
     #     return AISpeech(text=response)
     
     # # [추가됨] S5 Max Retry Transition
@@ -1883,5 +1873,5 @@ class DialogueAgent:
     #     self, child_name: str, context: Dict
     # ) -> AISpeech:
     #     """S5에서 max retry 도달: S6(행동카드)로 전환"""
-    #     response = f"{child_name}아, 충분히 잘 이야기해줬어! 이제 마지막으로 멋진 행동카드를 만들어볼까?"
+    #     response = f"{format_name_with_vocative(child_name)}, 충분히 잘 이야기해줬어! 이제 마지막으로 멋진 행동카드를 만들어볼까?"
     #     return AISpeech(text=response)
