@@ -20,7 +20,6 @@ SEL_CHARACTERS = {
         "sel_skill": "사회인식",
         "emotion_ans": "슬픔",
         "s4_emotion_ans_1": "슬픔",
-        "s4_emotion_ans_2": "화남",
         "safe_tags": ["Sequenced", "Focused"],
         "lesson": "타인의 감정을 이해하고 공감하는 것이 중요해요",
         "action_card": {
@@ -241,11 +240,17 @@ class ContextManagerTool:
                 else:
                     context["action_card"] = action_card
                     context["action_card_strategies"] = []
+            # S4 시나리오 (session.context에서 가져오기)
+            if hasattr(session, 'context') and session.context:
+                context["s4_scenario"] = session.context.get('s4_scenario', '그 상황')
                     
         elif stage == Stage.S5_ASK_REASON_EMOTION_2:
             # S1에서 파악한 감정
             if session.emotion_history:
                 context["identified_emotion"] = session.emotion_history[-1].value
+            # S4 시나리오 (session.context에서 가져오기)
+            if hasattr(session, 'context') and session.context:
+                context["s4_scenario"] = session.context.get('s4_scenario', '그 상황')
                 
         elif stage == Stage.S6_ACTION_CARD:
             # 전체 대화 요약
