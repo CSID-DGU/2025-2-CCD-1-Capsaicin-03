@@ -22,11 +22,17 @@
   --color-background-white: #FFFFFF;
 }
 
-html, body, #root {
-  height: 100%;
+html, body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  height: 100vh; 
+  height: 100dvh; 
+  overscroll-behavior: none; 
+}
+
+#root {
+  height: 100%; 
 }
 
 *, *:before, *:after {
@@ -42,13 +48,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 앱 컨테이너 (16:9 반응형 비율 유지) */
 #root {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding: 20px; /* 앱 주변 여백 */
+  min-height: 100dvh;
+  width: 100%;
+  padding-top: calc(20px + env(safe-area-inset-top));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  padding-left: calc(20px + env(safe-area-inset-left));
+  padding-right: calc(20px + env(safe-area-inset-right));
 }
 
 .app-container {
@@ -63,15 +73,19 @@ body {
   border-radius: 10px;                       
 }
 
-/* 스크롤바 디자인 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 16px;
 }
-::-webkit-scrollbar-thumb {
-  background-color: var(--color-second); /* 스크롤바 색상 (Second 컬러 사용) */
+
+::-webkit-scrollbar-track {
+  background: var(--color-text-light); 
+  border: 2px solid var(--color-text-dark);
   border-radius: 10px;
 }
-::-webkit-scrollbar-track {
-  background-color: #f0f0f0;
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-main);
+  border-radius: 10px;
+  background-clip: padding-box;
+  border: 4px solid transparent;
 }

@@ -55,25 +55,6 @@ const ChatDetailPage = () => {
             </header>
 
             <main style={styles.listContainer}>
-                <style>
-                    {`
-                        .custom-scrollbar::-webkit-scrollbar {
-                            width: 16px;
-                        }
-                        .custom-scrollbar::-webkit-scrollbar-track {
-                            background: var(--color-text-light); 
-                            border : 2px solid var(--color-text-dark);
-                            border-radius: 10px;
-                        }
-                        .custom-scrollbar::-webkit-scrollbar-thumb {
-                            background: var(--color-main);
-                            border-radius: 10px;
-                            background-clip: padding-box;
-                            border: 4px solid transparent;
-                        }
-                    `}
-                </style>
-
                 <div className="custom-scrollbar" style={styles.scrollArea}>
                     {isLoading ? (
                         <div style={styles.loadingText}>대화를 불러오는 중...</div>
@@ -118,76 +99,72 @@ const styles = {
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        padding: '20px',
+        padding: 'clamp(5px, 3vw, 20px)',
         position: 'relative',
         overflow: 'hidden',
-        alignItems: 'center', 
     },
     header: {
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // 왼쪽 정렬 유지
         alignItems: 'center',
-        marginBottom: '15px',
-        paddingTop: '5px',
-        width: '100%', 
-        maxWidth: '732px', 
+        marginBottom: 'clamp(5px, 2vh, 10px)',
+        padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
+        width: '100%', // 전체 너비 사용
+        alignSelf: 'center', // 중앙 정렬
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: '15px',
+        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: '3px solid var(--color-text-dark)',
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
         borderRadius: '50%',
-        width: '40px',
-        height: '40px',
+        width: 'clamp(30px, 8vw, 40px)',
+        height: 'clamp(30px, 8vw, 40px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
     },
     backIconImg: {
-        width: '60%',
+        width: '60%', 
         height: '60%',
         objectFit: 'contain',
     },
     pageTitle: {
-        fontSize: '1.3rem',
+        fontSize: 'clamp(10px, 4vw, 22px)',
         color: 'var(--color-text-dark)',
         margin: 0,
-        fontFamily: "var(--font-family-primary)",
+        fontFamily: "var(--font-family-primary)", 
     },
     listContainer: {
         flex: 1,
         position: 'relative',
-        overflow: 'hidden', 
-        marginBottom: '20px', 
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
+        overflow: 'auto', 
+        width: '98%',
+        alignSelf: 'center',
     },
     scrollArea: {
         height: '100%',
-        width: '100%',
         overflowY: 'auto',
-        paddingRight: '10px', 
+        paddingRight: 'clamp(5px, 1vw, 10px)', 
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px', 
-        paddingBottom: '20px'
+        gap: 'clamp(8px, 1.5vh, 12px)',
+        paddingBottom: 'clamp(10px, 2vh, 20px)',
     },
-  chatBubble: {
+    chatBubble: {
         flex: 1, 
-        minHeight: '40px',
-        border: '2px solid var(--color-text-dark)', 
-        borderRadius: '25px',     
-        padding: '10px 20px',     
+        minHeight: 'clamp(20px, 5vh, 50px)',
+        border: 'clamp(1px, 0.3vw, 2px) solid var(--color-text-dark)', 
+        borderRadius: 'clamp(20px, 5vw, 30px)',     
+        padding: 'clamp(5px, 2vw, 10px) clamp(15px, 4vw, 25px)',     
         boxSizing: 'border-box',
-        boxShadow: '0 4px 4px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center', 
@@ -202,14 +179,15 @@ const styles = {
     },
 
     avatar: {
-        width: '40px',
-        height: '40px',
+        // ✨ [수정] 아바타 크기 반응형
+        width: 'clamp(30px, 8vw, 40px)',
+        height: 'clamp(30px, 8vw, 40px)',
         borderRadius: '50%',
-        border: '2px solid var(--color-text-dark)',
+        border: 'clamp(1px, 0.3vw, 2px) solid var(--color-text-dark)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        fontSize: '16px',
+        fontSize: 'clamp(12px, 3vw, 15px)',
         color: 'var(--color-text-dark)',
         flexShrink: 0, 
         fontFamily: "var(--font-family-primary)",
@@ -217,30 +195,37 @@ const styles = {
     },
     chatText: {
         margin: 0,
-        fontSize: '16px',
+        fontSize: 'clamp(12px, 3vw, 18px)',
         color: 'var(--color-text-dark)',
         lineHeight: '1.4',
         wordBreak: 'keep-all',
         display: 'flex',
-        alignItems: 'center'
+        alignItems: 'center'
     },
     warningIconImg: {
-        width: '18px',
-        height: '18px',
+        // ✨ [수정] 경고 아이콘 크기 반응형
+        width: 'clamp(16px, 3.5vw, 22px)',
+        height: 'clamp(16px, 3.5vw, 22px)',
+        
         marginRight: '5px'
     },
     loadingText: {
         textAlign: 'center',
         color: 'var(--color-text-light)',
-        fontSize: '1.2rem',
+        
+        // ✨ [수정] 폰트 크기 반응형
+        fontSize: 'clamp(1.2rem, 4vw, 1.5rem)',
+        
         marginTop: '50px',
+        fontFamily: "var(--font-family-primary)",
     },
     failedNotice: {
         textAlign: 'center',
         color: 'var(--color-text-dark)',
-        marginTop: '20px',
-        marginBottom: '10px',
-        fontFamily: "var(--font-family-primary)"
+        marginTop: 'clamp(15px, 3vh, 25px)',
+        marginBottom: 'clamp(5px, 1vh, 15px)',
+        fontFamily: "var(--font-family-primary)",
+        fontSize: 'clamp(0.3rem, 2.2vw, 1rem)', 
     }
 };
 

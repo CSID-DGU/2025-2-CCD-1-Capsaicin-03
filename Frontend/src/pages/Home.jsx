@@ -27,7 +27,6 @@ const Home = () => {
       <button style={styles.startButton} onClick={handleStartClick}>
         시작하기
       </button>
-      <div style={styles.bottomBar}></div>
     </div>
   );
 };
@@ -39,57 +38,55 @@ const styles = {
     flexDirection: 'column',
     justifyContent: 'center', 
     alignItems: 'center', 
-    width: '100%', 
+    width: '100%',
     height: '100%', 
     backgroundColor: 'var(--color-main)', 
     position: 'relative', 
-    cursor: 'pointer', 
-    paddingBottom: '30px', 
+    margin: 0,
+    padding: 0,
     boxSizing: 'border-box', 
   },
+  
   mainLogo: {
-    width: '50%', 
-    maxWidth: '250px', 
-    marginBottom: '10px', 
+    width: '45%', 
+    maxWidth: '260px', 
+    height: 'auto',
+    marginBottom: '1%', 
   },
+  
   parentsButton: {
     position: 'absolute',
-    top: '20px',
-    left: '20px',
-    padding: '8px 16px', 
+    top: '5%',
+    left: '4%',
+    padding: '1.5% 3%', 
+    fontSize: 'clamp(12px, 2.5vw, 16px)', 
     backgroundColor: 'var(--color-main)', 
     color: 'var(--color-text-dark)', 
-    border: '2px solid var(--color-text-dark)',
+    border: '2.5px solid var(--color-text-dark)',
     borderRadius: '20px',
-    fontSize: '0.9rem',
     fontFamily: 'var(--font-family-primary)',
     cursor: 'pointer',
     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
     zIndex: 10, 
+    whiteSpace: 'nowrap',
   },
+  
   startButton: {
-    padding: '12px 28px', 
+    width: '21%',
+    maxWidth: '200px',
+    padding: '2% 0',
     backgroundColor: 'var(--color-fourth)', 
     color: 'var(--color-text-dark)',
     border: '3px solid var(--color-text-dark)',
     borderRadius: '30px',
-    fontSize: '1.3rem', 
+    fontSize: 'clamp(14px, 4vw, 22px)', 
+    
     cursor: 'pointer',
     boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-    marginTop: '30px', 
-    fontFamily: 'var(--font-family-primary)'
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: '10px', 
-    left: '50%', 
-    transform: 'translateX(-50%)', 
-    width: '130px', 
-    height: '5px',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', 
-    borderRadius: '5px',
-  },
-  
+    marginTop: '5%',
+    fontFamily: 'var(--font-family-primary)',
+    whiteSpace: 'nowrap',
+  }
 };
 
 export default Home;
