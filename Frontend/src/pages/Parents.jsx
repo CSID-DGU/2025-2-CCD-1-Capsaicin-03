@@ -47,10 +47,6 @@ const Parents = () => {
                     <div style={styles.buttonDescription}>아이가 AI와 나눈 대화를 볼 수 있어요</div>
                 </div>
             </div>
-            
-            <div style={{ position: 'absolute', bottom: '20px' }}>
-                <div style={{ width: '100px', height: '5px', backgroundColor: '#333', borderRadius: '2.5px' }}></div>
-            </div>
         </div>
     );
 };
@@ -60,49 +56,62 @@ const styles = {
     container: {
         backgroundColor: 'var(--color-second)', 
         height: '100%',
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        
+        // ✨ [수정] padding도 clamp로 완전 유동화
+        padding: 'clamp(15px, 5vw, 40px)', 
+        
+        boxSizing: 'border-box',
         position: 'relative',
     },
     header: {
         position: 'absolute',
-        top: '20px',
-        left: '20px',
-        right: '20px',
+        top: 'clamp(10px, 5vw, 15px)',
+        left: 'clamp(10px, 5vw, 20px)',
+        right: 'clamp(10px, 5vw, 20px)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        padding: 'clamp(2px, 1vw, 5px) clamp(2px, 1vw, 5px)',
     },
     homeButton: {
         background: 'var(--color-fourth)', 
-        border: '3px solid var(--color-text-dark)',
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
         borderRadius: '50%',
-        width: '40px',
-        height: '40px', 
+        width: 'clamp(30px, 8vw, 40px)',
+        height: 'clamp(30px, 8vw, 40px)', 
+        
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         zIndex: 100,
         padding: 0,
-        boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+        boxShadow: 'clamp(2px, 0.5vw, 4px) clamp(2px, 0.5vw, 4px) clamp(5px, 1vw, 10px) rgba(0,0,0,0.1)',
     },
     settingsButton: {
         background: 'var(--color-main)',
-        border: '3px solid var(--color-text-dark)',
+        // ✨ [수정] border 두께를 반응형으로 변경
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
         borderRadius: '50%',
-        width: '40px',
-        height: '40px', 
+        
+        // 버튼 크기: clamp 유지 (완전 반응형)
+        width: 'clamp(30px, 8vw, 40px)',
+        height: 'clamp(30px, 8vw, 40px)', 
+        
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         zIndex: 100,
         padding: 0,
-        boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+        
+        // ✨ [수정] boxShadow를 반응형으로 변경
+        boxShadow: 'clamp(2px, 0.5vw, 4px) clamp(2px, 0.5vw, 4px) clamp(5px, 1vw, 10px) rgba(0,0,0,0.1)',
     },
     iconStyle: {
         width: '60%',
@@ -111,38 +120,47 @@ const styles = {
     },
     mainContent: {
         display: 'flex',
-        gap: '30px', 
-        justifyContent: 'center',
+        flexWrap: 'wrap', 
+        gap: 'clamp(10px, 3vw, 30px)', 
+        justifyContent: 'center', 
         alignItems: 'center',
+        width: '100%',
+        maxWidth: 'clamp(300px, 90vw, 550px)', 
     },
     buttonBox: {
-        width: '250px',
-        height: '90px',
-        borderRadius: '15px',
-        padding: '20px',
+        width: 'clamp(100px, 30vw, 350px)', 
+        height: 'clamp(60px, 12vh, 140px)',
+        maxWidth: '45%',
+        borderRadius: 'clamp(10px, 2vw, 15px)',
+        padding: 'clamp(15px, 3vw, 20px)',
         textAlign: 'center',
         cursor: 'pointer',
-        border: '2px solid var(--color-text-dark)',
-        boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.2)',
+        border: 'clamp(1px, 0.3vw, 2px) solid var(--color-text-dark)',
+        boxShadow: 'clamp(1px, 0.2vw, 2px) clamp(1px, 0.2vw, 2px) clamp(3px, 0.5vw, 5px) rgba(0, 0, 0, 0.2)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
+        transition: 'transform 0.2s ease',
     },
     feedbackBox: {
         backgroundColor: 'var(--color-main)',
     },
     conversationBox: {
-        backgroundColor: 'var(--color-third',
+        backgroundColor: 'var(--color-third)', 
     },
     buttonTitle: {
-        fontSize: '24px',
+        fontSize: 'clamp(18px, 4vw, 24px)', 
         color: 'var(--color-text-dark)',
-        marginBottom: '5px',
+        marginBottom: 'clamp(5px, 1vw, 10px)',
+        
+        fontFamily: 'var(--font-family-primary)',
     },
     buttonDescription: {
-        fontSize: '14px',
+        fontSize: 'clamp(8px, 2vw, 14px)', 
         color: 'var(--color-text-dark)',
-        lineHeight: '1.3',
+        lineHeight: '1.4',
+        fontFamily: 'var(--font-family-primary)',
+        wordBreak: 'keep-all',
     },
 };    
 

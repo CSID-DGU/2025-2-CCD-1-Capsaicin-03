@@ -48,15 +48,12 @@ const Login = () => {
 
   return (
     <div style={styles.container}>
-
-      <div style={{textAlign: 'center'}}>
-        <h2 style={styles.header}>로그인 / 회원가입</h2>
+        <span style={styles.header}>로그인 / 회원가입</span>
 
         <button onClick={handleSignIn} style={styles.googleButton}>
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" style={styles.googleLogo} />
           Sign in with Google
         </button>
-      </div>
 
     </div>
   );
@@ -71,35 +68,41 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-around', 
-    padding: '40px',
+    justifyContent: 'center', 
+    gap: '1vh',
+    padding: '5%',
     boxSizing: 'border-box'
   },
   header: {
-    fontSize: '2.2rem',
-    marginBottom: '8px',
-    fontWeight: '700',
+    fontSize: 'clamp(1.5rem, 5vw, 2.5rem)',
+    marginBottom: '2vh',
     color: 'var(--color-text-dark)',
+    fontFamily: 'var(--font-family-primary)',
+    margin: 0,
+    marginBottom: '3vh',
   },
   googleButton: {
-    padding: '12px 24px',
-    fontSize: '1.3rem',
-    fontWeight: 'bold',
+    padding: 'clamp(8px, 1.2vh, 12px) clamp(20px, 4vw, 30px)',
+    fontSize: 'clamp(1rem, 3.5vw, 1.4rem)',
     color: 'var(--color-text-dark)',
     fontFamily: 'var(--font-family-primary)',
     cursor: 'pointer',
     border: '1px solid #ccc',
-    borderRadius: '30px',
+    borderRadius: '50px',
     backgroundColor: 'white',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     display: 'flex',
     alignItems: 'center',
-    gap: '15px',
-    transition: 'all 0.2s ease'
+    justifyContent: 'center',
+    gap: 'clamp(10px, 2vw, 15px)', 
+    width: 'auto',      
+    minWidth: '200px',
+    maxWidth: '80%',
+    whiteSpace: 'nowrap', 
   },
   googleLogo: {
-    width: '24px',
-    height: '24px'
+    width: 'clamp(20px, 4vw, 26px)',
+    height: 'auto'
   }
 };
 

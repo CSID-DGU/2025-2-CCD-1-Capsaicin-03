@@ -82,14 +82,11 @@ const SettingPage = () => {
                 </div>
 
             </main>
-
-             <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)' }}>
-                <div style={{ width: '100px', height: '5px', backgroundColor: '#333', borderRadius: '2.5px' }}></div>
-            </div>
         </div>
     );
 };
 
+// --- Styles ---
 const styles = {
     container: {
         backgroundColor: 'var(--color-second)', 
@@ -97,118 +94,123 @@ const styles = {
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        padding: '20px 20px 40px 20px',
+        padding: 'clamp(5px, 3vw, 20px)',
         position: 'relative',
         overflow: 'hidden',
-        alignItems: 'center', 
     },
     header: {
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // 왼쪽 정렬 유지
         alignItems: 'center',
-        marginBottom: '15px',
-        paddingTop: '5px',
-        width: '100%', 
-        maxWidth: '732px', 
+        marginBottom: 'clamp(5px, 2vh, 10px)',
+        padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
+        width: '100%', // 전체 너비 사용
+        alignSelf: 'center', // 중앙 정렬
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: '15px',
+        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: '3px solid var(--color-text-dark)',
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
         borderRadius: '50%',
-        width: '40px',
-        height: '40px',
+        width: 'clamp(30px, 8vw, 40px)',
+        height: 'clamp(30px, 8vw, 40px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
     },
     backIconImg: {
-        width: '60%',
+        width: '60%', 
         height: '60%',
         objectFit: 'contain',
     },
     pageTitle: {
-        fontSize: '1.3rem',
+        fontSize: 'clamp(10px, 4vw, 22px)',
         color: 'var(--color-text-dark)',
         margin: 0,
-        fontFamily: "var(--font-family-primary)",
-    },    
+        fontFamily: "var(--font-family-primary)", 
+    },
     mainContent: {
         flex: 1,
-        width: '80%',
+        width: 'min(85%, 700px)',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
-        gap: '12px', 
+        alignItems: 'stretch',
+        gap: 'clamp(5px, 2vw, 20px)', 
+        alignSelf: 'center',
     },
     
     leftButton: {
         flex: 1.2, 
-        height: '220px',
+        height: 'auto',
         backgroundColor: 'var(--color-main)', 
-        border: '3px solid var(--color-text-dark)',
-        borderRadius: '20px',
+        border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)',
+        borderRadius: 'clamp(15px, 3vw, 25px)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         cursor: 'pointer',
-        boxShadow: '2px 4px 8px rgba(0,0,0,0.15)',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
     },
     
     rightColumn: {
         flex: 1,
-        height: '220px',
+        height: 'auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px', 
+        gap: 'clamp(5px, 2vw, 20px)', 
     },
     
+    // 오른쪽 작은 버튼 (로그아웃/탈퇴하기)
     rightButton: {
-        flex: 1,
+        flex: 1, // rightColumn의 높이를 50%씩 분할
         backgroundColor: 'var(--color-third)', 
-        border: '3px solid var(--color-text-dark)',
-        borderRadius: '20px',
+        border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)',
+        borderRadius: 'clamp(15px, 3vw, 25px)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         cursor: 'pointer',
-        boxShadow: '2px 4px 8px rgba(0,0,0,0.15)',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
     },
 
+    // 큰 아이콘 래퍼
     iconWrapper: {
-        marginBottom: '20px', 
+        marginBottom: 'clamp(5px, 2vh, 20px)', 
     },
     largeIconImg: {
-        width: '40px',
-        height: '40px',
+        width: 'clamp(30px, 6vw, 45px)',
+        height: 'clamp(30px, 6vw, 45px)',
         objectFit: 'contain',
     },
 
+    // 작은 아이콘 래퍼
     smallIconWrapper: {
-        marginBottom: '10px', 
+        marginBottom: 'clamp(2px, 1.0vh, 15px)', 
     },
     smallIconImg: {
-        width: '28px',
-        height: '28px',
+        width: 'clamp(15px, 4vw, 35px)',
+        height: 'clamp(15px, 4vw, 35px)',
         objectFit: 'contain',
     },
 
+    // 큰 텍스트
     buttonText: {
-        fontSize: '20px',
+        fontSize: 'clamp(14px, 3vw, 22px)',
         color: 'var(--color-text-dark)',
         fontFamily: "var(--font-family-primary)",
     },
+    // 작은 텍스트
     buttonTextSmall: {
-        fontSize: '18px',
+        fontSize: 'clamp(12px, 2.5vw, 20px)',
         color: 'var(--color-text-dark)',
         fontFamily: "var(--font-family-primary)",
     },

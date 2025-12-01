@@ -112,80 +112,91 @@ const FeedbackDetailPage = () => {
 // --- Styles ---
 const styles = {
     container: {
-        backgroundColor: 'var(--color-second)',
+        backgroundColor: 'var(--color-second)', 
         height: '100%',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        padding: '20px',
+        padding: 'clamp(5px, 3vw, 20px)',
         position: 'relative',
         overflow: 'hidden',
     },
     header: {
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // 왼쪽 정렬 유지
         alignItems: 'center',
-        marginBottom: '15px',
-        paddingTop: '5px',
+        marginBottom: 'clamp(5px, 2vh, 10px)',
+        padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
+        width: '100%', // 전체 너비 사용
+        alignSelf: 'center', // 중앙 정렬
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: '15px',
+        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: '3px solid var(--color-text-dark)',
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
         borderRadius: '50%',
-        width: '40px',
-        height: '40px',
+        width: 'clamp(30px, 8vw, 40px)',
+        height: 'clamp(30px, 8vw, 40px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
     },
     backIconImg: {
-        width: '60%',
+        width: '60%', 
         height: '60%',
         objectFit: 'contain',
     },
     pageTitle: {
-        fontSize: '1.3rem',
+        fontSize: 'clamp(10px, 4vw, 22px)',
         color: 'var(--color-text-dark)',
         margin: 0,
+        fontFamily: "var(--font-family-primary)", 
     },
-
     contentWrapper: {
         flex: 1,
         width: '100%',
-        maxWidth: '760px', 
+        maxWidth: 'min(95%, 760px)', 
+        
         margin: '0 auto',
         position: 'relative',
         overflowY: 'auto', 
-        paddingRight: '10px', 
-        paddingBottom: '40px', 
-        display: 'flex',    
+        paddingRight: 'clamp(5px, 1.5vw, 15px)', 
+        paddingBottom: 'clamp(20px, 4vh, 40px)', 
+        display: 'flex', 
         justifyContent: 'center',
+        alignSelf: 'center',
     },
 
     whiteBox: {
         backgroundColor: 'var(--color-text-light)',
-        width: '732px',
+        
+        // ✨ [수정] 너비 고정값(732px) 대신 100%와 maxWidth 사용
+        width: '100%',
+        
         height: 'fit-content', 
-        borderRadius: '30px', 
-        border: '2px solid var(--color-text-dark)',
+        
+        // ✨ [수정] 둥글기 및 테두리 반응형
+        borderRadius: 'clamp(20px, 4vw, 30px)', 
+        border: 'clamp(1px, 0.3vw, 2px) solid var(--color-text-dark)',
+        
         boxSizing: 'border-box',
         boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
         marginBottom: '10px', 
     },
 
     scrollContent: {
-        padding: '30px',
+        // ✨ [수정] 내부 padding 반응형
+        padding: 'clamp(20px, 4vw, 30px)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '15px',
+        gap: 'clamp(15px, 3vh, 30px)',
     },
 
     section: {
@@ -194,9 +205,9 @@ const styles = {
     },
 
     subTitle: {
-        fontSize: '1.2rem',
+        // ✨ [수정] 폰트 크기 반응형
+        fontSize: 'clamp(14px, 3vw, 22px)',
         color: 'var(--color-fourth)',
-        fontFamily: "var(--font-family-primary)",
     },
 
     divider: {
@@ -206,17 +217,19 @@ const styles = {
         borderTop: '2px dashed var(--color-text-dark)', 
     },
     contentText: {
-        fontSize: '18px',
+        // ✨ [수정] 폰트 크기 반응형 (18px)
+        fontSize: 'clamp(12px, 3vw, 18px)',
         lineHeight: '1.6', 
         color: 'var(--color-text-dark)',
         whiteSpace: 'pre-wrap',
-        fontFamily: "var(--font-family-primary)",
         wordBreak: 'keep-all', 
+        margin: 0, // 기본 마진 제거
+        paddingTop: '10px', // 제목과의 간격
     },
     loadingText: {
         textAlign: 'center',
         color: 'var(--color-text-light)',
-        fontSize: '1.2rem',
+        fontSize: 'clamp(18px, 4vw, 22px)',
         marginTop: '50px',
     },
 };
