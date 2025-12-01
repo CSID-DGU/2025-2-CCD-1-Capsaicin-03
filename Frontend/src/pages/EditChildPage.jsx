@@ -1,3 +1,5 @@
+// src/pages/EditChildPage.jsx
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getChildProfile, updateChildProfile } from '../api/profileApi';
@@ -96,9 +98,6 @@ const EditChildPage = () => {
             </header>
             
             <main style={styles.content}>
-                {/* 입력 필드들을 감싸는 영역 
-                   flex: 1로 설정하여 남은 공간의 대부분을 차지하게 함
-                */}
                 <div style={styles.inputsContainer}>
                     <div style={styles.inputWrapper}>
                         <input
@@ -123,9 +122,6 @@ const EditChildPage = () => {
                     </div>
                 </div>
 
-                {/* 저장 버튼 영역
-                   버튼은 하단에 배치되지만 화면이 줄어들면 같이 올라옴
-                */}
                 <div style={styles.buttonContainer}>
                     <button 
                         onClick={handleSave} 
@@ -144,7 +140,7 @@ const EditChildPage = () => {
     );
 };
 
-// --- Styles (수정됨) ---
+// --- Styles ---
 const styles = {
     container: {
         backgroundColor: 'var(--color-second)', 
@@ -159,21 +155,21 @@ const styles = {
     },
     header: {
         display: 'flex',
-        justifyContent: 'flex-start', // 왼쪽 정렬 유지
+        justifyContent: 'flex-start', 
         alignItems: 'center',
         marginBottom: 'clamp(5px, 2vh, 10px)',
         padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
-        width: '100%', // 전체 너비 사용
-        alignSelf: 'center', // 중앙 정렬
+        width: '100%', 
+        alignSelf: 'center', 
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
+        gap: 'clamp(10px, 3vw, 15px)',
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
@@ -182,7 +178,7 @@ const styles = {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', 
     },
     backIconImg: {
         width: '60%', 
@@ -196,7 +192,6 @@ const styles = {
         fontFamily: "var(--font-family-primary)", 
     },
     
-    // --- 메인 컨텐츠 (수정: 중앙 정렬 강화) ---
     content: {
         flex: 1,
         width: '100%',
@@ -208,13 +203,12 @@ const styles = {
         minHeight: 0,
     },
     
-    // ✨ 입력 영역: content의 50% 차지
     inputsContainer: {
         width: '100%',
-        height: '50%', // ✨ 고정 50%
+        height: '50%', 
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center', // ✨ 중앙 배치
+        justifyContent: 'center', 
         alignItems: 'center',
         gap: 'clamp(10px, 2vh, 20px)',
     },
@@ -222,16 +216,15 @@ const styles = {
         width: '100%',
         display: 'flex', 
         justifyContent: 'center',
-        flex: 1, // ✨ 두 입력 필드가 균등하게 공간 차지
-        maxHeight: '45%', // ✨ 각 필드가 너무 커지지 않도록 제한
+        flex: 1, 
+        maxHeight: '45%', 
     },
     
-    // ✨ 입력 필드: wrapper 높이에 맞춤
     inputField: {
         width: '100%',
-        height: '100%', // ✨ wrapper 높이를 꽉 채움
-        maxHeight: '70px', // ✨ 최대 높이 제한
-        minHeight: '40px', // ✨ 최소 높이 보장
+        height: '100%',
+        maxHeight: '70px', 
+        minHeight: '40px',
         fontSize: 'clamp(12px, 3.5vw, 18px)',
         padding: '0 clamp(10px, 3vw, 25px)',
         textAlign: 'center', 
@@ -245,16 +238,14 @@ const styles = {
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     },
     
-    // ✨ 버튼 영역: content의 50% 차지
     buttonContainer: {
         width: '100%',
-        height: '50%', // ✨ 고정 50%
+        height: '50%',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center', // ✨ 수직 중앙 정렬
+        alignItems: 'center', 
     },
     
-    // ✨ 저장 버튼
     saveButton: {
         backgroundColor: 'var(--color-main)', 
         border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)',

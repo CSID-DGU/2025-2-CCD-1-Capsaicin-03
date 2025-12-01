@@ -113,21 +113,21 @@ const styles = {
     },
     header: {
         display: 'flex',
-        justifyContent: 'flex-start', // 왼쪽 정렬 유지
+        justifyContent: 'flex-start',
         alignItems: 'center',
         marginBottom: 'clamp(5px, 2vh, 10px)',
         padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
-        width: '100%', // 전체 너비 사용
-        alignSelf: 'center', // 중앙 정렬
+        width: '100%', 
+        alignSelf: 'center', 
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
+        gap: 'clamp(10px, 3vw, 15px)',
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', 
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
@@ -136,7 +136,7 @@ const styles = {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)',
     },
     backIconImg: {
         width: '60%', 
@@ -167,8 +167,8 @@ const styles = {
     },
     listItem: {
         backgroundColor: 'var(--color-text-light)',
-        border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
-        borderRadius: 'clamp(20px, 5vw, 30px)', // 모서리 반응형
+        border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)', 
+        borderRadius: 'clamp(20px, 5vw, 30px)', 
         padding: 'clamp(10px, 3vw, 13px) clamp(20px, 4vw, 30px)',
         display: 'flex',
         justifyContent: 'space-between',
@@ -178,7 +178,7 @@ const styles = {
         height: 'clamp(60px, 7vh, 70px)',
         boxSizing: 'border-box',
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        textAlign: 'left', // button 태그 기본값 리셋
+        textAlign: 'left', 
     },
     itemContent: {
         display: 'flex',
@@ -198,7 +198,7 @@ const styles = {
     itemRight: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(8px, 2vw, 15px)', // 간격 반응형
+        gap: 'clamp(8px, 2vw, 15px)', 
     },
     failedBadge: {
         backgroundColor: 'var(--color-third)', 
@@ -217,7 +217,6 @@ const styles = {
         boxShadow: '0 1px 2px rgba(0,0,0,0.1)', 
     },
     arrowIconImg: {
-        // ✨ [수정] 아이콘 크기 반응형
         width: 'clamp(20px, 4vw, 28px)',
         height: 'clamp(20px, 4vw, 28px)',
         objectFit: 'contain',
@@ -225,10 +224,7 @@ const styles = {
     loadingText: {
         textAlign: 'center',
         color: 'var(--color-text-light)',
-        
-        // ✨ [수정] 폰트 크기 반응형
         fontSize: 'clamp(1rem, 4vw, 1.5rem)',
-        
         marginTop: '50px',
         fontFamily: "var(--font-family-primary)",
     },

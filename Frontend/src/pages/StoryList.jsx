@@ -6,11 +6,11 @@ import { fetchStoriesByCategory } from '../api/storyApi.js';
 import ReactGA from 'react-ga4';
 
 const categories = [
-  { code: 'SA', name: '내 마음 살펴보기' },
-  { code: 'SM', name: '마음 차분히 다루기' },
-  { code: 'SOA', name: '다른 마음 이해하기' },
-  { code: 'RS', name: '함께 이야기하고 듣기' },
-  { code: 'RDM', name: '생각하고 바르게 선택하기' }
+  { code: 'SOA', name: '친구 마음 알기' },
+  { code: 'SA', name: '내 마음 알기' },
+  { code: 'SM', name: '나를 잘 챙기기' },
+  { code: 'RS', name: '사이좋게 지내기' },
+  { code: 'RDM', name: '바른 선택하기' }
 ];
 
 //GA를 위한 파라미터 변환용 맵
@@ -65,8 +65,7 @@ const StoryList = () => {
 
   
   const handleCategoryClick = (categoryCode) => {
-    setActiveCategory(categoryCode); // 탭 변경
-
+    setActiveCategory(categoryCode);
     const caselDomainName = CASEL_MAP[categoryCode] || categoryCode;
     ReactGA.event({
       category: "Story",
@@ -144,7 +143,6 @@ const styles = {
   container: {
     height: '100%',
     width: '100%',
-    // 내부 패딩 비율로 조절
     padding: '2% 0', 
     backgroundColor: 'var(--color-main)',
     display: 'flex',
@@ -188,25 +186,24 @@ const styles = {
   categoryNav: {
     display: 'flex',
     width: '100%', 
-    borderBottom: '2px solid #D1D5DB', 
+    borderBottom: '2px solid #686868', 
     marginBottom: '-2px',
     zIndex: 1,
     flexShrink: 0,
     overflowX: 'auto',
     scrollbarWidth: 'none',
-    '&::-webkit-scrollbar': { display: 'none' },
     gap: '0px'
   },
   categoryButton: {
     flex: 1, 
     padding: '1.3vh 0',
-    fontSize: 'clamp(0.55rem, 1.9vw, 0.75rem)', // 글자 크기 적당히
+    fontSize: 'clamp(0.6rem, 2vw, 0.9rem)', 
     fontWeight: 'normal',
     fontFamily: "var(--font-family-primary)",
     border: 'none',
     cursor: 'pointer',
-    backgroundColor: 'transparent', // 배경 투명 (기존 느낌)
-    color: '#666',
+    backgroundColor: '#E8E3DC', 
+    color: '#BDBDBD',
     textAlign: 'center',
     transition: 'all 0.2s ease',
     whiteSpace: 'nowrap',
@@ -217,7 +214,7 @@ const styles = {
     borderTopRightRadius: '10px',
   },
   activeCategory: {
-    backgroundColor: 'var(--color-text-dark)', 
+    backgroundColor: '#686868', 
     color: 'var(--color-text-light)',
     borderTopLeftRadius: '10px', 
     borderTopRightRadius: '10px',
@@ -230,11 +227,10 @@ const styles = {
     padding: '15px 4% 15px 4%',
     alignContent: 'start',
     overflowY: 'auto', 
-    backgroundColor: '#cecfcfff',
+    backgroundColor: '#686868',
     borderBottomLeftRadius: '15px', 
     borderBottomRightRadius: '15px', 
     scrollbarWidth: 'none',
-    '&::-webkit-scrollbar': { display: 'none' },
     minHeight: 0,
   },
   storyCard: {
@@ -247,7 +243,8 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     width: '100%',
-    height: '100%'
+    height: '100%',
+    aspectRatio: '1.2 / 1',
   },
 
   storyImageContainer: {
@@ -279,8 +276,6 @@ const styles = {
     fontFamily: "var(--font-family-primary)",
     color: 'var(--color-text-dark)',
     lineHeight: '1.2',
-    
-    // 두 줄 넘어가면 ... 처리
     display: '-webkit-box',
     WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical',

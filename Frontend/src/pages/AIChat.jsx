@@ -140,7 +140,6 @@ const AIChat = () => {
     useEffect(() => {
         return () => {
             // 컴포넌트 언마운트(페이지 이동, 닫기 등) 시 실행
-            
             if (questionAudioRef.current) {
                 console.log("페이지 이동 감지: 오디오 정지");
                 questionAudioRef.current.pause();       
@@ -343,7 +342,7 @@ const AIChat = () => {
                     <style>
 
                     </style>
-                    <div className="hide-scrollbar" style={styles.textContentWrapper}> {/* 클래스 이름 변경 및 적용 */}
+                    <div className="hide-scrollbar" style={styles.textContentWrapper}> 
                         <p style={{ ...styles.combinedText, whiteSpace: 'pre-line' }}>
                             {sceneData.text_content}
                         </p>
@@ -464,21 +463,16 @@ const AIChat = () => {
                 </div>
 
                 <div style={styles.cardRight}>
-                    
-                    {/* ✨ [변경 1] 상황 설명 섹션 추가 (situation_content) */}
-                    <div style={styles.cardTextGroup}>
-                        {/* ✨ 초록색 뱃지 타이틀 */}
-                        <div style={styles.cardHeaderBadge}>어떤 상황일까?</div>
-                        <p style={styles.cardTip}>{cardData.situation_content}</p>
+                    <div style={styles.cardContentWrapper}> 
+                        <div style={styles.cardTextGroup}>
+                            <div style={styles.cardHeaderBadge}>어떤 상황일까?</div>
+                            <p style={styles.cardTip}>{cardData.situation_content}</p>
+                        </div>
+                        <div style={styles.cardTextGroup}>
+                            <div style={styles.cardHeaderBadge}>이렇게 해볼까?</div>
+                            <p style={styles.cardTip}>{cardData.action_content}</p>
+                        </div>
                     </div>
-
-                    {/* ✨ [변경 2] 행동 가이드 섹션 추가 (action_content) */}
-                    <div style={styles.cardTextGroup}>
-                        {/* ✨ 초록색 뱃지 타이틀 */}
-                        <div style={styles.cardHeaderBadge}>같이 해볼까?</div>
-                        <p style={styles.cardTip}>{cardData.action_content}</p>
-                    </div>
-
                 </div>
             </div>
         );
@@ -563,7 +557,7 @@ const styles = {
         alignItems: 'center',
         position: 'relative',
         overflow: 'hidden',
-        backgroundColor: '#D6EAF8' // 이미지 배경색 추가
+        backgroundColor: '#D6EAF8' 
     },
     storyImage: { 
         width: '100%', 
@@ -572,7 +566,7 @@ const styles = {
     },
     introTextSection: { 
         ...baseStyles.section, 
-        flex: 1, // 50%
+        flex: 1,
         backgroundColor: 'var(--color-main)', 
         padding: '5% 2% 3% 5%',
         justifyContent: 'space-between',
@@ -629,7 +623,7 @@ const styles = {
         flex: 1, 
         backgroundColor: 'var(--color-main)',
         padding: '2% 3%', 
-        justifyContent: 'space-between', // 말풍선과 컨트롤 영역 분리
+        justifyContent: 'space-between',
         alignItems: 'center',
         height: '100%'
     },
@@ -698,50 +692,45 @@ const styles = {
         textAlign: 'center'
     },
 
-    // --- Action Card s---
+    // --- Action Card ---
     cardContainer: { 
         ...baseStyles.baseContainer, 
-        backgroundColor: 'var(--color-main)', // 배경색 (노랑)
+        backgroundColor: 'var(--color-main)', 
         display: 'flex',
-        flexDirection: 'row', // 가로 배치
+        flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'center',
-        padding: 'clamp(20px, 5vh, 40px) clamp(20px, 5vw, 40px) clamp(10px, 5vh, 40px) clamp(40px, 10vw, 60px)',
+        padding: 'clamp(20px, 5vh, 20px) clamp(20px, 5vw, 40px) clamp(5px, 4vh, 20px) clamp(40px, 10vw, 60px)',
         gap: 'clamp(20px, 5vw, 60px)', 
     },
-
-    // 🟦 왼쪽: 파란색 카드 영역
     cardLeft: { 
         flex: 1, 
-        height: 'clamp(300px, 50vh, 450px)',
-        width: '100%',
-        maxWidth: 'min(40%,320px)',
+        height: 'clamp(300px, 30vh, 350px)',
+        maxWidth: 'min(45%,300px)',
         maxHeight: 'min(95%,450px)',
         display: 'flex', 
         flexDirection: 'column', 
-        justifyContent: 'space-between', // 이미지와 텍스트 위아래 분산
+        justifyContent: 'space-between', 
         alignItems: 'center', 
-        backgroundColor: 'var(--color-second)', // 이미지와 비슷한 파란색
+        backgroundColor: 'var(--color-second)', 
         border: '3px solid var(--color-text-dark)',
-        borderRadius: 'clamp(15px, 2vw, 25px)', // 둥근 모서리
+        borderRadius: 'clamp(15px, 2vw, 25px)', 
         padding: 'clamp(10px, 2vw, 20px)', 
-        boxShadow: '0 8px 16px rgba(0,0,0,0.15)', // 부드러운 그림자
+        boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
         boxSizing: 'border-box',
     },
 
-    // 🖼️ 카드 내부 일러스트
     cardImageIllustration: {
         width: '100%', 
         height: '80%',
         objectFit: 'cover', 
         backgroundColor: 'var(--color-second)',
         borderRadius: 'clamp(10px, 1.5vw, 15px)',
-        border: '2px solid rgba(0,0,0,0.05)', // 살짝 테두리
-        marginBottom: '10px', // 제목과의 간격
+        border: '2px solid rgba(0,0,0,0.05)', 
+        marginBottom: '10px',
         flexShrink: 0,
     },
 
-    // 📝 카드 내부 제목 (1부터 10까지 세기)
     cardActionTitle: { 
         ...baseStyles.fontBase,
         height: '20%',
@@ -756,53 +745,50 @@ const styles = {
         flexShrink: 0,
     }, 
 
-    // 🟩 오른쪽: 설명 및 버튼 영역
     cardRight: { 
         flex: 1.2, 
         height: '100%',
         display: 'flex', 
         flexDirection: 'column', 
-        justifyContent: 'flex-start',
         alignItems: 'center',
-        gap: 'clamp(2px, 4vh, 40px)',
-        paddingTop: 'clamp(10px, 2vh, 20px)',
+    },
+    cardContentWrapper: {
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        margin: 'auto 0', 
+        gap: 'clamp(1px, 3vh, 10px)', 
     },
     cardTextGroup: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '10px',
+        gap: 'clamp(1px, 2vh, 10px)',
         width: '100%',
     },
 
-    // 🟢 "같이 해볼까?" 버튼
     cardHeaderBadge: {
         ...baseStyles.introButtonBaseStyle, 
         backgroundColor: 'var(--color-third)', 
         color: 'var(--color-text-dark)',
         border: '3px solid var(--color-text-dark)',
         borderRadius: '50px', 
-        padding: 'clamp(2px, 1.0vh, 10px) clamp(10px, 3vw, 40px)',
+        padding: 'clamp(2px, 1.0vh, 7px) clamp(10px, 3vw, 40px)',
         fontSize: 'clamp(8px, 3vw, 17px)',
         boxShadow: '0 4px 0 rgba(0,0,0,0.2)',
     },
 
-    // 📄 설명 텍스트
     cardTip: { 
         ...baseStyles.fontBase,
         margin: '0', 
-        
-        // 글자 크기 및 줄간격 반응형
-        fontSize: 'clamp(16px, 2.5vw, 22px)',
+        fontSize: 'clamp(9px, 2.3vw, 18px)',
         lineHeight: '1.8',
-        
         color: 'var(--color-text-dark)',
         textAlign: 'center',
         wordBreak: 'keep-all',
         whiteSpace: 'pre-line',
-        
-        // 너무 넓게 퍼지지 않도록 제한
-        maxWidth: '95%',
+        maxWidth: '100%',
     }
 };
 

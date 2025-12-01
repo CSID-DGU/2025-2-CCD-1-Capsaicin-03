@@ -100,21 +100,21 @@ const styles = {
     },
     header: {
         display: 'flex',
-        justifyContent: 'flex-start', // 왼쪽 정렬 유지
+        justifyContent: 'flex-start',  
         alignItems: 'center',
         marginBottom: 'clamp(5px, 2vh, 10px)',
         padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
-        width: '100%', // 전체 너비 사용
-        alignSelf: 'center', // 중앙 정렬
+        width: '100%', 
+        alignSelf: 'center', 
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
+        gap: 'clamp(10px, 3vw, 15px)', 
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', 
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
@@ -123,7 +123,7 @@ const styles = {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', 
     },
     backIconImg: {
         width: '60%', 
@@ -168,9 +168,8 @@ const styles = {
         gap: 'clamp(5px, 2vw, 20px)', 
     },
     
-    // 오른쪽 작은 버튼 (로그아웃/탈퇴하기)
     rightButton: {
-        flex: 1, // rightColumn의 높이를 50%씩 분할
+        flex: 1, 
         backgroundColor: 'var(--color-third)', 
         border: 'clamp(2px, 0.4vw, 3px) solid var(--color-text-dark)',
         borderRadius: 'clamp(15px, 3vw, 25px)',
@@ -182,7 +181,6 @@ const styles = {
         boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
     },
 
-    // 큰 아이콘 래퍼
     iconWrapper: {
         marginBottom: 'clamp(5px, 2vh, 20px)', 
     },
@@ -192,7 +190,6 @@ const styles = {
         objectFit: 'contain',
     },
 
-    // 작은 아이콘 래퍼
     smallIconWrapper: {
         marginBottom: 'clamp(2px, 1.0vh, 15px)', 
     },
@@ -202,13 +199,11 @@ const styles = {
         objectFit: 'contain',
     },
 
-    // 큰 텍스트
     buttonText: {
         fontSize: 'clamp(14px, 3vw, 22px)',
         color: 'var(--color-text-dark)',
         fontFamily: "var(--font-family-primary)",
     },
-    // 작은 텍스트
     buttonTextSmall: {
         fontSize: 'clamp(12px, 2.5vw, 20px)',
         color: 'var(--color-text-dark)',
