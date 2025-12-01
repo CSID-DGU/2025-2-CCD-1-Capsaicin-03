@@ -16,19 +16,16 @@ SEL_CHARACTERS = {
     "콩쥐팥쥐": {
         "character_name": "콩쥐",
         "scene": "나는 콩쥐야. 오늘 새엄마가 내 몸만한 항아리에 물을 가득 채워 놓으라고 했어. 지금 물을 몇 시간째 붓고 있는데 아무리 물을 부어도 독에 물이 차지 않아. 곧 있으면 새엄마가 올텐데 어쩌지?",
-        "intro": "나는 콩쥐야. 오늘 새엄마가 내 몸만한 항아리에 물을 가득 채워 놓으라고 했어. 지금 물을 몇 시간째 붓고 있는데 아무리 물을 부어도 독에 물이 차지 않아. 이 상황에서 나는 어떤 마음일까?",
+        "intro": "새엄마가 힘든 일을 콩쥐에게만 시키고 있어. 콩쥐의 마음은 어떨까?",
         "sel_skill": "사회인식",
         "emotion_ans": "슬픔",
         "s4_emotion_ans_1": "슬픔",
         "safe_tags": ["Sequenced", "Focused"],
         "lesson": "타인의 감정을 이해하고 공감하는 것이 중요해요",
         "action_card": {
-            "title": "친구가 힘들 때 도와주는 방법",
-            "strategies": [
-                "옆에 있어주기: 말 걸기 어려울 때는 친구 옆에 잠깐 가만히 있어보자",
-                "도와줄까 말해보기: 누가 힘들어 보이면 '도와줄까?' 하고 말해보자",
-                "마음 물어보기: 친구가 슬퍼 보이면 '괜찮아?' 하고 살짝 물어보자"
-            ]
+            "title_1": "다른 사람 마음 알아차리기",
+            "title_2": "마음 상상하기",
+            "title_3": "공감 말하기"
         },
         "s2_prompt_type": "social_awareness",
         "s3_prompt_type": "social_awareness",
@@ -42,13 +39,13 @@ SEL_CHARACTERS = {
         "safe_tags": ["Explicit"],
         "lesson": "마음의 선물이 가장 소중한 선물이에요",
         "action_card": {
-            "title": "오늘 고마운 사람에게 “고마워요”, “사랑해요” 한마디 해보기",
-            "strategies": [
-                "감사 카드 만들기",
-                "고마운 사람에게 말하기",
-                "하루 감사일기쓰기"
-            ]
-        }
+            "title_1": "다른 사람 마음 알아차리기",
+            "title_2": "마음 상상하기",
+            "title_3": "공감 말하기"
+        },
+        "s2_prompt_type": "social_awareness",
+        "s3_prompt_type": "social_awareness",
+        "s4_prompt_type": "social_awareness"
     },
     "삼년 고개": {
         "character_name": "노인",

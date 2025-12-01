@@ -344,6 +344,11 @@ async def process_dialogue_turn_with_audio(
             if emotion_data:
                 detected_emotion = emotion_data
                 logger.info(f"💚 S1 감정 정보 포함: {detected_emotion}")
+        if old_stage == Stage.S4_REAL_WORLD_EMOTION and "emotion_detected" in turn_result:
+            emotion_data_s4 = turn_result.get("emotion_detected")
+            if emotion_data_s4:
+                detected_emotion = emotion_data_s4
+                logger.info(f"💚 S4 감정 정보 포함: {detected_emotion}")
         
         response = DialogueTurnResponse(
             success=True,
@@ -733,6 +738,11 @@ async def process_test_dialogue_turn(
             if emotion_data:
                 detected_emotion = emotion_data
                 logger.info(f"💚 S1 감정 정보 포함: {detected_emotion}")
+        if old_stage == Stage.S4_REAL_WORLD_EMOTION and "emotion_detected" in turn_result:
+            emotion_data_s4 = turn_result.get("emotion_detected")
+            if emotion_data_s4:
+                detected_emotion = emotion_data_s4
+                logger.info(f"💚 S4 감정 정보 포함: {detected_emotion}")
         
         response = DialogueTurnResponse(
             success=True,

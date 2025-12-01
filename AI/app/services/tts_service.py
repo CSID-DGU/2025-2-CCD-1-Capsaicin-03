@@ -39,18 +39,18 @@ class TTSService:
         
         logger.info("TTSService 초기화 완료")
     
-    def get_voice_id(self, voice_name: str = "Aiden") -> str:
+    def get_voice_id(self, voice_name: str = "Arin") -> str:
         """
         보이스 이름으로 voice_id 조회
         
         Args:
-            voice_name: 사용할 보이스 이름 (기본값: "Aiden" - 어린 목소리)
+            voice_name: 사용할 보이스 이름 (기본값: "Arin" - 어린 여자 아이 목소리)
         
         Returns:
             voice_id: Supertone voice ID
         """
         # 캐싱된 voice_id가 있으면 재사용
-        if self._default_voice_id and voice_name == "Aiden":
+        if self._default_voice_id and voice_name == "Arin":
             return self._default_voice_id
         
         try:
@@ -69,8 +69,8 @@ class TTSService:
                 if voice["name"].lower() == voice_name.lower():
                     voice_id = voice["voice_id"]
                     
-                    # Aiden인 경우 캐싱
-                    if voice_name == "Aiden":
+                    # Arin인 경우 캐싱
+                    if voice_name == "Arin":
                         self._default_voice_id = voice_id
                     
                     logger.info(f"보이스 '{voice_name}' ID 조회 완료: {voice_id}")
@@ -87,7 +87,7 @@ class TTSService:
     def text_to_speech(
         self,
         text: str,
-        voice_name: str = "Aiden",  # 어린 남성 보이스 (아동에 가까운 목소리)
+        voice_name: str = "Arin",  # 어린 여자 아이 목소리 (child, female)
         language: str = "ko",
         style: str = "neutral",
         model: str = "sona_speech_1"
@@ -97,7 +97,7 @@ class TTSService:
         
         Args:
             text: 변환할 텍스트
-            voice_name: 사용할 보이스 이름 (기본값: "Aiden" - 어린 목소리)
+            voice_name: 사용할 보이스 이름 (기본값: "Arin" - 어린 여자 아이 목소리)
             language: 언어 코드 (기본값: "ko")
             style: 말하기 스타일 (기본값: "neutral")
             model: 사용할 TTS 모델 (기본값: "sona_speech_1")
