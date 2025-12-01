@@ -21,8 +21,11 @@ public class ActionCard {
     @Column(name = "title" ,nullable = false)
     private String title;
 
-    @Column(name = "content" ,columnDefinition = "TEXT" ,nullable = false)
-    private String content;
+    @Column(name = "situation_content" ,columnDefinition = "TEXT" ,nullable = false)
+    private String situationContent;
+
+    @Column(name = "action_content" ,columnDefinition = "TEXT" ,nullable = false)
+    private String actionContent;
 
     @Column(name = "img_url" ,nullable = false)
     private String imgUrl;
