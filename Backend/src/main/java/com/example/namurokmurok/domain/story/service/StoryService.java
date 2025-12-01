@@ -129,15 +129,22 @@ public class StoryService {
         storyRepository.findById(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
 
-        ActionCard actionCard = actionCardRepository.findByStoryId(storyId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACTION_CARD_NOT_FOUND));
+        List<ActionCard> actionCards = actionCardRepository.findAllByStoryId(storyId);
+
+        if (actionCards.isEmpty()) {
+            throw new CustomException(ErrorCode.ACTION_CARD_NOT_FOUND);
+        }
+
+        int randomIndex = (int) (Math.random() * actionCards.size());
+        ActionCard selected = actionCards.get(randomIndex);
 
         return ActionCardResponseDto.builder()
-                .id(actionCard.getId())
+                .id(selected.getId())
                 .story_id(storyId)
-                .title(actionCard.getTitle())
-                .content(actionCard.getContent())
-                .img_url(actionCard.getImgUrl())
+                .title(selected.getTitle())
+                .actionContent(selected.getActionContent())
+                .situationContent(selected.getSituationContent())
+                .img_url(selected.getImgUrl())
                 .build();
     }
 }
