@@ -387,7 +387,12 @@ const AIChat = () => {
                         </div>
                     </div>
                     
-                    <div style={styles.dialogueControlZone}>
+                    <div style={styles.dialogueControlZone}>
+                        <p style={styles.dialogueGuidanceText}>
+                            {isResponding ? 'AI가 대답을 생각하고 있어요...' : 
+                             (isAIAudioPlaying ? 'AI가 이야기 중이에요. 잘 들어보세요!' :
+                              (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!'))}
+                        </p>
                         <button 
                             style={{
                                 ...styles.micButton,
@@ -431,12 +436,6 @@ const AIChat = () => {
                                 onTouchMove={(e) => e.preventDefault()}  
                             />
                         </button>
-                        
-                        <p style={styles.dialogueGuidanceText}>
-                            {isResponding ? 'AI가 대답을 생각하고 있어요...' : 
-                             (isAIAudioPlaying ? 'AI가 이야기 중이에요. 잘 들어보세요!' :
-                              (isRecording ? '듣고 있어요...' : '마이크를 눌러 대답해줘!'))}
-                        </p>
                     </div>
                 </div>
             </div>
@@ -685,7 +684,7 @@ const styles = {
         objectFit: 'contain'  
     },
     dialogueGuidanceText: {
-        marginTop: '0', 
+        margin: '0', 
         fontSize: 'clamp(10px, 2.5vw, 16px)', 
         color: 'var(--color-text-dark)', 
         fontFamily: 'var(--font-family-primary)',
