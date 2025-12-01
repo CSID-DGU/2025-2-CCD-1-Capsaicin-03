@@ -2,11 +2,13 @@
 TOOL 1: Safety Filter
 OpenAI Moderation API를 사용한 유해 콘텐츠 필터링
 """
+import re
+import unicodedata
 from langchain.tools import tool
 from openai import OpenAI
 import os
 import logging
-from typing import Dict
+from typing import Dict, List
 
 from app.models.schemas import SafetyCheckResult
 
@@ -18,6 +20,95 @@ class SafetyFilterTool:
     
     def __init__(self, api_key: str = None):
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        
+        # 금칙어 파일 경로 (현재 파일 기준 상대 경로)
+        badwords_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 
+            "korean_badwords.txt"
+        )
+        self.badwords = self._load_badwords(badwords_path)
+        logger.info(f"[SAFETY] SafetyFilterTool 초기화 완료, 금칙어: {len(self.badwords)}개")
+    
+    def _load_badwords(self, filepath: str) -> List[str]:
+        """금칙어 목록 로드"""
+        badwords = []
+        try:
+            if not os.path.exists(filepath):
+                logger.error(f"[SAFETY] 금칙어 파일이 존재하지 않음: {filepath}")
+                return []
+            
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw = f.read()
+
+            # 1) 쉼표로 나눔
+            parts = raw.split(",")
+
+            for word in parts:
+                # 2) 양쪽 따옴표 및 공백 제거
+                cleaned = word.strip().strip('"').strip("'").strip()
+
+                if not cleaned:
+                    continue
+
+                # 3) 원본과 정규화된 버전 모두 추가
+                badwords.append(cleaned)
+                normalized = self._normalize(cleaned)
+                if normalized and normalized != cleaned:
+                    badwords.append(normalized)
+
+            # 중복 제거
+            badwords = list(set(badwords))
+            logger.info(f"[SAFETY] 금칙어 {len(badwords)}개 로드 완료 (파일: {filepath})")
+            return badwords
+
+        except Exception as e:
+            logger.error(f"[SAFETY] 금칙어 파일 로드 실패: {e}", exc_info=True)
+            return []
+
+    # ------------------------------
+    #  텍스트 정규화
+    # ------------------------------
+    def _normalize(self, text: str) -> str:
+        """텍스트 정규화 (특수문자 제거, 소문자 변환)"""
+        if not text:
+            return ""
+        
+        # 유니코드 정규화
+        text = unicodedata.normalize('NFKD', text)
+
+        # 한글·영문·숫자만 남기기 (공백, 특수문자 제거)
+        text = re.sub(r"[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]", "", text)
+
+        # 소문자 변환
+        text = text.lower()
+
+        return text
+    
+    def contains_badword(self, text: str) -> tuple[bool, str]:
+        """
+        금칙어 포함 여부 확인
+        
+        Returns:
+            (포함여부, 감지된 단어)
+        """
+        if not text:
+            return False, ""
+        
+        # 원본 텍스트로 검사
+        for badword in self.badwords:
+            if badword in text:
+                logger.warning(f"[SAFETY] 금칙어 감지 (원본): '{badword}' in '{text}'")
+                return True, badword
+        
+        # 정규화된 텍스트로 검사
+        normalized_text = self._normalize(text)
+        for badword in self.badwords:
+            normalized_badword = self._normalize(badword)
+            if normalized_badword and normalized_badword in normalized_text:
+                logger.warning(f"[SAFETY] 금칙어 감지 (정규화): '{badword}' in '{text}'")
+                return True, badword
+        
+        return False, ""
     
     def check(self, text: str) -> SafetyCheckResult:
         """
@@ -30,6 +121,25 @@ class SafetyFilterTool:
             SafetyCheckResult: 안전성 검사 결과
         """
         try:
+            logger.info(f"[SAFETY] 안전성 검사 시작: '{text}'")
+            
+            #########################################
+            # (A) 1차 필터: 금칙어(Blacklist) 검사
+            #########################################
+            contains_bad, detected_word = self.contains_badword(text)
+            if contains_bad:
+                logger.warning(f"[SAFETY] ❌ 금칙어 감지됨: '{detected_word}' in '{text}'")
+                flagged_categories = ["harassment", "profanity"]
+                
+                return SafetyCheckResult(
+                    is_safe=False,
+                    flagged_categories=flagged_categories,
+                    message="그 말은 너무 거칠어서 사용하기 어려워. 다른 말로 이야기해볼까?"
+                )
+                
+            #########################################
+            # (B) 2차 필터: OpenAI Moderation
+            #########################################    
             response = self.client.moderations.create(
                 model="omni-moderation-latest",
                 input=text
@@ -60,11 +170,9 @@ class SafetyFilterTool:
             message = None
             if not is_safe:
                 message = self._get_child_friendly_warning(flagged_categories)
-            
-            logger.info(
-                f"안전 필터 결과: is_safe={is_safe}, "
-                f"flagged={flagged_categories}"
-            )
+                logger.warning(f"[SAFETY] ❌ OpenAI Moderation 감지: {flagged_categories}")
+            else:
+                logger.info(f"[SAFETY] ✅ 안전한 텍스트")
             
             return SafetyCheckResult(
                 is_safe=is_safe,
@@ -73,7 +181,7 @@ class SafetyFilterTool:
             )
         
         except Exception as e:
-            logger.error(f"안전 필터 오류: {e}", exc_info=True)
+            logger.error(f"[SAFETY] ❌ 안전 필터 오류: {e}", exc_info=True)
             # 오류 시 안전하지 않음으로 간주 (보수적 접근)
             return SafetyCheckResult(
                 is_safe=False,
