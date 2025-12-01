@@ -105,21 +105,21 @@ const styles = {
     },
     header: {
         display: 'flex',
-        justifyContent: 'flex-start', // 왼쪽 정렬 유지
+        justifyContent: 'flex-start', 
         alignItems: 'center',
         marginBottom: 'clamp(5px, 2vh, 10px)',
         padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
-        width: '100%', // 전체 너비 사용
-        alignSelf: 'center', // 중앙 정렬
+        width: '100%', 
+        alignSelf: 'center', 
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
+        gap: 'clamp(10px, 3vw, 15px)', 
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
@@ -128,7 +128,7 @@ const styles = {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', 
     },
     backIconImg: {
         width: '60%', 
@@ -179,7 +179,6 @@ const styles = {
     },
 
     avatar: {
-        // ✨ [수정] 아바타 크기 반응형
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
         borderRadius: '50%',
@@ -203,7 +202,6 @@ const styles = {
         alignItems: 'center'
     },
     warningIconImg: {
-        // ✨ [수정] 경고 아이콘 크기 반응형
         width: 'clamp(16px, 3.5vw, 22px)',
         height: 'clamp(16px, 3.5vw, 22px)',
         
@@ -212,10 +210,7 @@ const styles = {
     loadingText: {
         textAlign: 'center',
         color: 'var(--color-text-light)',
-        
-        // ✨ [수정] 폰트 크기 반응형
         fontSize: 'clamp(1.2rem, 4vw, 1.5rem)',
-        
         marginTop: '50px',
         fontFamily: "var(--font-family-primary)",
     },

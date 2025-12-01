@@ -22,7 +22,9 @@ const StoryPage = () => {
     goToPrevPage
   } = useStory(storyId);
   const hasSentStartEvent = useRef(false);
+  const scrollContainerRef = useRef(null);
 
+  
   useEffect(() => {
     if (!isLoading && storyData && !hasSentStartEvent.current) {
       ReactGA.event({
@@ -67,6 +69,12 @@ const StoryPage = () => {
     !isLoading && !error,       
     page                       
   );
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [page]);
   
   // (로딩 및 에러 처리)
   if (isLoading) {
@@ -104,7 +112,10 @@ const StoryPage = () => {
               <span>페이지 {page}/{totalPages}</span>
             )}
         </div>
-        <main style={page === 0 ? styles.coverContent : styles.storyContent}>
+        <main 
+          ref={scrollContainerRef} 
+          style={page === 0 ? styles.coverContent : styles.storyContent}
+        >
           <p style={page === 0 ? {} : styles.textContent}>
             {currentPageData.text_content}
           </p>
@@ -134,7 +145,7 @@ const styles = {
     height: '100%',
     width: '100%',
     backgroundColor: 'var(--color-main)',
-    overflow: 'hidden', // 전체 스크롤 방지
+    overflow: 'hidden', 
     position: 'relative',
   },
   loadingError: { 
@@ -146,10 +157,8 @@ const styles = {
     height: '100%',
     width: '100%'
   },
-  
-  // ✅ [수정] 왼쪽 이미지 영역 (화면의 50%)
   imageSection: {
-    flex: 1, // 50% 차지
+    flex: 1,
     height: '100%',
     backgroundColor: '#D6EAF8', 
     display: 'flex',
@@ -161,12 +170,10 @@ const styles = {
   storyImage: { 
     width: '100%',
     height: '100%',
-    objectFit: 'cover' // 이미지가 꽉 차게
+    objectFit: 'cover' 
   },
-  
-  // ✅ [수정] 오른쪽 텍스트 영역 (화면의 50%)
   textSection: {
-    flex: 1, // 50% 차지
+    flex: 1, 
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
@@ -174,8 +181,7 @@ const styles = {
     boxSizing: 'border-box',
     position: 'relative',
   },
-  
-  // ✅ [수정] 홈 버튼 (반응형 크기 및 위치)
+
   homeButton: {
     position: 'absolute',
     top: '4%',
@@ -183,11 +189,8 @@ const styles = {
     background: 'var(--color-fourth)', 
     border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
     borderRadius: '50%',
-    
-    // 크기 반응형
     width: 'clamp(30px, 8vw, 40px)',
     height: 'clamp(30px, 8vw, 40px)', 
-    
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -202,7 +205,6 @@ const styles = {
     objectFit: 'contain',
   },
   
-  // ✅ [수정] 페이지 번호
   pageInfo: {
     display: 'flex',
     justifyContent: 'flex-end',
@@ -212,28 +214,26 @@ const styles = {
     color: 'var(--color-text-dark)',
     fontFamily: 'var(--font-family-primary)',
   },
-  
-  // ✅ [수정] 텍스트 내용 영역 (스크롤 가능)
+
   storyContent: {
     flexGrow: 1,
-    overflowY: 'auto', // 내용 넘치면 스크롤
+    overflowY: 'auto', 
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'center', // 텍스트 수직 중앙 정렬
     paddingTop: 'clamp(5px, 5vh, 20px)',
     paddingRight: 'clamp(5px, 5vh, 10px)',
   },
   textContent: {
-    fontSize: 'clamp(0.8rem, 2.5vw, 1.0rem)', // 글자 크기 반응형
+    fontSize: 'clamp(0.8rem, 2.5vw, 1.0rem)', 
     lineHeight: '1.8',
     color: 'var(--color-text-dark)',
     whiteSpace: 'pre-line',
     wordBreak: 'keep-all',
     textAlign: 'center',
-    margin: 0,
+    marginTop: 'auto',
+    marginBottom: 'auto',
   },
   
-  // ✅ [수정] 표지(0페이지) 스타일
   coverContent: {
     flexGrow: 1,
     display: 'flex',
@@ -253,7 +253,6 @@ const styles = {
     flexShrink: 0,
   },
   
-  // ✅ [수정] "대화하러 가기" 버튼
   chatButton: {
     padding: 'clamp(5px, 1.4vh, 15px) clamp(10px, 4vw, 40px)',
     fontSize: 'clamp(0.9rem, 3vw, 1.5rem)',
@@ -265,17 +264,14 @@ const styles = {
     borderRadius: '30px',
     boxShadow: '0 4px 15px rgba(255, 111, 97, 0.4)',
     whiteSpace: 'nowrap',
+    
   },
-  
-  // ✅ [수정] 이전/다음 화살표 버튼
+
   navButton: { 
     position: 'absolute',
-    bottom: '5%', // 바닥에서 5% 띄움
-    
-    // 크기 반응형
+    bottom: '5%', 
     width: 'clamp(30px, 8vw, 40px)', 
     height: 'clamp(30px, 8vw, 40px)', 
-    
     borderRadius: '50%',
     backgroundColor: 'var(--color-fourth)',
     color: 'var(--color-text-dark)', 
@@ -287,13 +283,15 @@ const styles = {
     alignItems: 'center',
     cursor: 'pointer',
     zIndex: 10,
-    boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+    boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+    aspectRatio: '1/1',
+    flexShrink: 0,
   },
   prevButton: {
-    left: '2%', // 오른쪽 섹션의 시작 부분 근처
+    left: '2%', 
   },
   nextButton: {
-    right: '2%', // 오른쪽 끝에서 여백
+    right: '2%',
   }
 };
 

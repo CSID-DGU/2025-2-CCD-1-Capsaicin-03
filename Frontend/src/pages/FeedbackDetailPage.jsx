@@ -85,7 +85,6 @@ const FeedbackDetailPage = () => {
 
                 <div style={styles.whiteBox}>
                     <div style={styles.scrollContent}>
-                        {/* 대화 피드백 섹션 */}
                         <div style={styles.section}>
                             <span style={styles.subTitle}>💡 대화 피드백</span>
                             <p style={styles.contentText}>
@@ -95,7 +94,6 @@ const FeedbackDetailPage = () => {
 
                         <div style={styles.divider}></div>
 
-                        {/* 행동 가이드 섹션 */}
                         <div style={styles.section}>
                             <span style={styles.subTitle}>🌱 지도 방향</span>
                             <p style={styles.contentText}>
@@ -123,21 +121,21 @@ const styles = {
     },
     header: {
         display: 'flex',
-        justifyContent: 'flex-start', // 왼쪽 정렬 유지
+        justifyContent: 'flex-start',
         alignItems: 'center',
         marginBottom: 'clamp(5px, 2vh, 10px)',
         padding: 'clamp(1px, 1vw, 5px) clamp(1px, 1vw, 5px)',
-        width: '100%', // 전체 너비 사용
-        alignSelf: 'center', // 중앙 정렬
+        width: '100%', 
+        alignSelf: 'center',
     },
     headerLeft: {
         display: 'flex',
         alignItems: 'center',
-        gap: 'clamp(10px, 3vw, 15px)', // 간격 반응형
+        gap: 'clamp(10px, 3vw, 15px)', 
     },
     backButton: {
         background: 'var(--color-fourth)', 
-        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', // 테두리 반응형
+        border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', 
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)',
@@ -146,7 +144,7 @@ const styles = {
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
-        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', // 그림자 유지
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)', 
     },
     backIconImg: {
         width: '60%', 
@@ -176,23 +174,16 @@ const styles = {
 
     whiteBox: {
         backgroundColor: 'var(--color-text-light)',
-        
-        // ✨ [수정] 너비 고정값(732px) 대신 100%와 maxWidth 사용
         width: '100%',
-        
         height: 'fit-content', 
-        
-        // ✨ [수정] 둥글기 및 테두리 반응형
         borderRadius: 'clamp(20px, 4vw, 30px)', 
-        border: 'clamp(1px, 0.3vw, 2px) solid var(--color-text-dark)',
-        
+        border: 'clamp(1px, 0.3vw, 2px) solid var(--color-text-dark)',     
         boxSizing: 'border-box',
         boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
         marginBottom: '10px', 
     },
 
     scrollContent: {
-        // ✨ [수정] 내부 padding 반응형
         padding: 'clamp(20px, 4vw, 30px)',
         display: 'flex',
         flexDirection: 'column',
@@ -205,7 +196,6 @@ const styles = {
     },
 
     subTitle: {
-        // ✨ [수정] 폰트 크기 반응형
         fontSize: 'clamp(14px, 3vw, 22px)',
         color: 'var(--color-fourth)',
     },
@@ -217,14 +207,13 @@ const styles = {
         borderTop: '2px dashed var(--color-text-dark)', 
     },
     contentText: {
-        // ✨ [수정] 폰트 크기 반응형 (18px)
         fontSize: 'clamp(12px, 3vw, 18px)',
         lineHeight: '1.6', 
         color: 'var(--color-text-dark)',
         whiteSpace: 'pre-wrap',
         wordBreak: 'keep-all', 
-        margin: 0, // 기본 마진 제거
-        paddingTop: '10px', // 제목과의 간격
+        margin: 0,
+        paddingTop: '10px', 
     },
     loadingText: {
         textAlign: 'center',

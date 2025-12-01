@@ -287,12 +287,12 @@ const styles = {
   },
   header: {
     width: '100%',
-    height: '20%', // 반응형 헤더 높이
+    height: '20%', 
     display: 'flex',
-    alignItems: 'center', // 세로 중앙 정렬
-    paddingLeft: 'clamp(20px, 5vw, 30px)', // 왼쪽 여백
+    alignItems: 'center', 
+    paddingLeft: 'clamp(20px, 5vw, 30px)', 
     boxSizing: 'border-box',
-    flexShrink: 0, // 컨텐츠가 많아져도 헤더가 찌그러지지 않게 함
+    flexShrink: 0, 
   },
   backButton: {
     position: 'absolute',
@@ -324,13 +324,13 @@ const styles = {
     justifyContent: 'center',
   },
   step1Specific: {
-    justifyContent: 'center', // 이름 입력은 화면 중앙 정렬
-    height: '60%',            // 높이 비율 설정
+    justifyContent: 'center',
+    height: '60%',            
     gap:'4%'
   },
   step2Specific: {
-    justifyContent: 'center', // 이름 입력은 화면 중앙 정렬
-    height: '60%',            // 높이 비율 설정
+    justifyContent: 'center', 
+    height: '60%',            
     gap:'1%'
   },
 

@@ -73,19 +73,21 @@ body {
   border-radius: 10px;                       
 }
 
-::-webkit-scrollbar {
-  width: 16px;
+*::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important; 
+  -webkit-appearance: none; 
 }
 
-::-webkit-scrollbar-track {
-  background: var(--color-text-light); 
-  border: 2px solid var(--color-text-dark);
-  border-radius: 10px;
+*::-webkit-scrollbar-track {
+  background: var(--color-text-light) !important; 
+  border: 2px solid var(--color-text-dark) !important;
+  border-radius: 10px !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-main);
-  border-radius: 10px;
-  background-clip: padding-box;
-  border: 4px solid transparent;
+*::-webkit-scrollbar-thumb {
+  background: var(--color-main) !important;
+  border-radius: 10px !important;
+  background-clip: padding-box !important;
+  border: 4px solid transparent !important;
 }

@@ -61,10 +61,7 @@ const styles = {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        
-        // ✨ [수정] padding도 clamp로 완전 유동화
         padding: 'clamp(15px, 5vw, 40px)', 
-        
         boxSizing: 'border-box',
         position: 'relative',
     },
@@ -84,7 +81,6 @@ const styles = {
         borderRadius: '50%',
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)', 
-        
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -95,22 +91,16 @@ const styles = {
     },
     settingsButton: {
         background: 'var(--color-main)',
-        // ✨ [수정] border 두께를 반응형으로 변경
         border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
         borderRadius: '50%',
-        
-        // 버튼 크기: clamp 유지 (완전 반응형)
         width: 'clamp(30px, 8vw, 40px)',
         height: 'clamp(30px, 8vw, 40px)', 
-        
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         zIndex: 100,
         padding: 0,
-        
-        // ✨ [수정] boxShadow를 반응형으로 변경
         boxShadow: 'clamp(2px, 0.5vw, 4px) clamp(2px, 0.5vw, 4px) clamp(5px, 1vw, 10px) rgba(0,0,0,0.1)',
     },
     iconStyle: {
@@ -152,7 +142,6 @@ const styles = {
         fontSize: 'clamp(18px, 4vw, 24px)', 
         color: 'var(--color-text-dark)',
         marginBottom: 'clamp(5px, 1vw, 10px)',
-        
         fontFamily: 'var(--font-family-primary)',
     },
     buttonDescription: {
