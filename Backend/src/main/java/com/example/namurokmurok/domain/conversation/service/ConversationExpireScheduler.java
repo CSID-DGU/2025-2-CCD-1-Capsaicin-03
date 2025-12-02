@@ -32,6 +32,7 @@ public class ConversationExpireScheduler {
 
         expiredSessions.forEach(conv -> {
             conv.updateStatus(ConversationStatus.FAILED);
+            conv.updateEndedAt(LocalDateTime.now());
         });
 
         conversationRepository.saveAll(expiredSessions);
