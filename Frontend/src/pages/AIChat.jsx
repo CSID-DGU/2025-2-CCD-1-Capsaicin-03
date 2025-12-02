@@ -21,6 +21,7 @@ const AIChat = () => {
     const questionAudioRef = useRef(null);
     const recordingStartTime = useRef(0);
     const isCompletedRef = useRef(false);
+    const sessionIdRef = useRef('');
 
     const [chatStep, setChatStep] = useState('intro'); 
     const [sceneData, setSceneData] = useState(null);
@@ -138,6 +139,10 @@ const AIChat = () => {
     }, [chatStep, storyId, cardData]);
 
     useEffect(() => {
+        sessionIdRef.current = sessionId;
+    }, [sessionId]);
+
+    useEffect(() => {
         return () => {
             // 컴포넌트 언마운트(페이지 이동, 닫기 등) 시 실행
             if (questionAudioRef.current) {
@@ -146,14 +151,12 @@ const AIChat = () => {
                 questionAudioRef.current.currentTime = 0; 
                 questionAudioRef.current = null;        
             }
-
-            // 대화 중단 감지 (sessionId가 있고, 정상 종료가 아닌 경우)
-            if (sessionId && !isCompletedRef.current) {
+            if (sessionIdRef.current && !isCompletedRef.current) {
                 console.log("🚫 대화 중도 이탈 감지! Failed 처리합니다.");
-                failConversation(sessionId); 
+                failConversation(sessionIdRef.current); 
             }
         };
-    }, [sessionId, storyId]);
+    }, [storyId]);
 
     const { handleReplay } = useAudioPlayback(
         sceneData?.audio_url, 
@@ -666,8 +669,8 @@ const styles = {
         alignItems: 'center',       
     },
     micButton: { 
-        width: 'clamp(40px, 10vw, 70px)', 
-        height: 'clamp(40px, 10vw, 70px)', 
+        width: 'clamp(50px, 13vw, 70px)', 
+        height: 'clamp(50px, 13vw, 70px)', 
         borderRadius: '50%', 
         border: '3px solid var(--color-text-dark)',
         backgroundColor: 'var(--color-fourth)', 
@@ -688,7 +691,13 @@ const styles = {
         fontSize: 'clamp(10px, 2.5vw, 16px)', 
         color: 'var(--color-text-dark)', 
         fontFamily: 'var(--font-family-primary)',
-        textAlign: 'center'
+        textAlign: 'center',
+        userSelect: 'none',       
+        WebkitUserSelect: 'none', 
+        MozUserSelect: 'none',    
+        msUserSelect: 'none',     
+        cursor: 'default',
+        WebkitTouchCallout: 'none',
     },
 
     // --- Action Card ---
