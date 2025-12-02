@@ -39,7 +39,7 @@ const SettingPage = () => {
 
     const handleWithdraw = () => {
         window.open(
-            'https://www.notion.so/2a6fbd7a5e8d80a0aa2afb36beb313ae', 
+            'https://parallel-chiller-8d1.notion.site/2a6fbd7a5e8d80318e3ee691651f0be5', 
             '_blank',
             'noopener,noreferrer' 
         );
