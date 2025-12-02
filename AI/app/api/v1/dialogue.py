@@ -1046,10 +1046,11 @@ async def generate_feedback(session_id: str = Form(...)):
         
         logger.info(f"구성된 대화 텍스트 라인 수: {len(conversation_text)}")
         
-        if not conversation_text:
+        # 아동의 발화가 있는지 확인 (key_moments에는 아동 발화만 저장됨)
+        if not conversation_history:
             # 디버깅을 위한 상세 정보
             error_detail = {
-                "message": "대화 내용이 없습니다. 최소 1회 이상 대화를 진행해주세요.",
+                "message": "아동의 응답이 없습니다. 아동이 최소 1회 이상 응답해야 피드백을 생성할 수 있습니다.",
                 "debug_info": {
                     "session_id": session_id,
                     "key_moments_count": len(session.key_moments),
@@ -1059,11 +1060,13 @@ async def generate_feedback(session_id: str = Form(...)):
                     "current_turn": session.current_turn
                 }
             }
-            logger.error(f"대화 내용 없음: {error_detail}")
+            logger.error(f"아동 응답 없음: {error_detail}")
             raise HTTPException(
                 status_code=400,
                 detail=error_detail
             )
+        
+        logger.info(f"아동 응답 확인: {len(conversation_history)}개 발화")
         
         # 감정 정보
         emotions = ", ".join(emotion_history)
