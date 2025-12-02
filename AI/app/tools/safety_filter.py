@@ -21,11 +21,16 @@ class SafetyFilterTool:
     def __init__(self, api_key: str = None):
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
         
-        # 금칙어 파일 경로 (현재 파일 기준 상대 경로)
-        badwords_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 
-            "korean_badwords.txt"
-        )
+        # 금칙어 파일 경로 환경변수 (서버용)
+        badwords_path = os.getenv("BADWORDS_FILE_PATH")
+
+        # 금칙어 로컬 파일 경로 (현재 파일 기준 상대 경로)
+        if not badwords_path:
+            badwords_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "korean_badwords.txt"
+            )
+
         self.badwords = self._load_badwords(badwords_path)
         logger.info(f"[SAFETY] SafetyFilterTool 초기화 완료, 금칙어: {len(self.badwords)}개")
     
