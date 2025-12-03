@@ -1024,7 +1024,7 @@ async def generate_feedback(session_id: str = Form(...)):
             emotion_history = [e.value for e in session.emotion_history]
             logger.info(f"세션 메모리에서 감정 조회: {len(emotion_history)}개")
         
-        # 아동 발화만 수집 (AI 응답 제외)
+        # 아동 발화 수집 (모든 항목이 아동의 대사)
         child_responses = []
         child_response_count = 0
         extracted_emotions = []
@@ -1032,24 +1032,20 @@ async def generate_feedback(session_id: str = Form(...)):
         for i, moment in enumerate(conversation_history):
             logger.debug(f"moment[{i}]: {moment}")
             
-            # key_moments 구조: {'role': 'child/ai', 'stage': 'S2', 'turn': 2, 'content': '...', 'emotion': '슬픔'}
-            role = moment.get("role", "")
+            # key_moments 구조: {'stage': 'S2', 'turn': 2, 'content': '...', 'emotion': '슬픔'}
+            content = moment.get("content", "")
+            if not content:
+                continue
             
-            # 아동 발화만 수집
-            if role == "child":
-                content = moment.get("content", "")
-                if not content:
-                    continue
-                
-                emotion = moment.get("emotion", "")
-                child_response_count += 1
-                
-                # 감정 정보가 있으면 수집
-                if emotion:
-                    extracted_emotions.append(emotion)
-                    child_responses.append(f"[감정: {emotion}] {content}")
-                else:
-                    child_responses.append(content)
+            emotion = moment.get("emotion", "")
+            child_response_count += 1
+            
+            # 감정 정보가 있으면 수집
+            if emotion:
+                extracted_emotions.append(emotion)
+                child_responses.append(f"[감정: {emotion}] {content}")
+            else:
+                child_responses.append(content)
         
         logger.info(f"수집된 아동 발화: {child_response_count}개")
         
@@ -1089,11 +1085,11 @@ async def generate_feedback(session_id: str = Form(...)):
         
         child_dialogue = "\n".join(child_responses)
         input_text = f"""[아동 발화]
-{child_dialogue}
+        {child_dialogue}
 
-[아동 감정]
-{emotions}
-"""
+        [아동 감정]
+        {emotions}
+        """
                         
         logger.info(f"프롬프트 길이: {len(input_text)} 문자")
         logger.info(f"피드백 생성 시작: session_id={session_id}")
