@@ -110,32 +110,35 @@ class DialogueAgent:
         
         if not safety_result.is_safe:
             logger.warning(f"안전 필터 감지: {safety_result.flagged_categories} - AI가 교육적으로 대응합니다")
-            # 에러가 아닌 AI의 교육적 응답으로 처리
-            return self._handle_safety_violation(safety_result, session, stage, stt_result)
-            # return self._handle_safety_violation(safety_result, session, stage)
         
-        # 2. Stage별 Tool 실행 및 대화 생성
+        # 2. Stage별 Tool 실행 및 대화 생성 (safety_result 전달)
         if stage == Stage.S1_EMOTION_LABELING:
-            return self._execute_s1(request, session, child_text, stt_result)
+            result = self._execute_s1(request, session, child_text, stt_result)
         
         elif stage == Stage.S2_ASK_REASON_EMOTION_1:
-            return self._execute_s2(request, session, child_text, stt_result)
+            result = self._execute_s2(request, session, child_text, stt_result)
         
         elif stage == Stage.S3_ASK_EXPERIENCE:
-            return self._execute_s3(request, session, child_text, stt_result)
+            result = self._execute_s3(request, session, child_text, stt_result)
         
         elif stage == Stage.S4_REAL_WORLD_EMOTION:
-            return self._execute_s4(request, session, child_text, stt_result)
+            result = self._execute_s4(request, session, child_text, stt_result)
         # [추가됨] S5: 감정 이유 묻기 2
         elif stage == Stage.S5_ASK_REASON_EMOTION_2:
-            return self._execute_s5(request, session, child_text, stt_result)
+            result = self._execute_s5(request, session, child_text, stt_result)
         
         elif stage == Stage.S6_ACTION_CARD:
-            return self._execute_s6(request, session, child_text, stt_result)
+            result = self._execute_s6(request, session, child_text, stt_result)
         
         else:
             logger.error(f"알 수 없는 Stage: {stage}")
             return {"error": "Unknown stage"}
+        
+        # 3. 안전 필터 감지 시 AI 응답에 교육적 메시지 추가
+        if not safety_result.is_safe:
+            result = self._merge_safety_guidance_with_response(safety_result, result, session)
+        
+        return result
     
     def _evaluate_child_answer_with_llm(
         self, stage: Stage, child_answer: str, session: DialogueSession, context: Dict
@@ -748,9 +751,12 @@ class DialogueAgent:
             ai_response = self._generate_s3_situation_summary(
                 child_name=session.child_name,
                 child_text=child_text,
-                context=context
+                context=context,
+                session=session
             )
-            instruction = "그때 그 친구 기분은?"
+            # 아동이 언급한 대상 추출 (조사 포함)
+            mentioned_person = self._extract_mentioned_person(child_text, session)
+            instruction = f"그때 {mentioned_person.rstrip('는은')} 기분은?"
             
         elif has_negative:
             # 경험이 없다고 함 -> 항상 scenario_1 제시
@@ -828,23 +834,9 @@ class DialogueAgent:
         emotion_result = self.emotion_classifier.classify(child_text)
         logger.info(f"🔍 S4 감정 분류 결과: {emotion_result}")
         
-        # 3. 규칙 기반 평가 (1차)
-        happy_keywords = ["1", "1번", "일번", "일", "행복"]
-        sad_keywords = ["2", "2번", "이번", "이", "슬픔"]
-        angry_keywords = ["3", "3번", "삼번", "삼", "화남"]
-        fear_keywords = ["4", "4번", "사번", "사", "무서움"]
-        surprise_keywords = ["5", "5번", "오번", "오", "놀라움", "신기"]
-        
-        has_emotion_keyword = (
-            any(k in child_text for k in happy_keywords) or
-            any(k in child_text for k in sad_keywords) or
-            any(k in child_text for k in angry_keywords) or
-            any(k in child_text for k in fear_keywords) or
-            any(k in child_text for k in surprise_keywords)
-        )
-        
-        rule_based_success = (emotion_result.primary != EmotionLabel.NEUTRAL) or has_emotion_keyword
-        logger.info(f"🔍 S4 규칙 기반 평가: {rule_based_success} (emotion={emotion_result.primary}, has_keyword={has_emotion_keyword})")
+        # 2. 규칙 기반 평가 (1차) - 감정 분류기만 사용
+        rule_based_success = (emotion_result.primary != EmotionLabel.NEUTRAL)
+        logger.info(f"🔍 S1 규칙 기반 평가: {rule_based_success} (emotion={emotion_result.primary})")
         
         # 4. LLM 기반 평가 (2차 - 규칙 기반 실패 시에만)
         if not rule_based_success:
@@ -932,13 +924,16 @@ class DialogueAgent:
         logger.info(f"📝 S4 시나리오 저장: {ai_response.text[:50]}...")
         
         # 액션 아이템 (감정 선택지)
+        # S3에서 저장된 경험 내용 기반으로 대상 추출
+        s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+        mentioned_person = self._extract_mentioned_person(s3_answer, session)
         action_items = ActionItems(
             type="emotion_selection",
             options=[
                 emotion_result.primary.value,
                 *[e.value for e in emotion_result.secondary]
             ][:3],  # 최대 3개
-            instruction=f"{format_name_with_vocative(session.child_name)} 그 친구는 어떤 기분이었을 것 같아?"
+            instruction=f"{format_name_with_vocative(session.child_name)} {mentioned_person} 어떤 기분이었을 것 같아?"
         )
         
         # stt_result 직렬화
@@ -1086,8 +1081,11 @@ class DialogueAgent:
             )
         else:
             # 실패 시 retry: 재질문
+            # 아동이 언급한 대상 추출 (S3에서 저장된 경험 내용 또는 현재 발화에서)
+            mentioned_person = self._extract_mentioned_person(child_text, session)
+            
             if session.retry_count == 1:
-                ai_response = AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 다시 한 번 생각해볼까? 그 친구는 왜 그런 기분을 느꼈을까?")
+                ai_response = AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 다시 한 번 생각해볼까? {mentioned_person} 왜 그런 기분을 느꼈을까?")
             elif session.retry_count == 2:
                 # retry_2: 아이가 말한 경험 기반 이지선다 질문
                 ai_response = self._generate_s5_rc2(
@@ -1098,7 +1096,7 @@ class DialogueAgent:
             else:
                 # 방어 코드: 예상치 못한 retry_count (실제로는 도달 불가)
                 logger.warning(f"⚠️ S5 예상치 못한 retry_count={session.retry_count}")
-                ai_response = AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 그 친구는 무엇 때문에 그런 기분이었을까?")
+                ai_response = AISpeech(text=f"{format_name_with_vocative(session.child_name)}, {mentioned_person} 무엇 때문에 그런 기분이었을까?")
         
         # stt_result 직렬화
         try:
@@ -1479,10 +1477,10 @@ class DialogueAgent:
                 아이가 자신이 본 친구의 경험에 대해 이야기했어:
                 "{s3_answer_content}"
                 
-                그리고 S4에서 그 친구의 감정에 대해 물어봤어:
+                그리고 S4에서 그 사람의 감정에 대해 물어봤어:
                 "{s4_scenario}"
                 
-                지금 아이가 그 친구의 감정 이유를 잘 설명하지 못하고 있어.
+                지금 아이가 그 사람의 감정 이유를 잘 설명하지 못하고 있어.
                 두 번째 재시도야. 아이가 말한 경험 속 친구가 그런 감정을 느낀 이유 2가지를 제시해줘.
                 
                 중요:
@@ -1548,9 +1546,14 @@ class DialogueAgent:
         return AISpeech(text=scenario)
     
     def _generate_s3_situation_summary(
-        self, child_name: str, child_text: str, context: Dict
+        self, child_name: str, child_text: str, context: Dict, session: DialogueSession = None
     ) -> AISpeech:
         """사회인식: '있다'고 답했을 때 아동 상황 정리"""
+        # 아동이 언급한 대상 추출 (조사 포함)
+        mentioned_person = "그 친구는"
+        if session:
+            mentioned_person = self._extract_mentioned_person(child_text, session)
+        
         # 아동이 말한 경험을 LLM으로 요약 후 감정 질문
         prompt = ChatPromptTemplate.from_messages([
             ("system", f"""
@@ -1558,32 +1561,33 @@ class DialogueAgent:
             
             아이 이름: {child_name}
             
-            아이가 자신이 본 친구의 경험을 이야기했어.
+            아이가 자신이 본 경험을 이야기했어.
             아이의 말: "{child_text}"
+            아이가 언급한 대상: "{mentioned_person.rstrip('는은')}"
             
             너의 역할:
             1. 아이가 말한 내용을 간단히 정리해서 되물어주기
             2. 아이가 말한 내용을 간단히 정리할 때 감정 단어를 직접 언급하면 안돼.
                 - 예) 네 친구가 간식을 누군가에게 빼앗기고 슬퍼하는 모습을 본 거구나. (x)
-            3. 그 친구의 감정을 물어보기
+            3. 그 대상의 감정을 물어보기
             
             형식:
             [아이가 말한 핵심 상황을 1-2문장으로 요약].
-            그때 그 친구는 어떤 마음이었을 것 같아?"
+            그때 {mentioned_person} 어떤 마음이었을 것 같아?"
             
             예시:
             - 아이: "친구가 혼자 앉아있었어요"
               → "아아, 친구가 혼자 앉아있는 걸 네가 봤구나. 그때 그 친구는 어떤 마음이었을 것 같아?"
             
-            - 아이: "애가 울고 있었어"
-              → "아아, 친구가 울고 있는 걸 네가 봤구나. 그때 그 친구는 어떤 마음이었을 것 같아?"
+            - 아이: "엄마가 울고 있었어"
+              → "아아, 엄마가 울고 있는 걸 네가 봤구나. 그때 엄마는 어떤 마음이었을 것 같아?"
             
             중요:
             - 아이가 말한 내용을 그대로 반복하지 말고 자연스럽게 요약
-            - 반드시 "그때 그 친구는 어떤 마음이었을 것 같아?"로 끝나야 함
+            - 반드시 "그때 {mentioned_person} 어떤 마음이었을 것 같아?"로 끝나야 함
             - 3문장 이내로 간결하게
             """),
-            ("user", "아이가 말한 경험을 정리하고 친구의 감정을 물어봐.")
+            ("user", "아이가 말한 경험을 정리하고 대상의 감정을 물어봐.")
         ])
         
         response = self.llm.invoke(prompt.format_messages())
@@ -1605,7 +1609,7 @@ class DialogueAgent:
 
             쉬는 시간, 보드게임은 딱 4명만 할 수 있는데
             한 친구가 옆에서 조용히 서서 구경만 하고 있어.
-            그 친구는 어떤 마음이었을까?"""
+            그때 그 친구는 어떤 마음이었을까?"""
             return AISpeech(text=question)
         
         # 기본: 2가지 경험 예시 질문
@@ -1636,11 +1640,16 @@ class DialogueAgent:
         return AISpeech(text=response.content.strip())
     
     def _generate_s4_situation_summary(
-        self, child_name: str, child_text: str, context: Dict
+        self, child_name: str, child_text: str, context: Dict, session: DialogueSession = None
     ) -> AISpeech:
         """사회인식: '있다'고 답했을 때 아동 상황 정리"""
-        # 아동이 말한 내용을 그대로 활용
-        response = f"""그때 그 친구는 왜 그렇게 느꼈을 것 같아?"""
+        # 아동이 언급한 대상 추출
+        mentioned_person = "그 친구는"
+        if session:
+            s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+            mentioned_person = self._extract_mentioned_person(s3_answer, session)
+        
+        response = f"""그때 {mentioned_person} 왜 그렇게 느꼈을 것 같아?"""
         return AISpeech(text=response)
     
     # def _generate_s5_empathy_and_ask_experience(
@@ -1780,7 +1789,130 @@ class DialogueAgent:
         for moment in moments:
             summary_parts.append(f"{moment['stage']}: {moment['content']}")
         
-        return " | ".join(summary_parts) 
+        return " | ".join(summary_parts)
+    
+    def _extract_mentioned_person(self, child_text: str, session: DialogueSession) -> str:
+        """
+        아동이 언급한 대상(친구, 엄마, 아빠 등)을 추출하고 적절한 조사를 붙임
+        
+        Args:
+            child_text: 아동의 현재 발화
+            session: 세션 정보 (S3에서 저장된 경험 내용 참조)
+        
+        Returns:
+            언급된 대상 + 조사 (예: "그 친구는", "엄마는", "아빠는", "선생님은")
+        """
+        import re
+        
+        # S3에서 저장된 경험 내용 확인
+        s3_content = ""
+        if hasattr(session, 'context') and session.context:
+            s3_content = session.context.get('s3_answer_content', '')
+        
+        # 현재 발화와 S3 내용을 결합하여 분석
+        combined_text = f"{s3_content} {child_text}"
+        
+        # 대상 키워드 우선순위별 검색 (조사 제거 후 매칭)
+        person_keywords = [
+            ("엄마", "엄마"),
+            ("아빠", "아빠"),
+            ("부모님", "부모님"),
+            ("선생님", "선생님"),
+            ("형", "형"),
+            ("누나", "누나"),
+            ("언니", "언니"),
+            ("오빠", "오빠"),
+            ("동생", "동생"),
+            ("할머니", "할머니"),
+            ("할아버지", "할아버지"),
+            ("이모", "이모"),
+            ("삼촌", "삼촌"),
+            ("고모", "고모"),
+            ("친구", "그 친구")
+        ]
+        
+        found_person = None
+        for keyword, display_name in person_keywords:
+            # 조사가 붙어있어도 찾을 수 있도록 패턴 매칭
+            pattern = keyword + r'[가-힣]{0,2}'  # 키워드 + 최대 2글자 조사
+            if re.search(keyword, combined_text):
+                found_person = display_name
+                logger.info(f"🔍 언급된 대상 추출: '{keyword}' → '{display_name}'")
+                break
+        
+        if not found_person:
+            found_person = "그 친구"
+            logger.info("🔍 언급된 대상을 찾지 못함, 기본값 '그 친구' 사용")
+        
+        # 받침 유무에 따라 조사 결정 (은/는)
+        last_char = found_person[-1]
+        # 유니코드로 받침 확인
+        if '가' <= last_char <= '힣':
+            # (초성 * 588) + (중성 * 28) + (종성 + 1) = 글자 코드
+            base = ord(last_char) - ord('가')
+            jongseong = base % 28
+            if jongseong == 0:  # 받침 없음
+                return f"{found_person}는"
+            else:  # 받침 있음
+                return f"{found_person}은"
+        else:
+            return f"{found_person}는"
+    
+    def _merge_safety_guidance_with_response(
+        self, safety_result: SafetyCheckResult, result: Dict, session: DialogueSession
+    ) -> Dict:
+        """
+        안전 필터 감지 시 교육적 메시지와 원래 AI 응답을 자연스럽게 결합
+        
+        Args:
+            safety_result: 안전 필터 결과
+            result: 원래의 stage 실행 결과
+            session: 세션 정보
+        
+        Returns:
+            교육적 메시지가 추가된 결과
+        """
+        child_name = session.child_name
+        
+        # 카테고리별 교육적 지도 메시지
+        guidance_messages = {
+            "self_harm": f"{format_name_with_vocative(child_name)}, 많이 힘들구나. 그런 생각이 들 때는 어른에게 꼭 말해야 해.",
+            "violence": f"{format_name_with_vocative(child_name)}, 화가 많이 났구나. 하지만 그런 표현보다는 '화가 났어', '속상했어'라고 말하면 더 좋을 것 같아.",
+            "hate": f"{format_name_with_vocative(child_name)}, 속상한 마음은 이해해. 하지만 친구나 다른 사람을 미워하는 말은 사용하지 않는 게 좋아.",
+            "harassment": f"{format_name_with_vocative(child_name)}, 누군가를 괴롭히는 말은 듣는 사람도 말하는 사람도 마음이 아파.",
+            "sexual": f"{format_name_with_vocative(child_name)}, 그런 이야기는 조금 어려운 주제야."
+        }
+        
+        # 교육적 지도 메시지 선택
+        guidance = ""
+        if safety_result.flagged_categories:
+            first_category = safety_result.flagged_categories[0]
+            for key, msg in guidance_messages.items():
+                if key in first_category:
+                    guidance = msg
+                    break
+        
+        # 기본 메시지가 없으면 safety_result.message 사용
+        if not guidance:
+            guidance = safety_result.message or f"{format_name_with_vocative(child_name)}, 다른 방식으로 이야기해보자."
+        
+        # 원래의 AI 응답 가져오기
+        ai_response = result.get("ai_response", {})
+        original_text = ai_response.get("text", "")
+        
+        # 교육적 메시지 + 원래 응답 결합
+        combined_text = f"{guidance} {original_text}"
+        
+        logger.info(f"안전 필터 - 교육적 메시지 결합: {combined_text[:100]}...")
+        
+        # AI 응답 업데이트
+        ai_response["text"] = combined_text
+        result["ai_response"] = ai_response
+        
+        # safety_check는 원래 결과 유지 (is_safe=False로 표시)
+        result["safety_check"] = safety_result.dict()
+        
+        return result
     
     def _handle_safety_violation(
         self, safety_result: SafetyCheckResult, session: DialogueSession, stage: Stage, stt_result: STTResult
@@ -1931,16 +2063,24 @@ class DialogueAgent:
             if next_retry_count == 1:
                 # retry_1: 전략 3개 재진술
                 logger.info("🔄 S4 retry_1: 상황 재설명 및 감정 질문")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 좀 더 쉽게 말해줄게. 그 친구가 어떤 기분이었을 것 같았어?")
+                s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+                mentioned_person = self._extract_mentioned_person(s3_answer, session)
+                # 조사 변경: 는 -> 가
+                mentioned_person_ga = mentioned_person.rstrip('는은') + ('가' if mentioned_person.endswith('는') else '이')
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 좀 더 쉽게 말해줄게. {mentioned_person_ga} 어떤 기분이었을 것 같았어?")
             elif next_retry_count == 2:
                 # retry_2: 감정 선택지 제시 (2지선다)
                 logger.info("🔄 S4 retry_2: 감정 선택지 제시")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 그 친구는 화났을까, 아니면 슬펐을까?")
+                s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+                mentioned_person = self._extract_mentioned_person(s3_answer, session)
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, {mentioned_person} 화났을까, 아니면 슬펐을까?")
             else:
                 # retry_3 이상: 정답 감정 알려주고 이유 묻기
                 logger.info("🔄 S4 retry_3: 정답 감정 알려주고 이유 묻기")
                 s4_emotion_ans = story.get("s4_emotion_ans_1", "슬픔")
-                return AISpeech(text=f"괜찮아, {format_name_with_vocative(session.child_name)}! 그 친구는 {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?")
+                s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+                mentioned_person = self._extract_mentioned_person(s3_answer, session)
+                return AISpeech(text=f"괜찮아, {format_name_with_vocative(session.child_name)}! {mentioned_person} {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?")
         
         # S5 Fallback (S2와 유사)
         elif stage == Stage.S5_ASK_REASON_EMOTION_2:
@@ -1949,7 +2089,11 @@ class DialogueAgent:
             if next_retry_count == 1:
                 # retry_1: 간단한 재질문
                 logger.info("🔄 S5 retry_1: 간단한 재질문")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. 그 친구가 왜 그렇게 느꼈을 것 같아?")
+                s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+                mentioned_person = self._extract_mentioned_person(s3_answer, session)
+                # 조사 변경: 는 -> 가
+                mentioned_person_ga = mentioned_person.rstrip('는은') + ('가' if mentioned_person.endswith('는') else '이')
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. {mentioned_person_ga} 왜 그렇게 느꼈을 것 같아?")
             elif next_retry_count == 2:
                 # retry_2: 2지선다 질문 (프롬프팅)
                 logger.info("🔄 S5 retry_2: 2지선다 질문 (프롬프팅)")
@@ -2025,13 +2169,19 @@ class DialogueAgent:
         return self._generate_social_awareness_scenario_1(child_name, context, session=None)
 
     def _generate_s4_max_retry_transition(
-        self, child_name: str, context: Dict
+        self, child_name: str, context: Dict, session: DialogueSession = None
     ) -> AISpeech:
         """S4에서 max retry 도달: 정답 감정 알려주고 이유 묻기"""
         story = context.get("story", {})
         s4_emotion_ans = story.get("s4_emotion_ans_1", "슬픔")
         
-        response = f"괜찮아, {format_name_with_vocative(child_name)}! 그 친구는 {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?"
+        # 아동이 언급한 대상 추출
+        mentioned_person = "그 친구는"
+        if session:
+            s3_answer = session.context.get('s3_answer_content', '') if session.context else ''
+            mentioned_person = self._extract_mentioned_person(s3_answer, session)
+        
+        response = f"괜찮아, {format_name_with_vocative(child_name)}! {mentioned_person} {s4_emotion_ans}을 느꼈을 거야. 왜 {s4_emotion_ans}을 느꼈을 것 같아?"
         return AISpeech(text=response)
     
     def _generate_s5_max_retry_transition(
