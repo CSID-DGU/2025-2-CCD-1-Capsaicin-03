@@ -134,9 +134,16 @@ class DialogueAgent:
             logger.error(f"알 수 없는 Stage: {stage}")
             return {"error": "Unknown stage"}
         
-        # 3. 안전 필터 감지 시 AI 응답에 교육적 메시지 추가
+        # 3. 안전 필터 감지 시 AI 응답을 safety message로 교체
         if not safety_result.is_safe:
-            result = self._merge_safety_guidance_with_response(safety_result, result, session)
+            ai_response = result.get("ai_response", {})
+            result["ai_response"] = {
+                "text": safety_result.message,
+                "tts_url": ai_response.get("tts_url"),
+                "duration_ms": ai_response.get("duration_ms")
+            }
+            result["safety_check"] = safety_result.dict()
+            logger.info(f"🛡️ 안전 필터 - ai_response를 safety message로 교체")
         
         return result
     
@@ -1907,62 +1914,6 @@ class DialogueAgent:
         else:
             return f"{found_person}는"
     
-    def _merge_safety_guidance_with_response(
-        self, safety_result: SafetyCheckResult, result: Dict, session: DialogueSession
-    ) -> Dict:
-        """
-        안전 필터 감지 시 교육적 메시지와 원래 AI 응답을 자연스럽게 결합
-        
-        Args:
-            safety_result: 안전 필터 결과
-            result: 원래의 stage 실행 결과
-            session: 세션 정보
-        
-        Returns:
-            교육적 메시지가 추가된 결과
-        """
-        child_name = session.child_name
-        
-        # 카테고리별 교육적 지도 메시지
-        guidance_messages = {
-            "self_harm": f"{format_name_with_vocative(child_name)}, 많이 힘들구나. 그런 생각이 들 때는 어른에게 꼭 말해야 해.",
-            "violence": f"{format_name_with_vocative(child_name)}, 화가 많이 났구나. 하지만 그런 표현보다는 '화가 났어', '속상했어'라고 말하면 더 좋을 것 같아.",
-            "hate": f"{format_name_with_vocative(child_name)}, 속상한 마음은 이해해. 하지만 친구나 다른 사람을 미워하는 말은 사용하지 않는 게 좋아.",
-            "harassment": f"{format_name_with_vocative(child_name)}, 누군가를 괴롭히는 말은 듣는 사람도 말하는 사람도 마음이 아파.",
-            "sexual": f"{format_name_with_vocative(child_name)}, 그런 이야기는 조금 어려운 주제야."
-        }
-        
-        # 교육적 지도 메시지 선택
-        guidance = ""
-        if safety_result.flagged_categories:
-            first_category = safety_result.flagged_categories[0]
-            for key, msg in guidance_messages.items():
-                if key in first_category:
-                    guidance = msg
-                    break
-        
-        # 기본 메시지가 없으면 safety_result.message 사용
-        if not guidance:
-            guidance = safety_result.message or f"{format_name_with_vocative(child_name)}, 다른 방식으로 이야기해보자."
-        
-        # 원래의 AI 응답 가져오기
-        ai_response = result.get("ai_response", {})
-        original_text = ai_response.get("text", "")
-        
-        # 교육적 메시지 + 원래 응답 결합
-        combined_text = f"{guidance} {original_text}"
-        
-        logger.info(f"안전 필터 - 교육적 메시지 결합: {combined_text[:100]}...")
-        
-        # AI 응답 업데이트
-        ai_response["text"] = combined_text
-        result["ai_response"] = ai_response
-        
-        # safety_check는 원래 결과 유지 (is_safe=False로 표시)
-        result["safety_check"] = safety_result.dict()
-        
-        return result
-    
     def _handle_safety_violation(
         self, safety_result: SafetyCheckResult, session: DialogueSession, stage: Stage, stt_result: STTResult
     ) -> Dict:
@@ -2088,17 +2039,17 @@ class DialogueAgent:
                 return self._generate_s2_rc2(session.story_name, session.child_name, context)
             else:
                 logger.info("🔄 S2 retry_3: 다음 단계로 건너뛰기")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}. 이유를 대답하는 게 쉽지 않지? 좀 더 쉽게 대답할 수 있게 내가 도와줄게! 너는 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}. 이유를 대답하는 게 쉽지 않지? 좀 더 쉽게 대답할 수 있게 내가 도와줄게! 너는 혹시 누가 힘들어하는 걸 본 적 있어?")
         
         elif stage == Stage.S3_ASK_EXPERIENCE:
             if next_retry_count == 1:
                 # retry_1: 간단한 재질문
                 logger.info("🔄 S3 retry_1: 간단한 재질문")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. {format_name_with_subject(character_name)} 힘들어하고 슬퍼했잖아, 그런 것처럼 다른 사람이 속상해하는 걸 본 적이 있었을까?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. {format_name_with_subject(character_name)} 힘들어하고 슬퍼했잖아, 그런 것처럼 다른 사람이 힘들어하는 걸 본 적이 있었을까?")
             elif next_retry_count == 2:
                 # retry_2: 2지선다 질문
                 logger.info("🔄 S3 retry_2: 2지선다 질문")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 혹시 너 친구가 우는 걸 본 적이 있었을까?")
+                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 혹시 너 친구가 힘들어하는 걸 본 적이 있었을까? 아니면 친구가 혼자 힘든 일을 하는 걸 본 적이 있어?")
                 # return self._generate_s3_rc2(session.child_name, context)
             else:
                 # retry_3: 예시 시나리오 제공
