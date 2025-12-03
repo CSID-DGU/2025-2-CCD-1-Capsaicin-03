@@ -8,6 +8,9 @@ import com.example.namurokmurok.domain.conversation.enums.Speaker;
 import com.example.namurokmurok.domain.conversation.enums.Stage;
 import com.example.namurokmurok.domain.conversation.repository.ConversationRepository;
 import com.example.namurokmurok.domain.conversation.repository.DialogueRepository;
+import com.example.namurokmurok.domain.feedback.dto.DialogueHistoryDto;
+import com.example.namurokmurok.domain.feedback.dto.FeedbackFromHistoryRequestDto;
+import com.example.namurokmurok.domain.feedback.service.FeedbackService;
 import com.example.namurokmurok.domain.story.entity.Story;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.entity.Child;
@@ -18,6 +21,7 @@ import com.example.namurokmurok.global.common.exception.ErrorCode;
 import com.example.namurokmurok.global.s3.S3Uploader;
 import com.example.namurokmurok.global.common.enums.GenerationStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +29,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Log4j2
 @Service
 @RequiredArgsConstructor
 public class ConversationService {
 
     private final AiApiClient aiApiClient;
     private final S3Uploader s3Uploader;
+
+    private final FeedbackService feedbackService;
 
     private final ChildRepository childRepository;
     private final StoryRepository storyRepository;
@@ -185,19 +192,82 @@ public class ConversationService {
                 .build();
     }
 
+    // 대화 실패 처리1 (프론트 요청 = 중도 이탈)
     @Transactional
-    // 대화 상태 FAILED 처리
-    public void failConversation(String conversationId) {
-        Conversation conv = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+    public void failFromClient(String conversationId) {
+        Conversation conv = findActiveConversation(conversationId);
 
-        // 이미 COMPLETED 또는 FAILED면 중복 수정 방지
-        if (conv.isFinished()) {
-            return ;
+        markConversationFailed(conv);
+
+        if (shouldGenerateFeedback(conversationId)) {
+            feedbackService.createFeedbackAsync(conversationId);
+        } else {
+            log.info("⚠️ [CLIENT-FAIL] 아이 발화 없음 → 피드백 생성 안함 (id={})", conversationId);
+        }
+    }
+
+    // 대화 실패 처리2 (세션 만료)
+    @Transactional
+    public void failByExpiration(String conversationId) {
+        Conversation conv = findActiveConversation(conversationId);
+
+        markConversationFailed(conv);
+
+        if (!shouldGenerateFeedback(conversationId)) {
+            log.info("⚠️ [EXPIRE] 아이 발화 없음 → 피드백 생성 안함 (id={})", conversationId);
+            return;
         }
 
+        FeedbackFromHistoryRequestDto dto = buildFeedbackHistoryDto(conversationId);
+        feedbackService.createFeedbackFromHistory(dto, conversationId);
+    }
+
+    // 액티브 상태의 Conversation 조회
+    private Conversation findActiveConversation(String id) {
+        Conversation conv = conversationRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        if (conv.isFinished()) {
+            throw new CustomException(ErrorCode.CONVERSATION_ALREADY_FINISHED);
+        }
+
+        return conv;
+    }
+
+    // 대화 상태 FAILED 처리
+    private void markConversationFailed(Conversation conv) {
         conv.updateStatus(ConversationStatus.FAILED);
         conv.updateEndedAt(LocalDateTime.now());
+    }
+
+    // 아이 발화 1회 이상인지 검증
+    private boolean shouldGenerateFeedback(String conversationId) {
+        long count = dialogueRepository
+                .countByConversationIdAndSpeakerAndStage(
+                        conversationId,
+                        Speaker.CHILD,
+                        Stage.S1
+                );
+        return count >= 1;
+    }
+
+    // 히스토리 기반 피드백 DTO 생성
+    public FeedbackFromHistoryRequestDto buildFeedbackHistoryDto(String sessionId) {
+        List<Dialogue> logs =
+                dialogueRepository.findAllByConversationIdOrderByTurnNumberAsc(sessionId);
+
+        List<DialogueHistoryDto> history =
+                logs.stream()
+                        .map(DialogueHistoryDto::fromDialogue)
+                        .toList();
+
+        Conversation conv = conversationRepository.findById(sessionId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        return FeedbackFromHistoryRequestDto.builder()
+                .childName(conv.getChild().getName())
+                .conversationHistory(history)
+                .build();
     }
 
 }

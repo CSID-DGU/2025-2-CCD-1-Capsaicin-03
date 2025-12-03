@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     Optional<Feedback> findByConversationId(String conversationId);
+    boolean existsByConversationId(String conversationId);
 }
