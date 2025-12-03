@@ -1070,6 +1070,10 @@ async def generate_feedback(session_id: str = Form(...)):
             )
         
         # 감정 정보 (conversation_history에서 추출한 것 우선, 없으면 emotion_history 사용)
+        logger.info(f"🔍 extracted_emotions: {extracted_emotions}")
+        logger.info(f"🔍 emotion_history: {emotion_history}")
+        logger.info(f"🔍 session.emotion_history: {[e.value for e in session.emotion_history] if session.emotion_history else []}")
+        
         if extracted_emotions:
             emotions = ", ".join(extracted_emotions)
             logger.info(f"감정 정보 (대화에서 추출): {emotions}")
@@ -1077,8 +1081,56 @@ async def generate_feedback(session_id: str = Form(...)):
             emotions = ", ".join(emotion_history)
             logger.info(f"감정 정보 (emotion_history): {emotions}")
         else:
-            emotions = "감정 정보 없음"
-            logger.info("감정 정보 없음")
+            # emotion_history가 비어있어도 session.emotion_history에는 있을 수 있음
+            if session.emotion_history:
+                emotions = ", ".join([e.value for e in session.emotion_history])
+                logger.info(f"감정 정보 (session에서 직접): {emotions}")
+            else:
+                emotions = "감정 정보 없음"
+                logger.info("감정 정보 없음")
+        
+        # S1 감정 정답과 아동 답변 비교
+        emotion_comparison = ""
+        try:
+            # 동화 데이터에서 정답 감정 가져오기
+            story_context = context_manager.get_story_context(session.story_name)
+            correct_emotion = story_context.get("emotion_ans", None)
+            
+            # 아동의 첫 감정 찾기 (여러 소스 확인)
+            child_first_emotion = None
+            
+            # 1. session.emotion_history에서
+            if session.emotion_history:
+                child_first_emotion = session.emotion_history[0].value
+                logger.info(f"🔍 감정 출처: session.emotion_history - {child_first_emotion}")
+            # 2. conversation_history에서 S1 stage의 emotion 찾기
+            elif conversation_history:
+                for moment in conversation_history:
+                    if moment.get("stage", "").startswith("S1") and moment.get("emotion"):
+                        child_first_emotion = moment.get("emotion")
+                        logger.info(f"🔍 감정 출처: conversation_history S1 - {child_first_emotion}")
+                        break
+            # 3. extracted_emotions에서 첫 번째
+            elif extracted_emotions:
+                child_first_emotion = extracted_emotions[0]
+                logger.info(f"🔍 감정 출처: extracted_emotions - {child_first_emotion}")
+            
+            logger.info(f"🔍 정답 감정: {correct_emotion}, 아동 감정: {child_first_emotion}")
+            
+            if correct_emotion:
+                if child_first_emotion:
+                    if child_first_emotion != correct_emotion:
+                        emotion_comparison = f"\n\n[S1 감정 답변 비교]\n정답 감정: {correct_emotion}\n아동이 선택한 감정: {child_first_emotion}\n→ 아동이 정답과 다른 감정을 선택했습니다."
+                        logger.info(f"✅ S1 감정 불일치: 정답={correct_emotion}, 아동={child_first_emotion}")
+                    else:
+                        emotion_comparison = f"\n\n[S1 감정 답변 비교]\n정답 감정: {correct_emotion}\n아동이 선택한 감정: {child_first_emotion}\n→ 아동이 정답 감정을 정확히 선택했습니다."
+                        logger.info(f"✅ S1 감정 일치: {correct_emotion}")
+                else:
+                    # 아동 감정을 찾지 못했지만 정답은 알려줌
+                    emotion_comparison = f"\n\n[S1 감정 답변 참고]\n동화 속 캐릭터가 느낀 정답 감정: {correct_emotion}"
+                    logger.info(f"✅ S1 정답 감정만 표시: {correct_emotion}")
+        except Exception as e:
+            logger.warning(f"❌ S1 감정 비교 실패: {e}", exc_info=True)
         
         # 프롬프트 구성 (아동 발화만)
         feedback_tool = FeedbackGeneratorTool()
@@ -1088,9 +1140,11 @@ async def generate_feedback(session_id: str = Form(...)):
         {child_dialogue}
 
         [아동 감정]
-        {emotions}
+        {emotions}{emotion_comparison}
         """
-                        
+        
+        logger.info(f"📝 emotion_comparison: {emotion_comparison}")
+        logger.info(f"📝 전체 input_text:\n{input_text}")
         logger.info(f"프롬프트 길이: {len(input_text)} 문자")
         logger.info(f"피드백 생성 시작: session_id={session_id}")
         
@@ -1173,7 +1227,8 @@ async def get_full_conversation(session_id: str):
 async def generate_feedback_from_data(
     conversation_history: List[Dict] = Body(..., description="대화 내역 리스트. 각 항목은 {'stage': 'S1', 'turn': 1, 'content': '...'} 형식"),
     emotion_history: List[str] = Body(default=[], description="감정 히스토리 리스트 ['행복', '슬픔', ...]"),
-    child_name: Optional[str] = Body(default=None, description="아동 이름 (선택사항)")
+    child_name: Optional[str] = Body(default=None, description="아동 이름 (선택사항)"),
+    story_name: Optional[str] = Body(default=None, description="동화 이름 (S1 감정 비교용)")
 ):
     """
     세션이 만료되어도 대화 내용을 직접 받아서 부모 피드백 생성
@@ -1277,6 +1332,51 @@ async def generate_feedback_from_data(
             emotions = "감정 정보 없음"
             logger.info("감정 정보 없음")
         
+        # S1 감정 정답과 아동 답변 비교 (story_name이 있는 경우에만)
+        emotion_comparison = ""
+        if story_name:
+            try:
+                # 동화 데이터에서 정답 감정 가져오기
+                story_context = context_manager.get_story_context(story_name)
+                correct_emotion = story_context.get("emotion_ans", None)
+                
+                # 아동의 첫 감정 찾기
+                child_first_emotion = None
+                
+                # 1. conversation_history에서 S1 stage의 emotion 찾기
+                for moment in conversation_history:
+                    if moment.get("stage", "").startswith("S1") and moment.get("emotion"):
+                        child_first_emotion = moment.get("emotion")
+                        logger.info(f"🔍 감정 출처: conversation_history S1 - {child_first_emotion}")
+                        break
+                
+                # 2. extracted_emotions에서 첫 번째
+                if not child_first_emotion and extracted_emotions:
+                    child_first_emotion = extracted_emotions[0]
+                    logger.info(f"🔍 감정 출처: extracted_emotions - {child_first_emotion}")
+                
+                # 3. emotion_history에서 첫 번째
+                if not child_first_emotion and emotion_history:
+                    child_first_emotion = emotion_history[0]
+                    logger.info(f"🔍 감정 출처: emotion_history - {child_first_emotion}")
+                
+                logger.info(f"🔍 정답 감정: {correct_emotion}, 아동 감정: {child_first_emotion}")
+                
+                if correct_emotion:
+                    if child_first_emotion:
+                        if child_first_emotion != correct_emotion:
+                            emotion_comparison = f"\n\n[S1 감정 답변 비교]\n정답 감정: {correct_emotion}\n아동이 선택한 감정: {child_first_emotion}\n→ 아동이 정답과 다른 감정을 선택했습니다."
+                            logger.info(f"✅ S1 감정 불일치: 정답={correct_emotion}, 아동={child_first_emotion}")
+                        else:
+                            emotion_comparison = f"\n\n[S1 감정 답변 비교]\n정답 감정: {correct_emotion}\n아동이 선택한 감정: {child_first_emotion}\n→ 아동이 정답 감정을 정확히 선택했습니다."
+                            logger.info(f"✅ S1 감정 일치: {correct_emotion}")
+                    else:
+                        # 아동 감정을 찾지 못했지만 정답은 알려줌
+                        emotion_comparison = f"\n\n[S1 감정 답변 참고]\n동화 속 캐릭터가 느낀 정답 감정: {correct_emotion}"
+                        logger.info(f"✅ S1 정답 감정만 표시: {correct_emotion}")
+            except Exception as e:
+                logger.warning(f"❌ S1 감정 비교 실패: {e}", exc_info=True)
+        
         # 프롬프트 구성 (아동 발화만)
         feedback_tool = FeedbackGeneratorTool()
         
@@ -1287,7 +1387,7 @@ async def generate_feedback_from_data(
         {child_dialogue}{child_info}
 
         [아동 감정]
-        {emotions}
+        {emotions}{emotion_comparison}
         """
         
         logger.info(f"프롬프트 길이: {len(input_text)} 문자")
