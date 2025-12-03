@@ -16,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ConversationExpireScheduler {
 
+    private final ConversationService conversationService;
     private final ConversationRepository conversationRepository;
 
     @Scheduled(fixedRate = 300000) // 5분마다
@@ -31,8 +32,7 @@ public class ConversationExpireScheduler {
                 );
 
         expiredSessions.forEach(conv -> {
-            conv.updateStatus(ConversationStatus.FAILED);
-            conv.updateEndedAt(LocalDateTime.now());
+            conversationService.failByExpiration(conv.getId());
         });
 
         conversationRepository.saveAll(expiredSessions);

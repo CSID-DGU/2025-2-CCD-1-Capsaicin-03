@@ -33,17 +33,17 @@ public class Feedback {
     @Column(name = "status", nullable = false)
     private GenerationStatus generationStatus;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "generated_at", nullable = false)
+    private LocalDateTime generatedAt;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
 
-    public void updateContent(String content, String actionGuide, LocalDateTime createdAt, GenerationStatus status) {
+    public void updateContent(String content, String actionGuide, LocalDateTime generatedAt, GenerationStatus status) {
         this.feedbackContent = content;
         this.actionGuide = actionGuide;
-        this.createdAt = createdAt;
+        this.generatedAt = generatedAt;
         this.generationStatus = status;
     }
 

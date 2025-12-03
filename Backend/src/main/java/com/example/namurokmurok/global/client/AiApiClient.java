@@ -4,6 +4,7 @@ import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartRequest;
 import com.example.namurokmurok.domain.conversation.dto.DialogueTurnRequest;
 import com.example.namurokmurok.domain.conversation.dto.DialogueTurnResponse;
+import com.example.namurokmurok.domain.feedback.dto.FeedbackFromHistoryRequestDto;
 import com.example.namurokmurok.domain.feedback.dto.FeedbackResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,7 +91,7 @@ public class AiApiClient {
     }
 
     /**
-     * 피드백 생성 요청
+     * 피드백 생성 요청 (세션 유효시)
      */
     public FeedbackResponseDto generateAiFeedback(String sessionId) {
 
@@ -106,6 +107,19 @@ public class AiApiClient {
                         res -> handleStatusError("/feedback", res))
                 .bodyToMono(FeedbackResponseDto.class)
                 .onErrorResume(e -> handleException("/feedback", e))
+                .block();
+    }
+
+    /**
+     * 피드백 생성 요청 (세션 만료의 경우로, 대화 로그 포함 요청)
+     */
+
+    public FeedbackResponseDto generateFeedbackFromHistory(FeedbackFromHistoryRequestDto requestDto) {
+        return fastApiClient.post()
+                .uri("/api/v1/dialogue/feedback/generate")
+                .bodyValue(requestDto)
+                .retrieve()
+                .bodyToMono(FeedbackResponseDto.class)
                 .block();
     }
 }

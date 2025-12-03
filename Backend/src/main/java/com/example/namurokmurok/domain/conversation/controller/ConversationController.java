@@ -87,7 +87,7 @@ public class ConversationController {
     public ApiResponse<Void> failConversation(
             @PathVariable("conversation-id") String conversationId
     ) {
-        conversationService.failConversation(conversationId);
+        conversationService.failFromClient(conversationId);
         return ApiResponse.success("대화 상태가 FAILED로 변경 되었습니다.", null);
     }
 }
