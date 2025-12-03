@@ -1024,8 +1024,8 @@ async def generate_feedback(session_id: str = Form(...)):
             emotion_history = [e.value for e in session.emotion_history]
             logger.info(f"세션 메모리에서 감정 조회: {len(emotion_history)}개")
         
-        # 대화 텍스트 구성 및 감정 정보 추출
-        conversation_text = []
+        # 아동 발화만 수집 (AI 응답 제외)
+        child_responses = []
         child_response_count = 0
         extracted_emotions = []
         
@@ -1033,35 +1033,25 @@ async def generate_feedback(session_id: str = Form(...)):
             logger.debug(f"moment[{i}]: {moment}")
             
             # key_moments 구조: {'role': 'child/ai', 'stage': 'S2', 'turn': 2, 'content': '...', 'emotion': '슬픔'}
-            content = moment.get("content", "")
-            if not content:
-                continue
-            
             role = moment.get("role", "")
-            stage = moment.get("stage", "")
-            turn = moment.get("turn", "")
-            emotion = moment.get("emotion", "")
             
-            # role에 따라 레이블 지정
+            # 아동 발화만 수집
             if role == "child":
-                label = f"아동 (S{stage[-1] if stage else '?'}, 턴{turn})"
+                content = moment.get("content", "")
+                if not content:
+                    continue
+                
+                emotion = moment.get("emotion", "")
                 child_response_count += 1
+                
                 # 감정 정보가 있으면 수집
                 if emotion:
                     extracted_emotions.append(emotion)
-            elif role == "ai":
-                label = f"AI (S{stage[-1] if stage else '?'}, 턴{turn})"
-            else:
-                # 하위 호환성: role이 없는 경우 (기존 데이터)
-                label = f"{stage}_턴{turn}" if stage else "대화"
-            
-            # 감정 정보를 내용에 포함
-            if emotion and role == "child":
-                conversation_text.append(f"{label} [감정: {emotion}]: {content}")
-            else:
-                conversation_text.append(f"{label}: {content}")
+                    child_responses.append(f"[감정: {emotion}] {content}")
+                else:
+                    child_responses.append(content)
         
-        logger.info(f"구성된 대화 텍스트: 전체 {len(conversation_text)}개, 아동 발화 {child_response_count}개")
+        logger.info(f"수집된 아동 발화: {child_response_count}개")
         
         # 아동의 발화가 있는지 확인
         if child_response_count == 0:
@@ -1083,8 +1073,6 @@ async def generate_feedback(session_id: str = Form(...)):
                 detail=error_detail
             )
         
-        logger.info(f"아동 응답 확인: {child_response_count}개 발화, AI 응답 {len(conversation_text) - child_response_count}개")
-        
         # 감정 정보 (conversation_history에서 추출한 것 우선, 없으면 emotion_history 사용)
         if extracted_emotions:
             emotions = ", ".join(extracted_emotions)
@@ -1096,12 +1084,12 @@ async def generate_feedback(session_id: str = Form(...)):
             emotions = "감정 정보 없음"
             logger.info("감정 정보 없음")
         
-        # 프롬프트 구성
+        # 프롬프트 구성 (아동 발화만)
         feedback_tool = FeedbackGeneratorTool()
         
-        dialogue_text = "\n".join(conversation_text)
-        input_text = f"""[AI와 아동 대화 text]
-{dialogue_text}
+        child_dialogue = "\n".join(child_responses)
+        input_text = f"""[아동 발화]
+{child_dialogue}
 
 [아동 감정]
 {emotions}
@@ -1195,11 +1183,10 @@ async def generate_feedback_from_data(
     세션이 만료되어도 대화 내용을 직접 받아서 부모 피드백 생성
     
     Args:
-        conversation_history: 대화 내역 리스트
-            - role: "child" 또는 "ai" (필수)
+        conversation_history: 아동 발화 내역 리스트 (아동의 대사만 포함)
             - stage: 단계 (예: "S1", "S2") (필수)
             - turn: 턴 번호 (필수)
-            - content: 대화 내용 (필수)
+            - content: 아동의 발화 내용 (필수)
             - emotion: 감정 라벨 (선택) - S1, S4에서만 포함 가능
         emotion_history: 감정 히스토리 (선택, 하위 호환용)
         child_name: 아동 이름 (선택)
@@ -1211,16 +1198,17 @@ async def generate_feedback_from_data(
         ```json
         {
             "conversation_history": [
-                {"role": "ai", "stage": "S1", "turn": 1, "content": "무슨 일이 있었어?"},
-                {"role": "child", "stage": "S1", "turn": 1, "content": "엄마가 화났어", "emotion": "슬픔"},
-                {"role": "ai", "stage": "S1", "turn": 2, "content": "그랬구나..."},
-                {"role": "child", "stage": "S1", "turn": 2, "content": "응"}
+                {"stage": "S1", "turn": 1, "content": "엄마가 화났어", "emotion": "슬픔"},
+                {"stage": "S1", "turn": 2, "content": "응"},
+                {"stage": "S2", "turn": 3, "content": "혼자 있고 싶어서"}
             ],
             "child_name": "현정"
         }
         ```
         
-        Note: emotion 필드는 선택사항입니다. S1(감정 라벨링)과 S4(같은 경험)에서만 포함됩니다.
+        Note: 
+        - conversation_history는 아동의 발화만 포함합니다 (AI 응답 제외)
+        - emotion 필드는 선택사항입니다. S1(감정 라벨링)과 S4(같은 경험)에서만 포함됩니다.
     """
     from app.tools.feedback import FeedbackGeneratorTool
     from datetime import datetime
@@ -1243,8 +1231,8 @@ async def generate_feedback_from_data(
                 }
             )
         
-        # 대화 텍스트 구성 및 감정 정보 추출
-        conversation_text = []
+        # 아동 발화 수집 (모든 항목이 아동의 대사)
+        child_responses = []
         child_response_count = 0
         extracted_emotions = []
         
@@ -1255,44 +1243,28 @@ async def generate_feedback_from_data(
             if not content:
                 continue
             
-            role = moment.get("role", "")
-            stage = moment.get("stage", "")
-            turn = moment.get("turn", "")
             emotion = moment.get("emotion", "")
+            child_response_count += 1
             
-            # role에 따라 레이블 지정
-            if role == "child":
-                label = f"아동 (S{stage[-1] if stage else '?'}, 턴{turn})"
-                child_response_count += 1
-                # 감정 정보가 있으면 수집
-                if emotion:
-                    extracted_emotions.append(emotion)
-            elif role == "ai":
-                label = f"AI (S{stage[-1] if stage else '?'}, 턴{turn})"
+            # 감정 정보가 있으면 수집
+            if emotion:
+                extracted_emotions.append(emotion)
+                child_responses.append(f"[감정: {emotion}] {content}")
             else:
-                # 하위 호환성: role이 없는 경우 (기존 데이터)
-                label = f"{stage}_턴{turn}" if stage else "아동"
-                if "아동" in label or not role:
-                    child_response_count += 1
-            
-            # 감정 정보를 내용에 포함
-            if emotion and role == "child":
-                conversation_text.append(f"{label} [감정: {emotion}]: {content}")
-            else:
-                conversation_text.append(f"{label}: {content}")
+                child_responses.append(content)
         
-        logger.info(f"구성된 대화 텍스트: 전체 {len(conversation_text)}개, 아동 발화 {child_response_count}개")
+        logger.info(f"수집된 아동 발화: {child_response_count}개")
         
         if child_response_count == 0:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "message": "아동의 응답이 없습니다. 최소 1개 이상의 아동 발화가 필요합니다.",
-                    "hint": "각 대화에 'role': 'child'를 포함하거나, 'content'에 아동의 발화를 입력하세요.",
+                    "hint": "conversation_history는 아동의 발화만 포함해야 합니다. 'content' 필드는 필수입니다.",
                     "example": {
                         "conversation_history": [
-                            {"role": "ai", "stage": "S1", "turn": 1, "content": "콩쥐의 기분이 어땠을 것 같아?"},
-                            {"role": "child", "stage": "S1", "turn": 1, "content": "엄마가 화났어", "emotion": "슬픔"}
+                            {"stage": "S1", "turn": 1, "content": "엄마가 화났어", "emotion": "슬픔"},
+                            {"stage": "S1", "turn": 2, "content": "응"}
                         ]
                     }
                 }
@@ -1309,14 +1281,14 @@ async def generate_feedback_from_data(
             emotions = "감정 정보 없음"
             logger.info("감정 정보 없음")
         
-        # 프롬프트 구성
+        # 프롬프트 구성 (아동 발화만)
         feedback_tool = FeedbackGeneratorTool()
         
-        dialogue_text = "\n".join(conversation_text)
+        child_dialogue = "\n".join(child_responses)
         child_info = f"\n아동 이름: {child_name}" if child_name else ""
         
-        input_text = f"""[AI와 아동 대화 text]
-        {dialogue_text}{child_info}
+        input_text = f"""[아동 발화]
+        {child_dialogue}{child_info}
 
         [아동 감정]
         {emotions}
