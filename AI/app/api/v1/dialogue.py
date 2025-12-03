@@ -1028,14 +1028,29 @@ async def generate_feedback(session_id: str = Form(...)):
         child_responses = []
         child_response_count = 0
         extracted_emotions = []
+        inappropriate_words_count = 0
+        inappropriate_words_details = []
         
         for i, moment in enumerate(conversation_history):
             logger.debug(f"moment[{i}]: {moment}")
             
-            # key_moments 구조: {'stage': 'S2', 'turn': 2, 'content': '...', 'emotion': '슬픔'}
+            # key_moments 구조: {'stage': 'S2', 'turn': 2, 'content': '...', 'emotion': '슬픔', 'safety_check': {...}}
             content = moment.get("content", "")
             if not content:
                 continue
+            
+            # 금칙어 사용 확인
+            safety_check = moment.get("safety_check")
+            if safety_check and not safety_check.get("is_safe", True):
+                inappropriate_words_count += 1
+                flagged_categories = safety_check.get("flagged_categories", [])
+                inappropriate_words_details.append({
+                    "stage": moment.get("stage", ""),
+                    "turn": moment.get("turn", ""),
+                    "content": content,
+                    "categories": flagged_categories
+                })
+                logger.info(f"🚨 금칙어 감지: stage={moment.get('stage')}, content={content[:20]}...")
             
             emotion = moment.get("emotion", "")
             child_response_count += 1
@@ -1132,6 +1147,15 @@ async def generate_feedback(session_id: str = Form(...)):
         except Exception as e:
             logger.warning(f"❌ S1 감정 비교 실패: {e}", exc_info=True)
         
+        # 금칙어 사용 내역 텍스트 구성
+        inappropriate_words_text = ""
+        if inappropriate_words_count > 0:
+            inappropriate_words_text = f"\n\n[금칙어 사용 내역]\n아동이 대화 중 부적절한 표현을 {inappropriate_words_count}회 사용했습니다."
+            for idx, detail in enumerate(inappropriate_words_details, 1):
+                categories_str = ", ".join(detail["categories"])
+                inappropriate_words_text += f"\n{idx}. {detail['stage']} - \"{detail['content']}\" (유형: {categories_str})"
+            logger.info(f"📝 금칙어 내역: {inappropriate_words_text}")
+        
         # 프롬프트 구성 (아동 발화만)
         feedback_tool = FeedbackGeneratorTool()
         
@@ -1140,7 +1164,7 @@ async def generate_feedback(session_id: str = Form(...)):
         {child_dialogue}
 
         [아동 감정]
-        {emotions}{emotion_comparison}
+        {emotions}{emotion_comparison}{inappropriate_words_text}
         """
         
         logger.info(f"📝 emotion_comparison: {emotion_comparison}")
@@ -1286,6 +1310,8 @@ async def generate_feedback_from_data(
         child_responses = []
         child_response_count = 0
         extracted_emotions = []
+        inappropriate_words_count = 0
+        inappropriate_words_details = []
         
         for i, moment in enumerate(conversation_history):
             logger.debug(f"moment[{i}]: {moment}")
@@ -1293,6 +1319,19 @@ async def generate_feedback_from_data(
             content = moment.get("content", "")
             if not content:
                 continue
+            
+            # 금칙어 사용 확인
+            safety_check = moment.get("safety_check")
+            if safety_check and not safety_check.get("is_safe", True):
+                inappropriate_words_count += 1
+                flagged_categories = safety_check.get("flagged_categories", [])
+                inappropriate_words_details.append({
+                    "stage": moment.get("stage", ""),
+                    "turn": moment.get("turn", ""),
+                    "content": content,
+                    "categories": flagged_categories
+                })
+                logger.info(f"🚨 금칙어 감지: stage={moment.get('stage')}, content={content[:20]}...")
             
             emotion = moment.get("emotion", "")
             child_response_count += 1
@@ -1377,6 +1416,15 @@ async def generate_feedback_from_data(
             except Exception as e:
                 logger.warning(f"❌ S1 감정 비교 실패: {e}", exc_info=True)
         
+        # 금칙어 사용 내역 텍스트 구성
+        inappropriate_words_text = ""
+        if inappropriate_words_count > 0:
+            inappropriate_words_text = f"\n\n[금칙어 사용 내역]\n아동이 대화 중 부적절한 표현을 {inappropriate_words_count}회 사용했습니다."
+            for idx, detail in enumerate(inappropriate_words_details, 1):
+                categories_str = ", ".join(detail["categories"])
+                inappropriate_words_text += f"\n{idx}. {detail['stage']} - \"{detail['content']}\" (유형: {categories_str})"
+            logger.info(f"📝 금칙어 내역: {inappropriate_words_text}")
+        
         # 프롬프트 구성 (아동 발화만)
         feedback_tool = FeedbackGeneratorTool()
         
@@ -1387,7 +1435,7 @@ async def generate_feedback_from_data(
         {child_dialogue}{child_info}
 
         [아동 감정]
-        {emotions}{emotion_comparison}
+        {emotions}{emotion_comparison}{inappropriate_words_text}
         """
         
         logger.info(f"프롬프트 길이: {len(input_text)} 문자")
