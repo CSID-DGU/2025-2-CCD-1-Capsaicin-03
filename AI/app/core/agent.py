@@ -254,8 +254,8 @@ class DialogueAgent:
             
             [성공 조건 - 아래 중 하나만 충족하면 무조건 성공]
             1. 상황의 핵심 키워드를 언급 (어미 형태 무관)
-               - 시나리오가 "혼자 서 있는" 상황이면: "혼자", "혼자라서", "혼자니까", "혼자잖아" 모두 성공
-               - 시나리오가 "친구가 없는" 상황이면: "친구 없어", "없어서", "없으니까", "없잖아" 모두 성공
+               - 시나리오가 "혼자 서 있는" 상황이면: "혼자", "혼자라서", "혼자니까", "혼자잖아" 등 혼자라는 뉘앙스가 있으면 성공
+               - 시나리오가 "친구가 없는" 상황이면: "친구 없어", "없어서", "없으니까", "없잖아" 등 친구가 없다는 뉘앙스가 있으면 성공
                - 시나리오가 "밀린" 상황이면: "밀어서", "밀었으니까", "밀었잖아" 모두 성공
             
             2. 이유를 설명하는 연결어 사용
@@ -353,6 +353,12 @@ class DialogueAgent:
         # 1. 감정 분류 먼저 수행
         emotion_result = self.emotion_classifier.classify(child_text)
         logger.info(f"🔍 S1 감정 분류 결과: {emotion_result}")
+        
+        # 아동의 발화를 session.context에 저장 (retry에서 사용)
+        if not hasattr(session, 'context') or session.context is None:
+            session.context = {}
+        session.context['s1_child_text'] = child_text
+        logger.info(f"📝 S1 아동 발화 저장: '{child_text}'")
         
         # 2. 규칙 기반 평가 (1차) - 감정 분류기만 사용
         rule_based_success = (emotion_result.primary != EmotionLabel.NEUTRAL)
@@ -1272,6 +1278,116 @@ class DialogueAgent:
         return AISpeech(text=response)
                 
     
+    ## S1 Retry Functions ##
+    def _generate_s1_rc1(
+        self, child_name: str, context: Dict, session: DialogueSession
+    ) -> AISpeech:
+        """S1 retry_1: 아동의 이전 발화를 분석하여 자연스럽게 개방형 재질문"""
+        story = context.get("story", {})
+        character_name = story.get("character_name", "콩쥐")
+        story_scene = story.get("scene", "")
+        
+        # 아동의 이전 발화 가져오기
+        child_previous_text = ""
+        if hasattr(session, 'context') and session.context:
+            child_previous_text = session.context.get('s1_child_text', '')
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", f"""
+            너는 6살~9살 아이와 대화하는 따뜻하고 공감적인 동화 선생님이야.
+            
+            아이 이름: {child_name}
+            동화 캐릭터: {character_name}
+            동화 장면: {story_scene}
+            
+            동화 속 '{character_name}'의 감정을 묻는 질문에 아이가 다음과 같이 대답했어:
+            아이의 답변: "{child_previous_text}"
+            
+            아이의 답변이 감정 표현이 아니거나 불명확해서 다시 물어봐야 해.
+            아이의 답변 내용을 인정하고 공감하면서, 자연스럽게 감정에 대해 다시 질문해줘.
+            
+            중요:
+            1. 반드시 "{child_name}"의 이름으로 부르면서 시작 (받침에 따라 "아/야" 사용)
+            2. 아이의 답변을 부정하지 말고, "그랬구나", "응" 등으로 일단 받아들이기
+            3. 그 다음 "그럼", "그런데" 등으로 자연스럽게 감정 질문으로 유도
+            4. "어떤 기분이었을까?", "어떤 마음이었을 것 같아?" 같은 개방형 질문
+            5. 2-3문장으로 간결하게
+            6. 감정 단어를 직접 제시하지 말고, 아이가 스스로 말하도록 유도
+            
+            좋은 예시:
+            - 아이: "물을 부었어요" → "{format_name_with_vocative(child_name)}, 그랬구나. 물을 계속 부었는데 차지 않았지? 그럼 {format_name_with_subject(character_name)} 어떤 기분이었을까?"
+            - 아이: "새엄마가 무서웠어요" → "{format_name_with_vocative(child_name)}, 응, 새엄마가 무서웠구나. 그래서 {format_name_with_subject(character_name)} 어떤 마음이었을 것 같아?"
+            - 아이: "모르겠어요" → "{format_name_with_vocative(child_name)}, 괜찮아. 천천히 생각해봐. {format_name_with_subject(character_name)} 어떤 기분이 들었을 것 같아?"
+            
+            나쁜 예시:
+            - "그건 감정이 아니야" (부정적)
+            - "다시 말해봐" (반복 강요)
+            - "슬펐을까? 화났을까?" (선택지 제시는 retry_2에서)
+            - 다른 아이 이름 사용 (반드시 "{child_name}"만 사용)
+            """),
+            ("user", f"아이 이름은 '{child_name}'이야. 반드시 이 이름을 사용해서 아이의 답변 '{child_previous_text}'을 인정하면서, 자연스럽게 {character_name}의 감정을 묻는 개방형 질문을 생성해줘. 2-3문장, 한 단락으로만 출력해.")
+        ])
+        
+        response = self.llm.invoke(prompt.format_messages())
+        return AISpeech(text=response.content.strip())
+    
+    def _generate_s1_rc2(
+        self, child_name: str, context: Dict, session: DialogueSession
+    ) -> AISpeech:
+        """S1 retry_2: 아동의 이전 발화를 고려하여 적절한 감정 2가지 선택지 제시"""
+        story = context.get("story", {})
+        character_name = story.get("character_name", "콩쥐")
+        story_scene = story.get("scene", "")
+        
+        # 아동의 이전 발화 가져오기
+        child_previous_text = ""
+        if hasattr(session, 'context') and session.context:
+            child_previous_text = session.context.get('s1_child_text', '')
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", f"""
+            너는 6살~9살 아이와 대화하는 따뜻하고 친절한 동화 선생님이야.
+            
+            아이 이름: {child_name}
+            동화 캐릭터: {character_name}
+            동화 장면: {story_scene}
+            
+            동화 속 '{character_name}'의 감정을 묻는 질문에 아이가 다음과 같이 대답했어:
+            아이의 답변: "{child_previous_text}"
+            
+            이제 아이가 선택하기 쉽도록 story_scene에 맞는 2가지 감정을 제시해줘야 해.
+            
+            중요:
+            1. 반드시 "{child_name}"의 이름으로 부르면서 시작 (받침에 따라 "아/야" 사용)
+            2. story_scene의 상황에 맞는 감정 2개를 선택 (예: 슬픔, 화남, 무서움, 속상함 등)
+            3. 형식: "{format_name_with_vocative(child_name)}, {format_name_with_subject(character_name)} [감정1]었을까? 아니면 [감정2]었을까?"
+            4. 감정 표현은 과거형으로 (슬펐을까, 화났을까, 무서웠을까)
+            5. 한 문장으로만 출력
+            6. 너무 복잡한 감정 단어는 피하고, 6살~9살이 이해할 수 있는 기본 감정 사용
+            
+            사용 가능한 감정 표현:
+            - 기뻤을, 행복했을, 좋았을
+            - 슬펐을, 속상했을, 힘들었을
+            - 화났을, 짜증났을
+            - 무서웠을, 두려웠을
+            - 놀랐을, 당황했을
+            
+            좋은 예시:
+            - story_scene이 "독에 물이 안 차서 새엄마가 화낼까봐" → "{format_name_with_vocative(child_name)}, {format_name_with_subject(character_name)} 무서웠을까? 아니면 속상했을까?"
+            - story_scene이 "친구가 도와줘서 일을 다 끝냈어" → "{format_name_with_vocative(child_name)}, {format_name_with_subject(character_name)} 기뻤을까? 아니면 놀랐을까?"
+            
+            나쁜 예시:
+            - "슬펐을까? 기뻤을까?" (상황과 무관하고 대조적인 감정)
+            - "우울했을까? 비통했을까?" (너무 어려운 단어)
+            - 세 가지 이상 감정 제시
+            - 다른 아이 이름 사용 (반드시 "{child_name}"만 사용)
+            """),
+            ("user", f"아이 이름은 '{child_name}'이야. 반드시 이 이름을 사용해서, story_scene을 분석하고 아이의 답변 '{child_previous_text}'도 고려해서, {character_name}가 느꼈을 가능성이 높은 감정 2가지를 선택지로 제시하는 질문 한 문장만 출력해.")
+        ])
+        
+        response = self.llm.invoke(prompt.format_messages())
+        return AISpeech(text=response.content.strip())
+    
     ## _generate_ask_experience_retry_count_1 ##
     def _generate_s2_rc1(
         self, child_name: str, context: Dict
@@ -1301,15 +1417,17 @@ class DialogueAgent:
             ("system", f"""
             너는 6살~9살 아이와 대화하는 따뜻하고 친절한 동화 선생님이야.
             
-            아이가 동화 속 '{character_name}'의 감정 이유를 잘 설명하지 못하고 있어.
-            지금은 두 번째 재시도야. 아이가 쉽게 선택할 수 있도록 story_scene을 기반으로 개연성 있는 2가지 이유를 제시해줘야 해.
-
+            아이 이름: {child_name}
+            동화 캐릭터: {character_name}
             동화 제목: {story_name}
             동화 인트로: {story_intro}
             동화 장면: {story_scene}
             
+            아이가 동화 속 '{character_name}'의 감정 이유를 잘 설명하지 못하고 있어.
+            지금은 두 번째 재시도야. 아이가 쉽게 선택할 수 있도록 story_scene을 기반으로 개연성 있는 2가지 이유를 제시해줘야 해.
+            
             중요:
-            1. 아이를 부르면서 시작. 예시) "{child_name}(받침에 따라 아/야),"
+            1. 반드시 "{child_name}"의 이름으로 부르면서 시작 (받침에 따라 "아/야" 사용)
             2. story_scene의 구체적인 상황을 반영해서 이유 2가지를 만들어야 해
             3. 두 이유는 모두 story_scene에서 실제로 일어난 일이거나 추론 가능한 일이어야 해
             4. 질문 한 문장만 출력
@@ -1325,8 +1443,9 @@ class DialogueAgent:
             나쁜 예시:
             - "혹시 힘들어서 그랬을까? 아니면 슬퍼서 그랬을까?" (story_scene과 무관하고 감정 언급)
             - "혹시 착해서 그랬을까? 아니면 나빠서 그랬을까?" (이유가 아닌 성격 묘사)
+            - 다른 아이 이름 사용 (반드시 "{child_name}"만 사용)
             """),
-            ("user", f"story_scene을 자세히 읽고, '{character_name}'가 그렇게 느낀 구체적인 이유 2가지를 선택지로 제시하는 질문 한 문장만 출력해. 반드시 story_scene의 상황을 반영해야 해.")
+            ("user", f"아이 이름은 '{child_name}'이야. 반드시 이 이름을 사용해서, story_scene을 자세히 읽고 '{character_name}'가 그렇게 느낀 구체적인 이유 2가지를 선택지로 제시하는 질문 한 문장만 출력해.")
             ])
             
         response = self.llm.invoke(prompt.format_messages())
@@ -1355,6 +1474,8 @@ class DialogueAgent:
                 ("system", f"""
                 너는 6살~9살 아이와 대화하는 따뜻하고 친절한 동화 선생님이야.
                 
+                아이 이름: {child_name}
+                
                 아이가 자신이 본 친구의 경험에 대해 이야기했어:
                 "{s3_answer_content}"
                 
@@ -1365,7 +1486,7 @@ class DialogueAgent:
                 두 번째 재시도야. 아이가 말한 경험 속 친구가 그런 감정을 느낀 이유 2가지를 제시해줘.
                 
                 중요:
-                1. "{child_name}(받침에 따라 아/야)," 로 시작
+                1. 반드시 "{child_name}"의 이름으로 부르면서 시작 (받침에 따라 "아/야" 사용)
                 2. 아이가 말한 상황을 참고해서 구체적인 이유 2가지 제시
                 3. 질문 한 문장만 출력
                 4. 6살~9살 아이가 이해할 수 있는 단어 사용
@@ -1374,8 +1495,11 @@ class DialogueAgent:
                 예시: 
                 - 아이가 "친구가 혼자 있었어"라고 했다면 → "(아이이름+아/야), 혹시 친구들이 같이 안 놀아줘서 그랬을까? 아니면 하고 싶은 게 없어서 그랬을까?"
                 - 아이가 "친구가 울었어"라고 했다면 → "{format_name_with_vocative(child_name)}, 혹시 누가 놀렸어서 그랬을까? 아니면 무언가를 잃어버려서 그랬을까?"
+                
+                나쁜 예시:
+                - 다른 아이 이름 사용 (반드시 "{child_name}"만 사용)
                 """),
-                ("user", "아이가 말한 경험 속 친구가 그런 감정을 느낀 이유 2가지를 선택지로 제시하는 질문 한 문장만 출력해.")
+                ("user", f"아이 이름은 '{child_name}'이야. 반드시 이 이름을 사용해서, 아이가 말한 경험 속 친구가 그런 감정을 느낀 이유 2가지를 선택지로 제시하는 질문 한 문장만 출력해.")
             ])
             response = self.llm.invoke(prompt.format_messages())
             return AISpeech(text=response.content.strip())
@@ -1431,15 +1555,17 @@ class DialogueAgent:
         prompt = ChatPromptTemplate.from_messages([
             ("system", f"""
             너는 6살~9살 아이와 대화하는 따뜻한 선생님이야.
-            아이가 자신이 본 친구의 경험을 이야기했어.
             
+            아이 이름: {child_name}
+            
+            아이가 자신이 본 친구의 경험을 이야기했어.
             아이의 말: "{child_text}"
             
             너의 역할:
             1. 아이가 말한 내용을 간단히 정리해서 되물어주기
             2. 아이가 말한 내용을 간단히 정리할 때 감정 단어를 직접 언급하면 안돼.
                 - 예) 네 친구가 간식을 누군가에게 빼앗기고 슬퍼하는 모습을 본 거구나. (x)
-            2. 그 친구의 감정을 물어보기
+            3. 그 친구의 감정을 물어보기
             
             형식:
             [아이가 말한 핵심 상황을 1-2문장으로 요약].
@@ -1499,8 +1625,11 @@ class DialogueAgent:
             형식: "혹시 {child_name}이도 [경험1] 했던 적이 있어? 아니면 [경험2] 했어?"
             
             예시: "혹시 {child_name}이도 친구한테 섭섭했던 적이 있어? 아니면 가족한테 속상했던 적이 있어?"
+            
+            나쁜 예시:
+            - 다른 아이 이름 사용 (반드시 "{child_name}"만 사용)
             """),
-            ("user", f"{child_name}이에게 비슷한 경험 2가지를 예시로 제시하는 질문 한 문장만 출력해. 감정 단어를 반복하지 마.")
+            ("user", f"아이 이름은 '{child_name}'이야. 반드시 이 이름을 사용해서, 비슷한 경험 2가지를 예시로 제시하는 질문 한 문장만 출력해. 감정 단어를 반복하지 마.")
         ])
         
         response = self.llm.invoke(prompt.format_messages())
@@ -1756,13 +1885,13 @@ class DialogueAgent:
         
         if stage == Stage.S1_EMOTION_LABELING:
             if next_retry_count == 1:
-                # retry_1: 개방형 질문 재시도
-                logger.info("🔄 S1 retry_1: 개방형 질문 재시도")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, 괜찮아. 천천히 생각해봐. 어떤 기분이 들 것 같아?")
+                # retry_1: 아동 발화 기반 개방형 재질문 (LLM)
+                logger.info("🔄 S1 retry_1: 아동 발화 기반 개방형 재질문")
+                return self._generate_s1_rc1(session.child_name, context, session)
             elif next_retry_count == 2:
-                # retry_2: 감정 선택지 3개 제시
-                logger.info("🔄 S1 retry_2: 감정 선택지 제시")
-                return AISpeech(text=f"{format_name_with_vocative(session.child_name)}, {format_name_with_subject(character_name)} 기뻤을 것 같아? 아니면 {format_name_with_subject(character_name)} 슬펐을 것 같아?")
+                # retry_2: 아동 발화 기반 이지선다 감정 질문 (LLM)
+                logger.info("🔄 S1 retry_2: 아동 발화 기반 감정 선택지 제시")
+                return self._generate_s1_rc2(session.child_name, context, session)
             # else:
             #     logger.info("🔄 S1 retry_3: 다음 단계로 건너뛰기")
             #     return AISpeech(text=f"{format_name_with_vocative(session.child_name)} 괜찮아! 감정을 말로 표현하는게 어려울 수 있어. 그럼 우리 다른 이야기를 해볼까?")

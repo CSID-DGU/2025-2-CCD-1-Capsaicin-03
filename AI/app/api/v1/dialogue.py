@@ -2,8 +2,8 @@
 Dialogue API 엔드포인트
 /api/v1/dialogue/turn
 """
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import Optional
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Body
+from typing import Optional, List, Dict
 import logging
 import time
 import uuid
@@ -1024,30 +1024,47 @@ async def generate_feedback(session_id: str = Form(...)):
             emotion_history = [e.value for e in session.emotion_history]
             logger.info(f"세션 메모리에서 감정 조회: {len(emotion_history)}개")
         
-        # 대화 텍스트 구성
+        # 대화 텍스트 구성 및 감정 정보 추출
         conversation_text = []
+        child_response_count = 0
+        extracted_emotions = []
+        
         for i, moment in enumerate(conversation_history):
             logger.debug(f"moment[{i}]: {moment}")
             
-            # key_moments 구조: {'stage': 'S2', 'turn': 2, 'content': '...'}
-            # 또는 {'role': 'child', 'content': '...'}
+            # key_moments 구조: {'role': 'child/ai', 'stage': 'S2', 'turn': 2, 'content': '...', 'emotion': '슬픔'}
             content = moment.get("content", "")
             if not content:
                 continue
             
-            # role이 있으면 사용, 없으면 stage 정보 사용
             role = moment.get("role", "")
-            if not role:
-                stage = moment.get("stage", "")
-                turn = moment.get("turn", "")
-                role = f"{stage}_턴{turn}" if stage else "대화"
+            stage = moment.get("stage", "")
+            turn = moment.get("turn", "")
+            emotion = moment.get("emotion", "")
             
-            conversation_text.append(f"{role}: {content}")
+            # role에 따라 레이블 지정
+            if role == "child":
+                label = f"아동 (S{stage[-1] if stage else '?'}, 턴{turn})"
+                child_response_count += 1
+                # 감정 정보가 있으면 수집
+                if emotion:
+                    extracted_emotions.append(emotion)
+            elif role == "ai":
+                label = f"AI (S{stage[-1] if stage else '?'}, 턴{turn})"
+            else:
+                # 하위 호환성: role이 없는 경우 (기존 데이터)
+                label = f"{stage}_턴{turn}" if stage else "대화"
+            
+            # 감정 정보를 내용에 포함
+            if emotion and role == "child":
+                conversation_text.append(f"{label} [감정: {emotion}]: {content}")
+            else:
+                conversation_text.append(f"{label}: {content}")
         
-        logger.info(f"구성된 대화 텍스트 라인 수: {len(conversation_text)}")
+        logger.info(f"구성된 대화 텍스트: 전체 {len(conversation_text)}개, 아동 발화 {child_response_count}개")
         
-        # 아동의 발화가 있는지 확인 (key_moments에는 아동 발화만 저장됨)
-        if not conversation_history:
+        # 아동의 발화가 있는지 확인
+        if child_response_count == 0:
             # 디버깅을 위한 상세 정보
             error_detail = {
                 "message": "아동의 응답이 없습니다. 아동이 최소 1회 이상 응답해야 피드백을 생성할 수 있습니다.",
@@ -1066,22 +1083,29 @@ async def generate_feedback(session_id: str = Form(...)):
                 detail=error_detail
             )
         
-        logger.info(f"아동 응답 확인: {len(conversation_history)}개 발화")
+        logger.info(f"아동 응답 확인: {child_response_count}개 발화, AI 응답 {len(conversation_text) - child_response_count}개")
         
-        # 감정 정보
-        emotions = ", ".join(emotion_history)
-        logger.info(f"감정 정보: {emotions[:100]}...")
+        # 감정 정보 (conversation_history에서 추출한 것 우선, 없으면 emotion_history 사용)
+        if extracted_emotions:
+            emotions = ", ".join(extracted_emotions)
+            logger.info(f"감정 정보 (대화에서 추출): {emotions}")
+        elif emotion_history:
+            emotions = ", ".join(emotion_history)
+            logger.info(f"감정 정보 (emotion_history): {emotions}")
+        else:
+            emotions = "감정 정보 없음"
+            logger.info("감정 정보 없음")
         
         # 프롬프트 구성
         feedback_tool = FeedbackGeneratorTool()
         
         dialogue_text = "\n".join(conversation_text)
         input_text = f"""[AI와 아동 대화 text]
-                {dialogue_text}
+{dialogue_text}
 
-                [아동 감정]
-                {emotions if emotions else '감정 정보 없음'}
-                """
+[아동 감정]
+{emotions}
+"""
                         
         logger.info(f"프롬프트 길이: {len(input_text)} 문자")
         logger.info(f"피드백 생성 시작: session_id={session_id}")
@@ -1158,5 +1182,167 @@ async def get_full_conversation(session_id: str):
         raise
     except Exception as e:
         logger.error(f"전체 대화 정보 조회 실패: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/feedback/generate")
+async def generate_feedback_from_data(
+    conversation_history: List[Dict] = Body(..., description="대화 내역 리스트. 각 항목은 {'stage': 'S1', 'turn': 1, 'content': '...'} 형식"),
+    emotion_history: List[str] = Body(default=[], description="감정 히스토리 리스트 ['행복', '슬픔', ...]"),
+    child_name: Optional[str] = Body(default=None, description="아동 이름 (선택사항)")
+):
+    """
+    세션이 만료되어도 대화 내용을 직접 받아서 부모 피드백 생성
+    
+    Args:
+        conversation_history: 대화 내역 리스트
+            - role: "child" 또는 "ai" (필수)
+            - stage: 단계 (예: "S1", "S2") (필수)
+            - turn: 턴 번호 (필수)
+            - content: 대화 내용 (필수)
+            - emotion: 감정 라벨 (선택) - S1, S4에서만 포함 가능
+        emotion_history: 감정 히스토리 (선택, 하위 호환용)
+        child_name: 아동 이름 (선택)
+    
+    Returns:
+        아동 대화 분석 피드백 + 부모 행동 지침
+    
+    Example:
+        ```json
+        {
+            "conversation_history": [
+                {"role": "ai", "stage": "S1", "turn": 1, "content": "무슨 일이 있었어?"},
+                {"role": "child", "stage": "S1", "turn": 1, "content": "엄마가 화났어", "emotion": "슬픔"},
+                {"role": "ai", "stage": "S1", "turn": 2, "content": "그랬구나..."},
+                {"role": "child", "stage": "S1", "turn": 2, "content": "응"}
+            ],
+            "child_name": "현정"
+        }
+        ```
+        
+        Note: emotion 필드는 선택사항입니다. S1(감정 라벨링)과 S4(같은 경험)에서만 포함됩니다.
+    """
+    from app.tools.feedback import FeedbackGeneratorTool
+    from datetime import datetime
+    
+    try:
+        logger.info(f"피드백 생성 요청 - 대화 {len(conversation_history)}개, 감정 {len(emotion_history)}개")
+        
+        # 아동의 발화가 있는지 확인
+        if not conversation_history:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "아동의 응답이 없습니다. 대화 내역을 최소 1개 이상 제공해주세요.",
+                    "example": {
+                        "conversation_history": [
+                            {"stage": "S1", "turn": 1, "content": "엄마가 화났어"}
+                        ],
+                        "emotion_history": ["슬픔"]
+                    }
+                }
+            )
+        
+        # 대화 텍스트 구성 및 감정 정보 추출
+        conversation_text = []
+        child_response_count = 0
+        extracted_emotions = []
+        
+        for i, moment in enumerate(conversation_history):
+            logger.debug(f"moment[{i}]: {moment}")
+            
+            content = moment.get("content", "")
+            if not content:
+                continue
+            
+            role = moment.get("role", "")
+            stage = moment.get("stage", "")
+            turn = moment.get("turn", "")
+            emotion = moment.get("emotion", "")
+            
+            # role에 따라 레이블 지정
+            if role == "child":
+                label = f"아동 (S{stage[-1] if stage else '?'}, 턴{turn})"
+                child_response_count += 1
+                # 감정 정보가 있으면 수집
+                if emotion:
+                    extracted_emotions.append(emotion)
+            elif role == "ai":
+                label = f"AI (S{stage[-1] if stage else '?'}, 턴{turn})"
+            else:
+                # 하위 호환성: role이 없는 경우 (기존 데이터)
+                label = f"{stage}_턴{turn}" if stage else "아동"
+                if "아동" in label or not role:
+                    child_response_count += 1
+            
+            # 감정 정보를 내용에 포함
+            if emotion and role == "child":
+                conversation_text.append(f"{label} [감정: {emotion}]: {content}")
+            else:
+                conversation_text.append(f"{label}: {content}")
+        
+        logger.info(f"구성된 대화 텍스트: 전체 {len(conversation_text)}개, 아동 발화 {child_response_count}개")
+        
+        if child_response_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "아동의 응답이 없습니다. 최소 1개 이상의 아동 발화가 필요합니다.",
+                    "hint": "각 대화에 'role': 'child'를 포함하거나, 'content'에 아동의 발화를 입력하세요.",
+                    "example": {
+                        "conversation_history": [
+                            {"role": "ai", "stage": "S1", "turn": 1, "content": "콩쥐의 기분이 어땠을 것 같아?"},
+                            {"role": "child", "stage": "S1", "turn": 1, "content": "엄마가 화났어", "emotion": "슬픔"}
+                        ]
+                    }
+                }
+            )
+        
+        # 감정 정보 (conversation_history에서 추출한 것 우선, 없으면 emotion_history 사용)
+        if extracted_emotions:
+            emotions = ", ".join(extracted_emotions)
+            logger.info(f"감정 정보 (대화에서 추출): {emotions}")
+        elif emotion_history:
+            emotions = ", ".join(emotion_history)
+            logger.info(f"감정 정보 (emotion_history): {emotions}")
+        else:
+            emotions = "감정 정보 없음"
+            logger.info("감정 정보 없음")
+        
+        # 프롬프트 구성
+        feedback_tool = FeedbackGeneratorTool()
+        
+        dialogue_text = "\n".join(conversation_text)
+        child_info = f"\n아동 이름: {child_name}" if child_name else ""
+        
+        input_text = f"""[AI와 아동 대화 text]
+        {dialogue_text}{child_info}
+
+        [아동 감정]
+        {emotions}
+        """
+        
+        logger.info(f"프롬프트 길이: {len(input_text)} 문자")
+        logger.info("피드백 생성 시작 (직접 데이터)")
+        
+        # 피드백 생성
+        result = feedback_tool.generate_feedback(input_text)
+        
+        logger.info(f"피드백 생성 완료: {result.get('child_analysis_feedback', '')[:50]}...")
+        
+        return {
+            "success": True,
+            "child_name": child_name,
+            "conversation_count": len(conversation_history),
+            "emotion_count": len(emotion_history),
+            "child_analysis_feedback": result.get("child_analysis_feedback", ""),
+            "parent_action_guide": result.get("parent_action_guide", ""),
+            "generated_at": datetime.now().isoformat()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"피드백 생성 실패 (직접 데이터): {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
