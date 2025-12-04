@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStoriesByCategory } from '../api/storyApi.js';
 import ReactGA from 'react-ga4';
+import CustomModal from '../components/CustomModal';
 
 const categories = [
   { code: 'SOA', name: '친구 마음 알기' },
@@ -28,6 +29,7 @@ const StoryList = () => {
   const [stories, setStories] = useState([]);
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleGoToParentsPage = () => {
     navigate('/parents'); 
@@ -76,17 +78,22 @@ const StoryList = () => {
     console.log(`[Analytics] casel_tab_click (param: ${caselDomainName})`);
   };
 
-  const handleStorySelect = (storyId) => {
-    ReactGA.event({
-      category: "Story",
-      action: "book_select",
-      label: "동화 상세 이동",
-      story_id: storyId 
-    });
-    console.log(`[Analytics] book_select (param: ${storyId})`);
-
-    navigate(`/story/${storyId}`);
+  const handleStorySelect = (storyId, storyTitle) => {
+    if (storyTitle && storyTitle.trim() === '콩쥐팥쥐') {
+        ReactGA.event({
+            category: "Story",
+            action: "book_select",
+            label: "동화 상세 이동",
+            story_id: storyId 
+        });
+        console.log(`[Analytics] book_select (param: ${storyId})`);
+        navigate(`/story/${storyId}`);
+    } else {
+        setIsModalOpen(true);
+    }
   };
+
+  
 
   return (
     <div style={styles.container}>
@@ -118,7 +125,7 @@ const StoryList = () => {
           {!isLoading && !error && stories.map((story) => (
             <div
               key={story.id} 
-              onClick={() => handleStorySelect(story.id)}
+              onClick={() => handleStorySelect(story.id, story.title)}
               style={styles.storyCard}
             >
               <div style={styles.storyImageContainer}>
@@ -134,6 +141,12 @@ const StoryList = () => {
           )}
         </main>
       </div>
+      <CustomModal 
+        isOpen={isModalOpen}
+        message="곧 준비될 예정이에요!"
+        onConfirm={() => setIsModalOpen(false)}
+        showCancel={false} 
+      />
     </div>
   );
 };
