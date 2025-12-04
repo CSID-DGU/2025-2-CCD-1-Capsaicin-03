@@ -1362,16 +1362,22 @@ class DialogueAgent:
             
             중요:
             1. 반드시 "{child_name}"의 이름으로 부르면서 시작 (받침에 따라 "아/야" 사용)
-            2. 아이의 답변을 부정하지 말고, "그랬구나", "응" 등으로 일단 받아들이기
+            2. 아이의 답변을 부정하지 말고, 공감적으로 받아들이기
+               - "모르겠어요" → "모르는구나", "모르겠구나"
+               - "몰라요" → "잘 모르겠구나"
+               - "물을 부었어요" → "그랬구나"
+               - "새엄마가 무서웠어요" → "응, 새엄마가 무서웠구나"
             3. 그 다음 "그럼", "그런데" 등으로 자연스럽게 감정 질문으로 유도
             4. "어떤 기분이었을까?", "어떤 마음이었을 것 같아?" 같은 개방형 질문
             5. 2-3문장으로 간결하게
             6. 감정 단어를 직접 제시하지 말고, 아이가 스스로 말하도록 유도
+            7. "고마워", "말해줘서 고마워" 같은 표현은 사용하지 말 것
             
             좋은 예시:
             - 아이: "물을 부었어요" → "{format_name_with_vocative(child_name)}, 그랬구나. 물을 계속 부었는데 차지 않았지? 그럼 {format_name_with_subject(character_name)} 어떤 기분이었을까?"
             - 아이: "새엄마가 무서웠어요" → "{format_name_with_vocative(child_name)}, 응, 새엄마가 무서웠구나. 그래서 {format_name_with_subject(character_name)} 어떤 마음이었을 것 같아?"
-            - 아이: "모르겠어요" → "{format_name_with_vocative(child_name)}, 괜찮아. 천천히 생각해봐. {format_name_with_subject(character_name)} 어떤 기분이 들었을 것 같아?"
+            - 아이: "모르겠어요" → "{format_name_with_vocative(child_name)}, 모르는구나. 괜찮아, 천천히 생각해보자. {format_name_with_subject(character_name)} 어떤 기분이 들었을 것 같아?"
+            - 아이: "몰라" → "{format_name_with_vocative(child_name)}, 잘 모르겠구나. 그럼 우리 같이 생각해볼까? {format_name_with_subject(character_name)} 어떤 마음이었을까?"
             
             나쁜 예시:
             - "그건 감정이 아니야" (부정적)
@@ -2152,7 +2158,7 @@ class DialogueAgent:
         character_name = story.get("character_name", "콩쥐")
         emotion_ans = story.get("emotion_ans", "슬픔")
         
-        response = f"{format_name_with_vocative(child_name)}, 괜찮아! {format_name_with_vocative(character_name)} {emotion_ans}을 느꼈을 거야. 왜 {emotion_ans}을 느꼈을 것 같아?"
+        response = f"{format_name_with_vocative(child_name)}, 괜찮아! {format_name_with_topic(character_name)} {emotion_ans}을 느꼈을 거야. 왜 {emotion_ans}을 느꼈을 것 같아?"
         return AISpeech(text=response)
     
     def _generate_s2_max_retry_transition(
