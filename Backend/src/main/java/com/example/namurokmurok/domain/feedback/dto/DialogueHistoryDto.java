@@ -12,7 +12,7 @@ import lombok.Getter;
 public class DialogueHistoryDto {
 
     @JsonProperty("role")
-    private String role; // << Speaker enum X
+    private String role;
 
     @JsonProperty("stage")
     private String stage;
