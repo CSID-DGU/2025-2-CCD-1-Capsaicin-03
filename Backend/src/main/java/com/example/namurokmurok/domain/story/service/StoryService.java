@@ -80,9 +80,7 @@ public class StoryService {
         if (continueFlag != null && continueFlag) {
 
             // 로그인 사용자 가져오기
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-            Long loginUserId = userDetails.getUserId();
+            Long loginUserId = getLoginUserId();
 
             // 로그인 사용자의 아이 조회
             Child child = childRepository.findByUserId(loginUserId)
@@ -171,13 +169,24 @@ public class StoryService {
                 .build();
     }
 
+    // 로그인한 사용자 ID 가져오기
+    private Long getLoginUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+            throw new CustomException(ErrorCode.TOKEN_NOT_PROVIDED);
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getUserId();
+    }
+
+
     // 로그인한 사용자 아이 검증 메서드
     private Child validateUserAndGetChild(Long childId) {
 
         // 로그인 사용자 가져오기
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Long loginUserId = userDetails.getUserId();
+        Long loginUserId = getLoginUserId();
 
         // 아이 조회
         Child child = childRepository.findById(childId)
