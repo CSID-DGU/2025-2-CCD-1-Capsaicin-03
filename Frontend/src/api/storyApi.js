@@ -53,3 +53,29 @@ export const fetchStoryScene = async (storyId) => {
     throw error; 
   }
 };
+export const fetchLastReadPage = async (storyId, childId) => {
+  const API_ENDPOINT = `/api/stories/${storyId}/children/${childId}/pages`;
+
+  try {
+    const response = await instance.get(API_ENDPOINT);
+    if (!response.data.success) {
+       return null;
+    }
+    return response.data.data; 
+  } catch (error) {
+    console.error('Failed to fetch last read page:', error.message);
+    return null; 
+  }
+};
+
+export const saveLastReadPage = async (storyId, childId, pageNumber) => {
+  const API_ENDPOINT = `/api/stories/${storyId}/children/${childId}/pages/${pageNumber}`;
+
+  try {
+    const response = await instance.patch(API_ENDPOINT);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to save page:', error.message);
+    throw error;
+  }
+};
