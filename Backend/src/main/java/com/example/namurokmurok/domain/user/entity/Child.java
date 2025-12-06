@@ -1,6 +1,7 @@
 package com.example.namurokmurok.domain.user.entity;
 
 import com.example.namurokmurok.domain.conversation.entity.Conversation;
+import com.example.namurokmurok.domain.story.entity.ChildStoryPage;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,6 +35,9 @@ public class Child {
 
     @OneToMany(mappedBy = "child")
     private List<Conversation> conversations = new ArrayList<>();
+
+    @OneToMany(mappedBy = "child")
+    private List<ChildStoryPage> childStoryPages = new ArrayList<>();
 
     public void linkUser(User user) {
         this.user = user;

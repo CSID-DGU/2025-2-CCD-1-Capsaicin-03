@@ -49,4 +49,7 @@ public class Story {
 
     @OneToMany(mappedBy = "story")
     private List<Conversation> conversations = new ArrayList<>();
+
+    @OneToMany(mappedBy = "story")
+    private List<ChildStoryPage> childStoryPages = new ArrayList<>();
 }
