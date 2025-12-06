@@ -25,6 +25,7 @@ public enum ErrorCode {
     CHILD_NOT_FOUND(HttpStatus.NOT_FOUND, "등록되지 않은 아이입니다"),
     CHILD_NOT_FOUND_FOR_USER(HttpStatus.NOT_FOUND, "등록된 아이가 없습니다."),
     CHILD_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 아이에게 접근 권한이 없습니다."),
+    CHILD_STORY_PROGRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 아이에게 저장된 동화 페이지가 존재하지 않습니다.."),
 
     // story 관련
     INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "잘못된 카테고리입니다."),

@@ -148,22 +148,31 @@ public class StoryService {
                 .build();
     }
 
-    // 아이별 동화 페이지 저장
-    @Transactional
-    public void saveOrUpdatePage(Long storyId, Long childId, int pageNumber) {
+    // 로그인한 사용자 아이 검증 메서드
+    private Child validateUserAndGetChild(Long childId) {
 
-        // 현재 로그인한 유저 가져오기
+        // 로그인 사용자 가져오기
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         Long loginUserId = userDetails.getUserId();
 
+        // 아이 조회
         Child child = childRepository.findById(childId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
 
-        // 로그인한 유저의 아이인지 검증
+        // 아이 소유자 검증
         if (!child.getUser().getId().equals(loginUserId)) {
             throw new CustomException(ErrorCode.CHILD_ACCESS_DENIED);
         }
+
+        return child;
+    }
+
+    // 아이별 동화 페이지 저장
+    @Transactional
+    public void saveOrUpdatePage(Long storyId, Long childId, int pageNumber) {
+
+        Child child = validateUserAndGetChild(childId);
 
         Story story = storyRepository.findById(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
@@ -184,6 +193,23 @@ public class StoryService {
 
         progress.updateStoryPage(storyPage);
         childStoryPageRepository.save(progress);
+    }
+
+    // 아이별 동화 페이지 조회
+    @Transactional(readOnly = true)
+    public ChildStoryPageResponseDto getLastReadPage(Long storyId, Long childId) {
+
+        Child child = validateUserAndGetChild(childId);
+
+        ChildStoryPage progress = childStoryPageRepository
+                .findByChildIdAndStoryId(childId, storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_STORY_PROGRESS_NOT_FOUND));
+
+        return ChildStoryPageResponseDto.builder()
+                .childId(childId)
+                .storyId(storyId)
+                .pageNumber(progress.getStoryPage().getPageNumber())
+                .build();
     }
 
 }
