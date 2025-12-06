@@ -1,30 +1,83 @@
 // src/pages/StoryPage.jsx
 
-import { useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useStory } from '../hooks/useStory.js';
 import { useAudioPlayback } from '../hooks/useAudioPlayback.js';
+import { saveLastReadPage } from '../api/storyApi.js'; 
+import { getChildProfile } from '../api/profileApi.js'; 
 import ReactGA from 'react-ga4';
 import homeIcon from '../assets/home_icon.svg';
+import CustomModal from '../components/CustomModal';
 
 const StoryPage = () => {
   const { storyId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialPage = location.state?.initialPage || 0;
+
   const {
     isLoading,
     error,
     storyData,
     currentPageData,
-    page, 
+    page,
     totalPages,
     isLastPage,
     goToNextPage,
     goToPrevPage
-  } = useStory(storyId);
+  } = useStory(storyId, initialPage);
+
   const hasSentStartEvent = useRef(false);
   const scrollContainerRef = useRef(null);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [childId, setChildId] = useState(null);
 
-  
+  useEffect(() => {
+     const fetchChildId = async () => {
+         try {
+             const profile = await getChildProfile();
+             const extractedId = profile?.data?.id;
+
+             if (extractedId) {
+                setChildId(extractedId);
+             } else {
+                console.warn("[DEBUG_PAGE] 프로필 데이터에서 'id'를 찾을 수 없습니다:", profile);
+             }
+         } catch (e) {
+             console.error("[DEBUG_PAGE] Child ID fetch error", e);
+         }
+     };
+     fetchChildId();
+  }, []);
+
+  const saveProgress = async () => {
+    if (!childId || !storyId) return;
+
+    if (page === 0) {
+        return;
+    }
+
+    try {
+        console.log(`[DEBUG_PAGE] 현재 진행상황 저장: ${page}페이지`);
+        await saveLastReadPage(storyId, childId, page);
+        
+    } catch (e) {
+        console.error("[DEBUG_PAGE] 🚨 저장 API 실패:", e);
+    }
+  };
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+        saveProgress();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [childId, storyId, page]);
+
   useEffect(() => {
     if (!isLoading && storyData && !hasSentStartEvent.current) {
       ReactGA.event({
@@ -32,7 +85,7 @@ const StoryPage = () => {
         action: "book_start",
         label: "동화 읽기 시작",
         story_id: storyId,
-        total_pages: totalPages 
+        total_pages: totalPages
       });
       console.log(`[Analytics] book_start (total: ${totalPages})`);
       hasSentStartEvent.current = true;
@@ -46,11 +99,11 @@ const StoryPage = () => {
         action: "book_read_page",
         label: `페이지 진입 (${page}쪽)`,
         story_id: storyId,
-        page_number: page 
+        page_number: page
       });
       console.log(`[Analytics] book_read_page (page: ${page})`);
     }
-  }, [page, isLoading, storyData, storyId]); // page가 변할 때마다 실행됨
+  }, [page, isLoading, storyData, storyId]);
 
   useEffect(() => {
     if (!isLoading && isLastPage) {
@@ -65,9 +118,9 @@ const StoryPage = () => {
   }, [isLastPage, isLoading, storyId]);
 
   useAudioPlayback(
-    currentPageData?.audio_url, 
-    !isLoading && !error,       
-    page                       
+    currentPageData?.audio_url,
+    !isLoading && !error,      
+    page                      
   );
 
   useEffect(() => {
@@ -75,7 +128,21 @@ const StoryPage = () => {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [page]);
-  
+
+  const handleHomeClick = () => {
+    setIsExitModalOpen(true);
+  };
+
+  const handleExitConfirm = async () => {
+    await saveProgress();
+    setIsExitModalOpen(false);
+    navigate('/stories'); 
+  };
+
+  const handleExitCancel = () => {
+    setIsExitModalOpen(false);
+  };
+
   // (로딩 및 에러 처리)
   if (isLoading) {
     return <div style={{...styles.container, ...styles.loadingError}}>로딩 중...</div>;
@@ -87,33 +154,42 @@ const StoryPage = () => {
     return <div style={{...styles.container, ...styles.loadingError}}>동화 데이터를 불러오는 중...</div>;
   }
 
-  const goToChatIntro = () => {
+  const goToChatIntro = async () => {
+    if (childId && storyId) {
+        try {
+            console.log(`[DEBUG_PAGE] 대화하러 가기 클릭! 현재 페이지(${page}) 저장.`);
+            await saveLastReadPage(storyId, childId, page); 
+            
+        } catch (e) {
+            console.error("[DEBUG_PAGE] 마지막 페이지 저장 실패:", e);
+        }
+    }
     navigate(`/chat/${storyId}/goal`);
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.imageSection}>
-        <img 
-          src={currentPageData.image_url} 
+        <img
+          src={currentPageData.image_url}
           alt={`${storyData.title} - ${page}페이지`}
-          style={styles.storyImage} 
+          style={styles.storyImage}
         />
-        <button onClick={() => navigate('/stories')} style={styles.homeButton}>
+        <button onClick={handleHomeClick} style={styles.homeButton}>
           <img src={homeIcon} style={styles.homeIcon} />
         </button>
       </div>
       <div style={{
           ...styles.textSection,
-          paddingBottom: page === 0 ? '2%' : '13%' 
+          paddingBottom: page === 0 ? '2%' : '13%'
       }}>
         <div style={styles.pageInfo}>
             {page > 0 && (
               <span>페이지 {page}/{totalPages}</span>
             )}
         </div>
-        <main 
-          ref={scrollContainerRef} 
+        <main
+          ref={scrollContainerRef}
           style={page === 0 ? styles.coverContent : styles.storyContent}
         >
           <p style={page === 0 ? {} : styles.textContent}>
@@ -134,6 +210,15 @@ const StoryPage = () => {
       {!isLastPage && (
         <button onClick={goToNextPage} style={{ ...styles.navButton, ...styles.nextButton }}>&gt;</button>
       )}
+      <CustomModal
+        isOpen={isExitModalOpen}
+        message="동화 읽기를 멈추시겠어요?"
+        onConfirm={handleExitConfirm}
+        onCancel={handleExitCancel}
+        showCancel={true}
+        cancelText="취소"  
+        confirmText="확인"
+      />
     </div>
   );
 };
@@ -145,10 +230,10 @@ const styles = {
     height: '100%',
     width: '100%',
     backgroundColor: 'var(--color-main)',
-    overflow: 'hidden', 
+    overflow: 'hidden',
     position: 'relative',
   },
-  loadingError: { 
+  loadingError: {
     justifyContent: 'center',
     alignItems: 'center',
     fontSize: 'clamp(1rem, 3vw, 1.5rem)',
@@ -160,20 +245,20 @@ const styles = {
   imageSection: {
     flex: 1,
     height: '100%',
-    backgroundColor: '#D6EAF8', 
+    backgroundColor: '#D6EAF8',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden'
   },
-  storyImage: { 
+  storyImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover' 
+    objectFit: 'cover'
   },
   textSection: {
-    flex: 1, 
+    flex: 1,
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
@@ -186,11 +271,11 @@ const styles = {
     position: 'absolute',
     top: '4%',
     left: '4%',
-    background: 'var(--color-fourth)', 
+    background: 'var(--color-fourth)',
     border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
     borderRadius: '50%',
     width: 'clamp(30px, 8vw, 40px)',
-    height: 'clamp(30px, 8vw, 40px)', 
+    height: 'clamp(30px, 8vw, 40px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -204,27 +289,27 @@ const styles = {
     height: '60%',
     objectFit: 'contain',
   },
-  
+ 
   pageInfo: {
     display: 'flex',
     justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: '10px',
-    fontSize: 'clamp(0.8rem, 2vw, 1.1rem)', 
+    fontSize: 'clamp(0.8rem, 2vw, 1.1rem)',
     color: 'var(--color-text-dark)',
     fontFamily: 'var(--font-family-primary)',
   },
 
   storyContent: {
     flexGrow: 1,
-    overflowY: 'auto', 
+    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
     paddingTop: 'clamp(5px, 5vh, 20px)',
     paddingRight: 'clamp(5px, 5vh, 10px)',
   },
   textContent: {
-    fontSize: 'clamp(0.8rem, 2.5vw, 1.0rem)', 
+    fontSize: 'clamp(0.8rem, 2.5vw, 1.0rem)',
     lineHeight: '1.8',
     color: 'var(--color-text-dark)',
     whiteSpace: 'pre-line',
@@ -233,12 +318,12 @@ const styles = {
     marginTop: 'auto',
     marginBottom: 'auto',
   },
-  
+ 
   coverContent: {
     flexGrow: 1,
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',    
     padding: '20px',
     textAlign: 'center',
@@ -246,38 +331,37 @@ const styles = {
     whiteSpace: 'pre-line',
     wordBreak: 'keep-all',
   },
-  
+ 
   actionContainer: {
     textAlign: 'center',
     marginTop: '5%',
     flexShrink: 0,
   },
-  
+ 
   chatButton: {
     padding: 'clamp(5px, 1.4vh, 15px) clamp(10px, 4vw, 40px)',
     fontSize: 'clamp(0.9rem, 3vw, 1.5rem)',
     fontFamily: 'var(--font-family-primary)',
     cursor: 'pointer',
-    backgroundColor: 'var(--color-fourth)', 
+    backgroundColor: 'var(--color-fourth)',
     color: 'var(--color-text-dark)',
     border: '3px solid var(--color-text-dark)',
     borderRadius: '30px',
     boxShadow: '0 4px 15px rgba(255, 111, 97, 0.4)',
     whiteSpace: 'nowrap',
-    
   },
 
-  navButton: { 
+  navButton: {
     position: 'absolute',
-    bottom: '5%', 
-    width: 'clamp(30px, 8vw, 40px)', 
+    bottom: '5%',
+    width: 'clamp(30px, 8vw, 40px)',
     height: 'auto',
     borderRadius: '50%',
     backgroundColor: 'var(--color-fourth)',
-    color: 'var(--color-text-dark)', 
-    border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)', 
-    fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', 
-    fontWeight: 'bold', 
+    color: 'var(--color-text-dark)',
+    border: 'clamp(2px, 0.5vw, 3px) solid var(--color-text-dark)',
+    fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+    fontWeight: 'bold',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -288,7 +372,7 @@ const styles = {
     flexShrink: 0,
   },
   prevButton: {
-    left: '2%', 
+    left: '2%',
   },
   nextButton: {
     right: '2%',

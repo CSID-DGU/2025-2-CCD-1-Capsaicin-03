@@ -5,31 +5,28 @@ import { fetchStoryById } from '../api/storyApi.js';
  * storyId를 기반으로 스토리 데이터와 페이지네이션 로직을 관리하는 훅
  * @param {string} storyId - useParams()로 받은 스토리 ID
  */
-export const useStory = (storyId) => {
-    const [page, setPage] = useState(0);
+export const useStory = (storyId, initialPage = 0) => {
+    const [page, setPage] = useState(initialPage);
     const [storyData, setStoryData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchStory = async () => {
-            setIsLoading(true);
-            setError(null);
-            setStoryData(null);
-            setPage(0);
-            
-            try {
-                const data = await fetchStoryById(storyId);
+        const fetchStory = async () => {
+            setIsLoading(true);
+            setError(null);
+            setStoryData(null);            
+            try {
+                const data = await fetchStoryById(storyId);
                 setStoryData(data); 
-            
-            } catch (err) {
-                setError(err.message || '동화를 불러오는데 실패했습니다.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            } catch (err) {
+                setError(err.message || '동화를 불러오는데 실패했습니다.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        if (storyId) {
+        if (storyId) {
             fetchStory(); 
         } else {
             setIsLoading(false);

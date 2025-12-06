@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchStoriesByCategory } from '../api/storyApi.js';
+import { fetchStoriesByCategory, fetchLastReadPage, fetchStoryById } from '../api/storyApi.js';
+import { getChildProfile } from '../api/profileApi.js';
 import ReactGA from 'react-ga4';
 import CustomModal from '../components/CustomModal';
 
@@ -30,18 +31,31 @@ const StoryList = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const [resumeModalOpen, setResumeModalOpen] = useState(false);
+  const [resumeInfo, setResumeInfo] = useState({ storyId: null, savedPage: 0 });
+  const [childId, setChildId] = useState(null);
+  
   const handleGoToParentsPage = () => {
     navigate('/parents'); 
   }
-  
+
   useEffect(() => {
-    ReactGA.event({
-      category: "Story",
-      action: "book_list_view",
-      label: "동화 목록 화면 진입"
-    });
-    console.log("[Analytics] book_list_view");
+    const loadChildId = async () => {
+      try {
+        const response = await getChildProfile();
+        const extractedId = response?.data?.id;
+
+        if (extractedId) {
+            setChildId(extractedId);
+        } else {
+            console.error("[DEBUG_LIST] 프로필 데이터에서 'id'를 찾을 수 없습니다:", response);
+        }
+
+      } catch (e) {
+        console.error("아이 ID 조회 실패", e);
+      }
+    };
+    loadChildId();
   }, []);
 
   useEffect(() => {
@@ -78,22 +92,70 @@ const StoryList = () => {
     console.log(`[Analytics] casel_tab_click (param: ${caselDomainName})`);
   };
 
-  const handleStorySelect = (storyId, storyTitle) => {
-    if (storyTitle && storyTitle.trim() === '콩쥐팥쥐') {
-        ReactGA.event({
-            category: "Story",
-            action: "book_select",
-            label: "동화 상세 이동",
-            story_id: storyId 
-        });
-        console.log(`[Analytics] book_select (param: ${storyId})`);
-        navigate(`/story/${storyId}`);
-    } else {
+  const handleStorySelect = async (storyId, storyTitle) => {
+    if (!storyTitle || storyTitle.trim() !== '콩쥐팥쥐') {
         setIsModalOpen(true);
+        return; 
+    }
+
+    ReactGA.event({
+        category: "Story",
+        action: "book_select",
+        label: "동화 상세 이동",
+        story_id: storyId 
+    });
+
+    if (!childId) {
+        navigate(`/story/${storyId}`, { state: { initialPage: 0 } });
+        return;
+    }
+
+    try {
+        console.log(`[DEBUG_LIST] 🔍 데이터 조회 시작...`);
+        
+        const [lastPageData, storyDetailData] = await Promise.all([
+            fetchLastReadPage(storyId, childId),
+            fetchStoryById(storyId) 
+        ]);
+        
+        const savedPage = lastPageData?.page_number;
+        
+        // 상세 정보에서 total_pages 추출 (없으면 기본값 999)
+        const totalStoryPages = storyDetailData?.total_pages || 999; 
+
+        console.log(`[DEBUG_LIST] 🔍 데이터 확인:`, {
+            저장된페이지: savedPage,
+            전체페이지: totalStoryPages 
+        });
+
+        if (savedPage !== null && savedPage !== undefined && savedPage > 0 && savedPage < (totalStoryPages - 1)) {
+            console.log(`[DEBUG_LIST] ✅ 이어보기 팝업 조건 충족!`);
+            setResumeInfo({ storyId, savedPage });
+            setResumeModalOpen(true);
+        } else {
+            console.log(`[DEBUG_LIST] ❌ 이어보기 안함 (기록없음 or 완독)`);
+            navigate(`/story/${storyId}`, { state: { initialPage: 0 } });
+        }
+
+    } catch (error) {
+        console.error("[DEBUG_LIST] 🚨 조회 중 에러 발생:", error);
+        navigate(`/story/${storyId}`, { state: { initialPage: 0 } });
     }
   };
 
-  
+  const handleResumeConfirm = () => {
+    setResumeModalOpen(false);
+    navigate(`/story/${resumeInfo.storyId}`, { 
+        state: { initialPage: resumeInfo.savedPage } 
+    });
+  };
+
+  const handleResumeCancel = () => {
+    setResumeModalOpen(false);
+    navigate(`/story/${resumeInfo.storyId}`, { 
+        state: { initialPage: 0 } 
+    });
+  };
 
   return (
     <div style={styles.container}>
@@ -146,6 +208,21 @@ const StoryList = () => {
         message="곧 준비될 예정이에요!"
         onConfirm={() => setIsModalOpen(false)}
         showCancel={false} 
+      />
+      <CustomModal 
+        isOpen={resumeModalOpen}
+        message={
+          <>
+            학습하던 기록이 있습니다.
+            <br />
+            이어서 하시겠습니까?
+          </>
+        }
+        onConfirm={handleResumeConfirm}
+        onCancel={handleResumeCancel}
+        showCancel={true} 
+        confirmText="이어하기"
+        cancelText="처음부터"
       />
     </div>
   );
