@@ -7,4 +7,7 @@ import java.util.Optional;
 
 public interface StoryPageRepository extends JpaRepository<StoryPage, Long> {
     Optional<StoryPage> findByStoryIdAndIsDialogueSceneTrue(Long storyId);
+
+    Optional<StoryPage> findByStoryIdAndPageNumber(Long storyId, Integer pageNumber);
+
 }

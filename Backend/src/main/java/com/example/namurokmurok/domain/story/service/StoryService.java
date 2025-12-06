@@ -3,22 +3,21 @@ package com.example.namurokmurok.domain.story.service;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
 import com.example.namurokmurok.domain.conversation.service.ConversationService;
 import com.example.namurokmurok.domain.story.dto.*;
-import com.example.namurokmurok.domain.story.entity.ActionCard;
-import com.example.namurokmurok.domain.story.entity.IntroQuestion;
-import com.example.namurokmurok.domain.story.entity.Story;
-import com.example.namurokmurok.domain.story.entity.StoryPage;
+import com.example.namurokmurok.domain.story.entity.*;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
-import com.example.namurokmurok.domain.story.repository.ActionCardRepository;
-import com.example.namurokmurok.domain.story.repository.IntroQuestionRepository;
-import com.example.namurokmurok.domain.story.repository.StoryPageRepository;
-import com.example.namurokmurok.domain.story.repository.StoryRepository;
+import com.example.namurokmurok.domain.story.repository.*;
 import com.example.namurokmurok.domain.user.entity.Child;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.common.exception.CustomException;
 import com.example.namurokmurok.global.common.exception.ErrorCode;
+import com.example.namurokmurok.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +31,7 @@ public class StoryService {
     private final IntroQuestionRepository introQuestionRepository;
     private final ActionCardRepository actionCardRepository;
     private final ChildRepository childRepository;
+    private final ChildStoryPageRepository childStoryPageRepository;
     private final ConversationService conversationService;
 
     // 카테고리별 동화 목록 조회
@@ -147,4 +147,43 @@ public class StoryService {
                 .img_url(selected.getImgUrl())
                 .build();
     }
+
+    // 아이별 동화 페이지 저장
+    @Transactional
+    public void saveOrUpdatePage(Long storyId, Long childId, int pageNumber) {
+
+        // 현재 로그인한 유저 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long loginUserId = userDetails.getUserId();
+
+        Child child = childRepository.findById(childId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        // 로그인한 유저의 아이인지 검증
+        if (!child.getUser().getId().equals(loginUserId)) {
+            throw new CustomException(ErrorCode.CHILD_ACCESS_DENIED);
+        }
+
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
+        StoryPage storyPage = storyPageRepository
+                .findByStoryIdAndPageNumber(storyId, pageNumber)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_PAGE_NOT_FOUND));
+
+        ChildStoryPage progress = childStoryPageRepository
+                .findByChildIdAndStoryId(childId, storyId)
+                .orElseGet(() -> ChildStoryPage.builder()
+                        .child(child)
+                        .story(story)
+                        .storyPage(storyPage)
+                        .updatedAt(LocalDateTime.now())
+                        .build()
+                );
+
+        progress.updateStoryPage(storyPage);
+        childStoryPageRepository.save(progress);
+    }
+
 }

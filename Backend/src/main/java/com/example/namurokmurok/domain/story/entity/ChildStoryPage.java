@@ -35,4 +35,9 @@ public class ChildStoryPage {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void updateStoryPage(StoryPage newPage) {
+        this.storyPage = newPage;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

@@ -75,4 +75,19 @@ public class StoryController {
         ActionCardResponseDto response = storyService.getActionCard(storyId);
         return ApiResponse.success(response);
     }
+
+    @PatchMapping("{story-id}/children/{child-id}/pages/{page-number}")
+    @Operation(summary = "아이별 동화 페이지 저장/수정",
+            description = "아이별 동화 페이지를 저장/수정합니다.")
+    public ApiResponse<Void> savePage(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId,
+            @Parameter(description = "아이 ID", example = "3")
+            @PathVariable("child-id") Long childId,
+            @Parameter(description = "페이지", example = "1")
+            @PathVariable("page-number") int pageNumber) {
+
+        storyService.saveOrUpdatePage(storyId, childId, pageNumber);
+        return ApiResponse.success("아이의 동화 페이지가 저장 되었습니다.", null);
+    }
 }
