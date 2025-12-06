@@ -59,7 +59,9 @@ public class StoryService {
     }
 
     // 동화 상세 조회
-    public StoryInfoResponseDto getStoryDetail(Long storyId) {
+    @Transactional(readOnly = true)
+    public StoryInfoResponseDto getStoryDetail(Long storyId, Boolean continueFlag) {
+
         Story story = storyRepository.findByIdWithPages(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
 
@@ -73,10 +75,31 @@ public class StoryService {
                         .build())
                 .collect(Collectors.toList());
 
+        Integer lastReadPage = null;
+
+        if (continueFlag != null && continueFlag) {
+
+            // 로그인 사용자 가져오기
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
+            Long loginUserId = userDetails.getUserId();
+
+            // 로그인 사용자의 아이 조회
+            Child child = childRepository.findByUserId(loginUserId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+            // 마지막 읽은 페이지 조회
+            lastReadPage = childStoryPageRepository
+                    .findByChildIdAndStoryId(child.getId(), storyId)
+                    .map(c -> c.getStoryPage().getPageNumber())
+                    .orElse(null);
+        }
+
         return StoryInfoResponseDto.builder()
                 .id(story.getId())
                 .title(story.getTitle())
-                .total_pages(pageDtos.size())
+                .totalPages(pageDtos.size())
+                .lastReadPage(lastReadPage)
                 .pages(pageDtos)
                 .build();
     }

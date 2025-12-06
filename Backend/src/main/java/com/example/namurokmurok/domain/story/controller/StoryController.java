@@ -34,9 +34,12 @@ public class StoryController {
             description = "story-id에 해당하는 동화의 상세 정보를 조회합니다.")
     public ApiResponse<StoryInfoResponseDto> getStoryDetail(
             @Parameter(description = "동화 ID", example = "1")
-            @PathVariable("story-id") Long storyId) {
+            @PathVariable("story-id") Long storyId,
 
-        StoryInfoResponseDto response = storyService.getStoryDetail(storyId);
+            @Parameter(description = "이어보기 여부", example = "true")
+            @RequestParam(value = "continue", required = false) Boolean continueFlag) {
+
+        StoryInfoResponseDto response = storyService.getStoryDetail(storyId, continueFlag);
         return ApiResponse.success(response);
     }
 
