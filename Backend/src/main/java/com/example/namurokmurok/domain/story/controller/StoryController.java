@@ -34,9 +34,12 @@ public class StoryController {
             description = "story-id에 해당하는 동화의 상세 정보를 조회합니다.")
     public ApiResponse<StoryInfoResponseDto> getStoryDetail(
             @Parameter(description = "동화 ID", example = "1")
-            @PathVariable("story-id") Long storyId) {
+            @PathVariable("story-id") Long storyId,
 
-        StoryInfoResponseDto response = storyService.getStoryDetail(storyId);
+            @Parameter(description = "이어보기 여부", example = "true")
+            @RequestParam(value = "continue", required = false) Boolean continueFlag) {
+
+        StoryInfoResponseDto response = storyService.getStoryDetail(storyId, continueFlag);
         return ApiResponse.success(response);
     }
 
@@ -73,6 +76,38 @@ public class StoryController {
             @PathVariable("story-id") Long storyId) {
 
         ActionCardResponseDto response = storyService.getActionCard(storyId);
+        return ApiResponse.success(response);
+    }
+
+    @PatchMapping("{story-id}/children/{child-id}/pages/{page-number}")
+    @Operation(summary = "아이별 동화 페이지 저장/수정",
+            description = "아이별 동화 페이지를 저장/수정합니다.")
+    public ApiResponse<Void> savePage(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId,
+
+            @Parameter(description = "아이 ID", example = "3")
+            @PathVariable("child-id") Long childId,
+
+            @Parameter(description = "페이지", example = "1")
+            @PathVariable("page-number") int pageNumber) {
+
+        storyService.saveOrUpdatePage(storyId, childId, pageNumber);
+        return ApiResponse.success("아이의 동화 페이지가 저장 되었습니다.", null);
+    }
+
+    @GetMapping("/{story-id}/children/{child-id}/pages")
+    @Operation(summary = "아이별 동화 페이지 조회",
+            description = "아이별 동화 페이지를 조회합니다.")
+    public ApiResponse<ChildStoryPageResponseDto> getLastReadPage(
+            @Parameter(description = "동화 ID", example = "1")
+            @PathVariable("story-id") Long storyId,
+
+            @Parameter(description = "아이 ID", example = "3")
+            @PathVariable("child-id") Long childId
+    ) {
+
+        ChildStoryPageResponseDto response = storyService.getLastReadPage(storyId, childId);
         return ApiResponse.success(response);
     }
 }

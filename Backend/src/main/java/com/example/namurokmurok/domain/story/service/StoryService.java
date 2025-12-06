@@ -3,22 +3,21 @@ package com.example.namurokmurok.domain.story.service;
 import com.example.namurokmurok.domain.conversation.dto.SessionStartResponse;
 import com.example.namurokmurok.domain.conversation.service.ConversationService;
 import com.example.namurokmurok.domain.story.dto.*;
-import com.example.namurokmurok.domain.story.entity.ActionCard;
-import com.example.namurokmurok.domain.story.entity.IntroQuestion;
-import com.example.namurokmurok.domain.story.entity.Story;
-import com.example.namurokmurok.domain.story.entity.StoryPage;
+import com.example.namurokmurok.domain.story.entity.*;
 import com.example.namurokmurok.domain.story.enums.SelCategory;
-import com.example.namurokmurok.domain.story.repository.ActionCardRepository;
-import com.example.namurokmurok.domain.story.repository.IntroQuestionRepository;
-import com.example.namurokmurok.domain.story.repository.StoryPageRepository;
-import com.example.namurokmurok.domain.story.repository.StoryRepository;
+import com.example.namurokmurok.domain.story.repository.*;
 import com.example.namurokmurok.domain.user.entity.Child;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.common.exception.CustomException;
 import com.example.namurokmurok.global.common.exception.ErrorCode;
+import com.example.namurokmurok.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +31,7 @@ public class StoryService {
     private final IntroQuestionRepository introQuestionRepository;
     private final ActionCardRepository actionCardRepository;
     private final ChildRepository childRepository;
+    private final ChildStoryPageRepository childStoryPageRepository;
     private final ConversationService conversationService;
 
     // 카테고리별 동화 목록 조회
@@ -59,7 +59,9 @@ public class StoryService {
     }
 
     // 동화 상세 조회
-    public StoryInfoResponseDto getStoryDetail(Long storyId) {
+    @Transactional(readOnly = true)
+    public StoryInfoResponseDto getStoryDetail(Long storyId, Boolean continueFlag) {
+
         Story story = storyRepository.findByIdWithPages(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
 
@@ -73,10 +75,29 @@ public class StoryService {
                         .build())
                 .collect(Collectors.toList());
 
+        Integer lastReadPage = null;
+
+        if (continueFlag != null && continueFlag) {
+
+            // 로그인 사용자 가져오기
+            Long loginUserId = getLoginUserId();
+
+            // 로그인 사용자의 아이 조회
+            Child child = childRepository.findByUserId(loginUserId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+            // 마지막 읽은 페이지 조회
+            lastReadPage = childStoryPageRepository
+                    .findByChildIdAndStoryId(child.getId(), storyId)
+                    .map(c -> c.getStoryPage().getPageNumber())
+                    .orElse(null);
+        }
+
         return StoryInfoResponseDto.builder()
                 .id(story.getId())
                 .title(story.getTitle())
-                .total_pages(pageDtos.size())
+                .totalPages(pageDtos.size())
+                .lastReadPage(lastReadPage)
                 .pages(pageDtos)
                 .build();
     }
@@ -147,4 +168,80 @@ public class StoryService {
                 .img_url(selected.getImgUrl())
                 .build();
     }
+
+    // 로그인한 사용자 ID 가져오기
+    private Long getLoginUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
+            throw new CustomException(ErrorCode.TOKEN_NOT_PROVIDED);
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getUserId();
+    }
+
+
+    // 로그인한 사용자 아이 검증 메서드
+    private Child validateUserAndGetChild(Long childId) {
+
+        // 로그인 사용자 가져오기
+        Long loginUserId = getLoginUserId();
+
+        // 아이 조회
+        Child child = childRepository.findById(childId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_NOT_FOUND));
+
+        // 아이 소유자 검증
+        if (!child.getUser().getId().equals(loginUserId)) {
+            throw new CustomException(ErrorCode.CHILD_ACCESS_DENIED);
+        }
+
+        return child;
+    }
+
+    // 아이별 동화 페이지 저장
+    @Transactional
+    public void saveOrUpdatePage(Long storyId, Long childId, int pageNumber) {
+
+        Child child = validateUserAndGetChild(childId);
+
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
+
+        StoryPage storyPage = storyPageRepository
+                .findByStoryIdAndPageNumber(storyId, pageNumber)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORY_PAGE_NOT_FOUND));
+
+        ChildStoryPage progress = childStoryPageRepository
+                .findByChildIdAndStoryId(childId, storyId)
+                .orElseGet(() -> ChildStoryPage.builder()
+                        .child(child)
+                        .story(story)
+                        .storyPage(storyPage)
+                        .updatedAt(LocalDateTime.now())
+                        .build()
+                );
+
+        progress.updateStoryPage(storyPage);
+        childStoryPageRepository.save(progress);
+    }
+
+    // 아이별 동화 페이지 조회
+    @Transactional(readOnly = true)
+    public ChildStoryPageResponseDto getLastReadPage(Long storyId, Long childId) {
+
+        Child child = validateUserAndGetChild(childId);
+
+        ChildStoryPage progress = childStoryPageRepository
+                .findByChildIdAndStoryId(childId, storyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHILD_STORY_PROGRESS_NOT_FOUND));
+
+        return ChildStoryPageResponseDto.builder()
+                .childId(childId)
+                .storyId(storyId)
+                .pageNumber(progress.getStoryPage().getPageNumber())
+                .build();
+    }
+
 }
