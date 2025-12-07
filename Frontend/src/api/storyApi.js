@@ -86,9 +86,8 @@ export const saveLastReadPage = async (storyId, childId, pageNumber, isEnd = fal
 };
 
 export const saveLastReadPageOnExit = (storyId, childId, pageNumber, isEnd = false) => {
-  const BASE_URL = 'http://43.203.13.222:8080'; 
-  const URL = `${BASE_URL}/api/stories/${storyId}/children/${childId}/pages`;
-
+  const URL = `/api/stories/${storyId}/children/${childId}/pages`;
+  
   let token = null;
   const storageKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
   const sessionString = storageKey ? localStorage.getItem(storageKey) : null;
