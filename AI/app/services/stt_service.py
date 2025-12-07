@@ -17,6 +17,45 @@ class STTService:
     def __init__(self, api_key: str = None):
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
     
+    def is_silence_text(self, text: str) -> bool:
+        """
+        Whisper가 빈 음성일 때 생성하는 헛소리(hallucination)를 걸러내는 필터
+        """
+        if not text:
+            return True
+        
+        # 1) 너무 짧으면 무음 처리
+        if len(text) == 0:
+            return True
+        
+        # 2) 한국어 비율 체크
+        korean_chars = [c for c in text if '가' <= c <= '힣']
+        if len(korean_chars) / max(len(text), 1) < 0.3:
+            return True
+        
+        # 3) 헛소리 패턴 필터링
+        hallucination_phrases = [
+            "이덕영입니다",
+            "mbc 뉴스",
+            "뉴스입니다",
+            "지금까지 통합뉴스룸에서 전해드렸습니다",
+            "고맙습니다",
+            "끝까지 봐주셔서 감사합니다",
+            "지금까지 신선한 경제였습니다",
+            "시청해주셔서 감사합니다",
+            "오늘도 시청해주셔서 감사합니다",
+            "오늘 영상은 여기까지 입니다. 감사합니다",
+            "오늘 영상은 여기까지 입니다. 다음에 또 만나요",
+            "오늘 영상은 여기까지 입니다. 시청해주셔서 감사합니다",            
+        ]
+        
+        lower_text = text.lower()
+        for pattern in hallucination_phrases:
+            if pattern.lower() in lower_text:
+                return True
+        
+        return False
+
     async def transcribe(
         self, audio_data: bytes, filename: str = "audio.wav"
     ) -> STTResult:

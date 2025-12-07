@@ -134,16 +134,8 @@ class DialogueAgent:
             logger.error(f"알 수 없는 Stage: {stage}")
             return {"error": "Unknown stage"}
         
-        # 3. 안전 필터 감지 시 AI 응답을 safety message로 교체
-        # if not safety_result.is_safe:
-        #     ai_response = result.get("ai_response", {})
-        #     result["ai_response"] = {
-        #         "text": safety_result.message,
-        #         "tts_url": ai_response.get("tts_url"),
-        #         "duration_ms": ai_response.get("duration_ms")
-        #     }
-        #     result["safety_check"] = safety_result.dict()
-        #     logger.info(f"🛡️ 안전 필터 - ai_response를 safety message로 교체")
+        # 3. safety_check를 실제 검사 결과로 교체 (항상)
+        result["safety_check"] = safety_result.dict()
         
         return result
     
@@ -1315,7 +1307,7 @@ class DialogueAgent:
         
         # 사회인식 스킬의 경우: 내 경험 말해보기
         if prompt_type == "social_awareness":
-            response = f"그렇구나. 너도 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어? 있다면 나에게 자세히 말해줄래?"
+            response = f"너도 혹시 누가 힘들어서 울고 있거나 속상해하는 걸 본 적 있어? 있다면 나에게 자세히 말해줄래?"
         else:
             # 기본: 공감 + 비슷한 경험 질문 (감정 단어 반복하지 않음)
             response = f"그랬구나. {child_name}이도 그런 경험이 있어?"
