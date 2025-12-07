@@ -14,6 +14,7 @@ import com.example.namurokmurok.domain.feedback.service.FeedbackService;
 import com.example.namurokmurok.domain.story.repository.StoryRepository;
 import com.example.namurokmurok.domain.user.repository.ChildRepository;
 import com.example.namurokmurok.global.audio.AudioConverter;
+import com.example.namurokmurok.global.audio.AudioValidationService;
 import com.example.namurokmurok.global.client.AiApiClient;
 import com.example.namurokmurok.global.common.exception.CustomException;
 import com.example.namurokmurok.global.common.exception.ErrorCode;
@@ -40,6 +41,7 @@ public class ConversationTurnService {
 
     private final AiApiClient aiApiClient;
     private final AudioConverter audioConverter;
+    private final AudioValidationService audioValidationService;
     private final S3Uploader s3Uploader;
 
     private final FeedbackService feedbackService;
@@ -63,6 +65,12 @@ public class ConversationTurnService {
 
         // 2. 오디오 변환
         File wavFile = audioConverter.convertWebmToWav(webmAudio);
+
+        // 오디오 무음 감지시 예외처리
+        if (audioValidationService.isSilent(wavFile)) {
+            log.warn("[ProcessTurn] Silent audio detected. session={}, stage={}", sessionId, stage);
+            throw new CustomException(ErrorCode.SILENT_AUDIO_DETECTED);
+        }
 
         // 3. AI 서버 요청
         DialogueTurnResponse aiRes = requestToAiServer(sessionId, stage, wavFile);
@@ -110,6 +118,7 @@ public class ConversationTurnService {
                 .end(isEnd)
                 .build();
     }
+
 
     // ------------------------------------
     // Private Helper Methods
