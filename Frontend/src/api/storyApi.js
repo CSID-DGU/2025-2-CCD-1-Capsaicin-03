@@ -85,12 +85,16 @@ export const saveLastReadPage = async (storyId, childId, pageNumber, isEnd = fal
   }
 };
 
+
 export const saveLastReadPageOnExit = (storyId, childId, pageNumber, isEnd = false) => {
-  const URL = `/api/stories/${storyId}/children/${childId}/pages`;
-  
+  const BASE_URL = 'https://namurok.com'; 
+  const URL = `${BASE_URL}/api/stories/${storyId}/children/${childId}/pages`;
+
+
   let token = null;
   const storageKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
   const sessionString = storageKey ? localStorage.getItem(storageKey) : null;
+
 
   if (sessionString) {
     try {
@@ -101,12 +105,15 @@ export const saveLastReadPageOnExit = (storyId, childId, pageNumber, isEnd = fal
     }
   }
 
+
   console.log(`[EXIT DEBUG] 토큰 찾음: ${!!token} (Key: ${storageKey})`);
-  
+
+
   const body = JSON.stringify({
     page_number: pageNumber,
     is_end: isEnd
   });
+
 
   fetch(URL, {
     method: 'PATCH',
@@ -117,4 +124,5 @@ export const saveLastReadPageOnExit = (storyId, childId, pageNumber, isEnd = fal
     body: body,
     keepalive: true 
   }).catch(e => console.error("Exit save failed:", e));
+
 };
