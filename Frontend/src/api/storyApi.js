@@ -68,11 +68,16 @@ export const fetchLastReadPage = async (storyId, childId) => {
   }
 };
 
-export const saveLastReadPage = async (storyId, childId, pageNumber) => {
-  const API_ENDPOINT = `/api/stories/${storyId}/children/${childId}/pages/${pageNumber}`;
+export const saveLastReadPage = async (storyId, childId, pageNumber, isEnd = false) => {
+  const API_ENDPOINT = `/api/stories/${storyId}/children/${childId}/pages`;
+
+  const body = {
+    page_number: pageNumber,
+    is_end: isEnd
+  };
 
   try {
-    const response = await instance.patch(API_ENDPOINT);
+    const response = await instance.patch(API_ENDPOINT, body);
     return response.data;
   } catch (error) {
     console.error('Failed to save page:', error.message);
