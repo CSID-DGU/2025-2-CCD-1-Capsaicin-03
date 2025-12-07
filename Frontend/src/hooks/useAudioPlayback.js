@@ -24,12 +24,34 @@ export const useAudioPlayback = (audioSrc, shouldPlay) => {
                 });
             }
         } else {
-            // 재생 조건이 아니면 정지
             audio.pause();
             audio.currentTime = 0;
         }
 
     }, [audioSrc, shouldPlay]); 
+
+    useEffect(() => {
+    const handleVisibilityChange = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      if (document.visibilityState === 'hidden') {
+        console.log("[Audio] 앱 백그라운드 전환 -> 오디오 일시정지");
+        audio.pause(); 
+      } 
+      else if (document.visibilityState === 'visible') {
+        if (shouldPlay && audioSrc) {
+            console.log("[Audio] 앱 포그라운드 전환 -> 오디오 재개 시도");
+            audio.play().catch(e => console.log("자동 재생 정책으로 인해 재생 실패:", e));
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [shouldPlay, audioSrc]);
 
     // 컴포넌트 언마운트 시 오디오 정리
     useEffect(() => {
