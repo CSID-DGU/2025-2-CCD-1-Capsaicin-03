@@ -51,7 +51,7 @@ const StoryPage = () => {
      fetchChildId();
   }, []);
 
-  const saveProgress = async () => {
+  const saveProgress = async (isEnd = false) => {
     if (!childId || !storyId) return;
 
     if (page === 0) {
@@ -59,8 +59,8 @@ const StoryPage = () => {
     }
 
     try {
-        console.log(`[DEBUG_PAGE] 현재 진행상황 저장: ${page}페이지`);
-        await saveLastReadPage(storyId, childId, page);
+        console.log(`[DEBUG_PAGE] 저장 시도 - 페이지: ${page}, 완독여부: ${isEnd}`);
+        await saveLastReadPage(storyId, childId, page, isEnd); 
         
     } catch (e) {
         console.error("[DEBUG_PAGE] 🚨 저장 API 실패:", e);
@@ -69,7 +69,7 @@ const StoryPage = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-        saveProgress();
+        saveProgress(false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -134,7 +134,7 @@ const StoryPage = () => {
   };
 
   const handleExitConfirm = async () => {
-    await saveProgress();
+    await saveProgress(false);
     setIsExitModalOpen(false);
     navigate('/stories'); 
   };
@@ -155,10 +155,14 @@ const StoryPage = () => {
   }
 
   const goToChatIntro = async () => {
-    if (childId && storyId) {
+    if (childId && storyId && storyData) {
         try {
-            console.log(`[DEBUG_PAGE] 대화하러 가기 클릭! 현재 페이지(${page}) 저장.`);
-            await saveLastReadPage(storyId, childId, page); 
+            const finalPageNumber = storyData.total_pages;
+
+            console.log(`[DEBUG_PAGE] 대화하러 가기 클릭!`);
+            console.log(`- 전송할 페이지 번호(total_pages): ${finalPageNumber}`);
+            
+            await saveLastReadPage(storyId, childId, finalPageNumber, true); 
             
         } catch (e) {
             console.error("[DEBUG_PAGE] 마지막 페이지 저장 실패:", e);

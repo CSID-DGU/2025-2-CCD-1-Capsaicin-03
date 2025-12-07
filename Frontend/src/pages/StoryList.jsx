@@ -128,7 +128,7 @@ const StoryList = () => {
             전체페이지: totalStoryPages 
         });
 
-        if (savedPage !== null && savedPage !== undefined && savedPage > 0 && savedPage < (totalStoryPages - 1)) {
+        if (savedPage !== null && savedPage !== undefined && savedPage > 0 && savedPage < totalStoryPages) {
             console.log(`[DEBUG_LIST] ✅ 이어보기 팝업 조건 충족!`);
             setResumeInfo({ storyId, savedPage });
             setResumeModalOpen(true);
