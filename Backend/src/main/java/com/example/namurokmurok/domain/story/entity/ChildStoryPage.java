@@ -21,6 +21,10 @@ public class ChildStoryPage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "is_end", nullable = false)
+    @Builder.Default
+    private boolean isEnd = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "child_id", nullable = false)
     private Child child;
@@ -40,4 +44,13 @@ public class ChildStoryPage {
         this.storyPage = newPage;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void setIsEnd(boolean isEnd) {
+        this.isEnd = isEnd;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
 }

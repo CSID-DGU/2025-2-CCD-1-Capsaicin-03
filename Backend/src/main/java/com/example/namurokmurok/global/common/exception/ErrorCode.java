@@ -25,7 +25,7 @@ public enum ErrorCode {
     CHILD_NOT_FOUND(HttpStatus.NOT_FOUND, "등록되지 않은 아이입니다"),
     CHILD_NOT_FOUND_FOR_USER(HttpStatus.NOT_FOUND, "등록된 아이가 없습니다."),
     CHILD_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 아이에게 접근 권한이 없습니다."),
-    CHILD_STORY_PROGRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 아이에게 저장된 동화 페이지가 존재하지 않습니다.."),
+    CHILD_STORY_PROGRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "아이에게 저장된 해당 동화의 페이지가 존재하지 않습니다."),
 
     // story 관련
     INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "잘못된 카테고리입니다."),
@@ -34,6 +34,8 @@ public enum ErrorCode {
     DIALOGUE_PAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "대화 장면이 존재하지 않습니다."),
     INTRO_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "인트로 질문이 존재하지 않습니다"),
     ACTION_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "행동 카드가 존재하지 않습니다"),
+    INVALID_END_REQUEST(HttpStatus.BAD_REQUEST, "완독 요청이 유효하지 않습니다. 마지막 페이지에서만 완료 처리가 가능합니다."),
+    PAGE_NUMBER_REQUIRED_FOR_END(HttpStatus.BAD_REQUEST, "완독 요청 시 page_number는 필수입니다."),
 
     // conversation 관련
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 대화입니다"),

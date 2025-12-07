@@ -79,7 +79,7 @@ public class StoryController {
         return ApiResponse.success(response);
     }
 
-    @PatchMapping("{story-id}/children/{child-id}/pages/{page-number}")
+    @PatchMapping("{story-id}/children/{child-id}/pages")
     @Operation(summary = "아이별 동화 페이지 저장/수정",
             description = "아이별 동화 페이지를 저장/수정합니다.")
     public ApiResponse<Void> savePage(
@@ -89,10 +89,9 @@ public class StoryController {
             @Parameter(description = "아이 ID", example = "3")
             @PathVariable("child-id") Long childId,
 
-            @Parameter(description = "페이지", example = "1")
-            @PathVariable("page-number") int pageNumber) {
+            @RequestBody ChildStoryPageUpdateRequestDto request) {
 
-        storyService.saveOrUpdatePage(storyId, childId, pageNumber);
+        storyService.saveOrUpdatePage(storyId, childId, request);
         return ApiResponse.success("아이의 동화 페이지가 저장 되었습니다.", null);
     }
 
