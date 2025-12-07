@@ -21,4 +21,8 @@ public class ChildStoryPageResponseDto {
     @Schema(description = "페이지", example = "7")
     @JsonProperty("page_number")
     private int pageNumber;
+
+    @Schema(description = "완독 여부", example = "false")
+    @JsonProperty("is_end")
+    private Boolean end;
 }

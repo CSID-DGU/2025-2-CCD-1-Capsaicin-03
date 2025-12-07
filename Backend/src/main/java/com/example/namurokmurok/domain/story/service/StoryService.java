@@ -202,29 +202,87 @@ public class StoryService {
 
     // 아이별 동화 페이지 저장
     @Transactional
-    public void saveOrUpdatePage(Long storyId, Long childId, int pageNumber) {
+    public void saveOrUpdatePage(Long storyId, Long childId, ChildStoryPageUpdateRequestDto request) {
 
         Child child = validateUserAndGetChild(childId);
 
         Story story = storyRepository.findById(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_NOT_FOUND));
 
-        StoryPage storyPage = storyPageRepository
-                .findByStoryIdAndPageNumber(storyId, pageNumber)
+        // 스토리 마지막 페이지 번호 조회
+        int lastPageNumber = storyPageRepository.findLastPageNumberByStoryId(storyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORY_PAGE_NOT_FOUND));
 
+        // 요청된 page_number가 있다면 해당 storyPage 조회
+        StoryPage newPage = null;
+        if (request.getPageNumber() != null) {
+            newPage = storyPageRepository
+                    .findByStoryIdAndPageNumber(storyId, request.getPageNumber())
+                    .orElseThrow(() -> new CustomException(ErrorCode.STORY_PAGE_NOT_FOUND));
+        }
+
+        // 기존 기록 조회
         ChildStoryPage progress = childStoryPageRepository
                 .findByChildIdAndStoryId(childId, storyId)
-                .orElseGet(() -> ChildStoryPage.builder()
-                        .child(child)
-                        .story(story)
-                        .storyPage(storyPage)
-                        .updatedAt(LocalDateTime.now())
-                        .build()
-                );
+                .orElse(null);
 
-        progress.updateStoryPage(storyPage);
-        childStoryPageRepository.save(progress);
+        // CREATE 로직 (최초 요청)
+        if (progress == null) {
+
+            Boolean isEnd = request.getEnd();
+            // 신규 생성이고, is_end=true인데 page_number 없을 경우 에러
+            if (isEnd != null && isEnd && newPage == null) {
+                throw new CustomException(ErrorCode.PAGE_NUMBER_REQUIRED_FOR_END);
+            }
+
+            // 신규 생성인데 page_number 없을 경우 에러
+            if (newPage == null) {
+                throw new CustomException(ErrorCode.INVALID_REQUEST);
+            }
+
+            // 완독 요청이면 반드시 마지막 페이지여야 함
+            if (isEnd != null && isEnd && newPage.getPageNumber() != lastPageNumber) {
+                throw new CustomException(ErrorCode.INVALID_END_REQUEST);
+            }
+
+            progress = ChildStoryPage.builder()
+                    .child(child)
+                    .story(story)
+                    .storyPage(newPage)
+                    .isEnd(isEnd != null && isEnd)
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            childStoryPageRepository.save(progress);
+            return;
+        }
+
+        // PATCH 로직 (기존 데이터 수정)
+        // page_number 전달 시 페이지 업데이트
+        if (newPage != null) {
+            progress.updateStoryPage(newPage);
+        }
+
+        if (request.getEnd() != null) {
+
+            Boolean isEnd = request.getEnd();
+
+            if (isEnd) {
+
+                // 완독 요청인데 page_number가 없는 경우
+                if (request.getPageNumber() == null) {
+                    throw new CustomException(ErrorCode.PAGE_NUMBER_REQUIRED_FOR_END);
+                }
+
+                // page_number가 존재하지만 마지막 페이지가 아닌 경우
+                if (newPage.getPageNumber() != lastPageNumber) {
+                    throw new CustomException(ErrorCode.INVALID_END_REQUEST);
+                }
+            }
+            progress.setIsEnd(isEnd);
+        }
+
+        progress.setUpdatedAt(LocalDateTime.now());
     }
 
     // 아이별 동화 페이지 조회
@@ -241,7 +299,7 @@ public class StoryService {
                 .childId(childId)
                 .storyId(storyId)
                 .pageNumber(progress.getStoryPage().getPageNumber())
+                .end(progress.isEnd())
                 .build();
     }
-
 }
