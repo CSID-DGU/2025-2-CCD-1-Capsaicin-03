@@ -84,3 +84,38 @@ export const saveLastReadPage = async (storyId, childId, pageNumber, isEnd = fal
     throw error;
   }
 };
+
+export const saveLastReadPageOnExit = (storyId, childId, pageNumber, isEnd = false) => {
+  const BASE_URL = 'http://43.203.13.222:8080'; 
+  const URL = `${BASE_URL}/api/stories/${storyId}/children/${childId}/pages`;
+
+  let token = null;
+  const storageKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+  const sessionString = storageKey ? localStorage.getItem(storageKey) : null;
+
+  if (sessionString) {
+    try {
+      const session = JSON.parse(sessionString);
+      token = session.access_token; 
+    } catch (e) {
+      console.error("[Exit Save] 토큰 파싱 실패:", e);
+    }
+  }
+
+  console.log(`[EXIT DEBUG] 토큰 찾음: ${!!token} (Key: ${storageKey})`);
+  
+  const body = JSON.stringify({
+    page_number: pageNumber,
+    is_end: isEnd
+  });
+
+  fetch(URL, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    },
+    body: body,
+    keepalive: true 
+  }).catch(e => console.error("Exit save failed:", e));
+};

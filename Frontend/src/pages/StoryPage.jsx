@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useStory } from '../hooks/useStory.js';
 import { useAudioPlayback } from '../hooks/useAudioPlayback.js';
-import { saveLastReadPage } from '../api/storyApi.js'; 
+import { saveLastReadPage, saveLastReadPageOnExit } from '../api/storyApi.js';
 import { getChildProfile } from '../api/profileApi.js'; 
 import ReactGA from 'react-ga4';
 import homeIcon from '../assets/home_icon.svg';
@@ -15,7 +15,7 @@ const StoryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const initialPage = location.state?.initialPage || 0;
-
+  
   const {
     isLoading,
     error,
@@ -32,6 +32,17 @@ const StoryPage = () => {
   const scrollContainerRef = useRef(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [childId, setChildId] = useState(null);
+  const pageRef = useRef(page);
+  const childIdRef = useRef(childId);
+  const isCompleting = useRef(false);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    childIdRef.current = childId;
+  }, [childId]);
 
   useEffect(() => {
      const fetchChildId = async () => {
@@ -53,14 +64,15 @@ const StoryPage = () => {
 
   const saveProgress = async (isEnd = false) => {
     if (!childId || !storyId) return;
+    const currentPage = pageRef.current;
 
-    if (page === 0) {
+    if (currentPage === 0) {
         return;
     }
 
     try {
-        console.log(`[DEBUG_PAGE] 저장 시도 - 페이지: ${page}, 완독여부: ${isEnd}`);
-        await saveLastReadPage(storyId, childId, page, isEnd); 
+        console.log(`[DEBUG_PAGE] 저장 시도 - 페이지: ${currentPage}, 완독여부: ${isEnd}`);
+        await saveLastReadPage(storyId, childId, currentPage, isEnd); 
         
     } catch (e) {
         console.error("[DEBUG_PAGE] 🚨 저장 API 실패:", e);
@@ -68,15 +80,44 @@ const StoryPage = () => {
   };
 
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
-        saveProgress(false);
+    const handleExitLogic = (situation) => {
+      if (isCompleting.current) {
+          console.log(`[Exit] ${situation} 감지됨. 하지만 완독 요청 중이므로 저장 건너뜀.`);
+          return;
+      }
+
+      const currentChildId = childIdRef.current;
+      const currentPage = pageRef.current;
+
+      if (currentChildId && currentPage > 0) {
+          console.log(`[Exit] ${situation} 감지 -> keepalive 저장: ${currentPage}p (childId: ${currentChildId})`);
+          saveLastReadPageOnExit(storyId, currentChildId, currentPage, false);
+      }
+    };
+  
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const currentPage = pageRef.current;
+        if (currentPage > 0 && childId) {
+            console.log(`[Exit] 앱 숨김 -> keepalive 저장: ${currentPage}p`);
+            saveLastReadPageOnExit(storyId, childId, currentPage, false);
+        }
+      }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
+    const handleBeforeUnload = () => {
+        handleExitLogic("브라우저 닫기");
     };
-  }, [childId, storyId, page]);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        handleExitLogic("컴포넌트 언마운트(뒤로가기)");
+    };
+  }, [storyId]);
 
   useEffect(() => {
     if (!isLoading && storyData && !hasSentStartEvent.current) {
@@ -156,7 +197,8 @@ const StoryPage = () => {
 
   const goToChatIntro = async () => {
     if (childId && storyId && storyData) {
-        try {
+      try {
+            isCompleting.current = true;
             const finalPageNumber = storyData.total_pages;
 
             console.log(`[DEBUG_PAGE] 대화하러 가기 클릭!`);
@@ -164,9 +206,9 @@ const StoryPage = () => {
             
             await saveLastReadPage(storyId, childId, finalPageNumber, true); 
             
-        } catch (e) {
-            console.error("[DEBUG_PAGE] 마지막 페이지 저장 실패:", e);
-        }
+          } catch (e) {
+              console.error("[DEBUG_PAGE] 마지막 페이지 저장 실패:", e);
+          }
     }
     navigate(`/chat/${storyId}/goal`);
   };
