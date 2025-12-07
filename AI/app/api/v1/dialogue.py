@@ -97,6 +97,10 @@ async def process_dialogue_turn_with_audio(
             try:
                 stt_result = await stt_service.transcribe(audio_data, audio_file.filename)
                 logger.info(f"🎙️ STT 변환 완료: text='{stt_result.text}', confidence={stt_result.confidence}")
+                
+                if stt_service.is_silence_text(stt_result.text):
+                    logger.info("🧹 STT 결과가 헛소리/무음으로 판단 → '' 처리됨")
+                    stt_result.text = ""                
             except Exception as e:
                 logger.error(f"❌ STT 변환 실패: {e}")
                 raise HTTPException(status_code=500, detail=f"STT 변환 실패: {e}")
