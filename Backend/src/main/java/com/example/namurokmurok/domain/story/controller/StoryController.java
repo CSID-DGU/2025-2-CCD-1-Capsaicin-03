@@ -81,7 +81,7 @@ public class StoryController {
 
     @PatchMapping("{story-id}/children/{child-id}/pages")
     @Operation(summary = "아이별 동화 페이지 저장/수정",
-            description = "아이별 동화 페이지를 저장/수정합니다.")
+            description = "아이별 동화 페이지에 대한 정보를 저장/수정합니다. <br> 완독 요청(is_end=true)시 page_number 는 필수입니다. <br> 완독 요청(is_end=true)시 page_number는 해당 동화의 마지막 페이지여야 정상 처리 됩니다. <br> 페이지 저장 요청시 is_end는 선택입니다. (기본 값 false)")
     public ApiResponse<Void> savePage(
             @Parameter(description = "동화 ID", example = "1")
             @PathVariable("story-id") Long storyId,
