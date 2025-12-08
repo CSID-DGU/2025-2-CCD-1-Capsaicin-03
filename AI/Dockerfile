@@ -15,9 +15,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # worker=2
-CMD ["gunicorn",
-     "-k", "uvicorn.workers.UvicornWorker",
-     "-w", "2",
-     "--bind", "0.0.0.0:8000",
-     "--timeout", "120",
-     "app.main:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "--bind", "0.0.0.0:8000", "--timeout", "120", "app.main:app"]
