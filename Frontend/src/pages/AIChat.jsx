@@ -22,6 +22,7 @@ const AIChat = () => {
     const recordingStartTime = useRef(0);
     const isCompletedRef = useRef(false);
     const sessionIdRef = useRef('');
+    const isTouchRef = useRef(false);
 
     const [chatStep, setChatStep] = useState('intro'); 
     const [sceneData, setSceneData] = useState(null);
@@ -404,25 +405,39 @@ const AIChat = () => {
                                 transform: isRecording ? 'scale(1.1)' : 'scale(1)',
                                 transition: 'all 0.2s ease'
                             }}
-                            onMouseDown={handleStartRecording} 
-                            onMouseUp={stopRecording}    
-                            onTouchStart={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();  
+                            // 1. 마우스 이벤트: 터치 환경(isTouchRef가 true)이면 실행하지 않음 (Ghost Click 방지)
+                            onMouseDown={() => {
+                                if (isTouchRef.current) return; 
                                 handleStartRecording();
                             }}
-                            onTouchEnd={(e) => {  
-                                e.preventDefault();  
-                                e.stopPropagation();  
+                            onMouseUp={() => {
+                                if (isTouchRef.current) return;
                                 stopRecording();
                             }}
-                            onTouchMove={(e) => {  
+                            // 마우스가 버튼 밖으로 나갔을 때도 녹음 끊기
+                            onMouseLeave={() => {
+                                if (!isTouchRef.current && isRecording) stopRecording();
+                            }}
+
+                            // 2. 터치 이벤트: 여기가 실행되면 마우스 이벤트는 무시하도록 설정
+                            onTouchStart={(e) => {
+                                e.preventDefault(); 
+                                e.stopPropagation();
+                                isTouchRef.current = true; // "나 지금 터치 중이야!" 표시
+                                handleStartRecording();
+                            }}
+                            onTouchEnd={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                stopRecording();
+                                // 터치가 끝났어도 잠시동안은 마우스 이벤트가 들어올 수 있으므로 isTouchRef를 바로 끄지 않음
+                            }}
+                            onTouchMove={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                             }}
                             onContextMenu={(e) => {
                                 e.preventDefault();
-                                e.stopPropagation();
                                 return false;
                             }}
                             disabled={isMicDisabled}
