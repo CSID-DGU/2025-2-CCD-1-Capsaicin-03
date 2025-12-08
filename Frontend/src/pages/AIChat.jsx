@@ -23,6 +23,7 @@ const AIChat = () => {
     const isCompletedRef = useRef(false);
     const sessionIdRef = useRef('');
     const isTouchRef = useRef(false);
+    const audioPreloadRef = useRef(null);
 
     const [chatStep, setChatStep] = useState('intro'); 
     const [sceneData, setSceneData] = useState(null);
@@ -38,6 +39,18 @@ const AIChat = () => {
     const [childId, setChildId] = useState(null);     
     const [sessionId, setSessionId] = useState('');   
     const [currentStage, setCurrentStage] = useState('S1');
+
+    useEffect(() => {
+        audioPreloadRef.current = new Audio();
+        audioPreloadRef.current.preload = 'auto';
+        
+        return () => {
+            if (audioPreloadRef.current) {
+                audioPreloadRef.current.pause();
+                audioPreloadRef.current.src = '';
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (chatStep === 'dialogue' && currentStage) {
@@ -199,7 +212,9 @@ const AIChat = () => {
             }
 
             if (response.tts_audio_url) {
-                const aiAudio = new Audio(response.tts_audio_url);
+                // 🎵 수정: Audio 객체 재사용
+                const aiAudio = audioPreloadRef.current || new Audio();
+                aiAudio.src = response.tts_audio_url;
                 questionAudioRef.current = aiAudio;
 
                 setIsAIAudioPlaying(true);
@@ -211,9 +226,13 @@ const AIChat = () => {
                     }
                 };
 
-                await aiAudio.play();
+                // 🎵 수정: load() 호출 후 play()
+                await aiAudio.load();
+                await aiAudio.play().catch(err => {
+                    console.error("오디오 재생 실패:", err);
+                    setIsAIAudioPlaying(false);
+                });
             } else {
-                setIsResponding(false); 
                 if (response.is_end) {
                     finishChat();
                 }
@@ -277,7 +296,8 @@ const AIChat = () => {
                 setCurrentStage(questionData.current_stage);
             }
 
-            const questionAudio = new Audio(questionData.audio_url);
+            const questionAudio = audioPreloadRef.current || new Audio();
+            questionAudio.src = questionData.audio_url;
             questionAudioRef.current = questionAudio;
 
             setIsAIAudioPlaying(true);
@@ -285,6 +305,7 @@ const AIChat = () => {
                 setIsAIAudioPlaying(false);
             };
             
+            await questionAudio.load();
             await questionAudio.play().catch(e => {
                 console.error("오디오 재생 실패:", e);
                 setIsAIAudioPlaying(false); 
