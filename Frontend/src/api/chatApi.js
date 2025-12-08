@@ -41,17 +41,8 @@ export const postConversationTurn = async ({
   if (!audioBlob) throw new Error("전송할 오디오 데이터가 없습니다.");
 
   const formData = new FormData();
-  const mimeType = audioBlob.type; 
-  
-  let ext = 'webm'; 
-  if (mimeType.includes('mp4') || mimeType.includes('aac')) {
-    ext = 'mp4';
-  } else if (mimeType.includes('ogg')) {
-    ext = 'ogg';
-  } else if (mimeType.includes('wav')) {
-    ext = 'wav';
-  }
-  formData.append('audio', audioBlob, `user_response.${ext}`);
+
+  formData.append('audio', audioBlob);
 
   try {
     const response = await apiClient.post('/api/conversations/turn', formData, {
