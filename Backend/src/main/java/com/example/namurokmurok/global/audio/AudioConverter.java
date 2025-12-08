@@ -74,13 +74,7 @@ public class AudioConverter {
     private String resolveExtension(MultipartFile file) {
         String filename = file.getOriginalFilename();
 
-        // 1) 확장자 존재 시 그대로 사용
-        if (filename != null && filename.contains(".")) {
-            return filename.substring(filename.lastIndexOf('.') + 1)
-                    .toLowerCase();
-        }
-
-        // 2) 확장자가 없으면 MIME 기반 추론
+        // 확장자가 없으면 MIME 기반 추론
         String mime = file.getContentType();
         log.info("[AudioConverter] MIME 타입 감지: {}", mime);
 
