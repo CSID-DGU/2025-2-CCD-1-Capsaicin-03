@@ -432,11 +432,6 @@ const AIChat = () => {
                                 alt="마이크" 
                                 style={styles.micIcon}
                                 draggable="false"
-                                onDragStart={(e) => e.preventDefault()}  
-                                onContextMenu={(e) => e.preventDefault()}  
-                                onTouchStart={(e) => e.preventDefault()}  
-                                onTouchEnd={(e) => e.preventDefault()}  
-                                onTouchMove={(e) => e.preventDefault()}  
                             />
                         </button>
                     </div>
@@ -679,12 +674,22 @@ const styles = {
         alignItems: 'center', 
         cursor: 'pointer', 
         boxShadow: '0 4px 20px rgba(255, 160, 122, 0.5)',
-        flexShrink: 0
+        flexShrink: 0,
+        touchAction: 'none',        // 핵심: 꾹 누르거나 드래그 시 브라우저 기본 동작(스크롤 등) 차단
+        userSelect: 'none',         // 텍스트/요소 선택 방지
+        WebkitUserSelect: 'none',   // 사파리 대응
+        WebkitTouchCallout: 'none', // iOS 롱프레스 메뉴 차단
+        WebkitUserDrag: 'none',
     },
     micIcon: { 
         width: '70%',    
         height: '70%',
-        objectFit: 'contain'  
+        objectFit: 'contain',
+        pointerEvents: 'none',      // 핵심: 이미지가 터치 이벤트를 받지 않고 버튼으로 통과시킴
+        userSelect: 'none',         // 이미지 선택 방지
+        WebkitUserSelect: 'none',   // 사파리/크롬 대응
+        WebkitTouchCallout: 'none', // 꾹 눌렀을 때 메뉴 호출 방지
+        WebkitUserDrag: 'none',
     },
     dialogueGuidanceText: {
         margin: '0', 
