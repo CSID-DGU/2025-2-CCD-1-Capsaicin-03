@@ -46,6 +46,7 @@ public enum ErrorCode {
     AUDIO_CONVERSION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "오디오 파일 변환에 실패했습니다."),
     FILE_SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "파일 입출력 처리 중 오류가 발생했습니다."),
     SILENT_AUDIO_DETECTED(HttpStatus.BAD_REQUEST, "무음 음성이 감지되었습니다. 다시 말해주세요."),
+    UNSUPPORTED_AUDIO_FORMAT(HttpStatus.BAD_REQUEST, "지원하지 않는 오디오 형식입니다."),
 
     // Feedback 관련
     FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 피드백입니다"),

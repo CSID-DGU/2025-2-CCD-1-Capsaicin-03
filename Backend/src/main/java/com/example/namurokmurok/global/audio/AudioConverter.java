@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -16,41 +17,28 @@ public class AudioConverter {
     private static final String FFMPEG_PATH = "ffmpeg";
 
     /**
-     * webm, wav, mp3, m4a → wav 변환
+     * 모든 주요 오디오(webm, wav, mp3, m4a, caf, aac) → wav 변환
      */
     public File convertWebmToWav(MultipartFile audioFile) {
         File inputAudio = null;
         File outputWav = null;
 
         try {
-            // 0) 원본 파일명 / 확장자 확인
-            String originalFilename = audioFile.getOriginalFilename();
-            if (originalFilename == null || !originalFilename.contains(".")) {
-                log.warn("[AudioConverter] 확장자를 알 수 없는 파일: {}", originalFilename);
-                throw new CustomException(ErrorCode.INVALID_REQUEST); // 지원하지 않는 형식
-            }
+            // 1) 확장자 또는 MIME 기반 확장자 추론
+            String ext = resolveExtension(audioFile);
+            log.info("[AudioConverter] 감지된 오디오 확장자: {}", ext);
 
-            String ext = originalFilename.substring(originalFilename.lastIndexOf('.') + 1)
-                    .toLowerCase();
-
-            // 허용 확장자: webm, wav, mp3, m4a
-            if (!ext.equals("webm") && !ext.equals("wav")
-                    && !ext.equals("mp3") && !ext.equals("m4a")) {
-                log.warn("[AudioConverter] 지원하지 않는 오디오 형식 요청: {}", ext);
-                throw new CustomException(ErrorCode.INVALID_REQUEST);
-            }
-
-            // 1) 임시 입력 파일 생성 (원본 확장자 유지)
+            // 2) 입력 파일 생성
             inputAudio = File.createTempFile("input-", "." + ext);
             audioFile.transferTo(inputAudio);
 
-            // 2) 출력 wav 파일 생성
+            // 3) 출력 wav 파일 생성
             outputWav = File.createTempFile("output-", ".wav");
 
-            // 3) FFmpeg 명령 실행 (입력 형식 상관없이 16kHz mono wav로 변환)
+            // 4) FFmpeg 변환 실행
             executeFfmpeg(inputAudio, outputWav);
 
-            log.info("[AudioConverter] 변환 성공: InputExt={}, OutputPath={}, Size={} bytes",
+            log.info("[AudioConverter] 변환 성공: {} → {} (size={} bytes)",
                     ext, outputWav.getAbsolutePath(), outputWav.length());
 
             return outputWav;
@@ -63,7 +51,7 @@ public class AudioConverter {
         } catch (InterruptedException e) {
             cleanupFile(outputWav);
             Thread.currentThread().interrupt();
-            log.error("[AudioConverter] 프로세스 중단됨", e);
+            log.error("[AudioConverter] FFmpeg 프로세스 중단", e);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, e);
 
         } catch (CustomException e) {
@@ -72,34 +60,66 @@ public class AudioConverter {
 
         } catch (Exception e) {
             cleanupFile(outputWav);
-            log.error("[AudioConverter] 알 수 없는 오류", e);
+            log.error("[AudioConverter] 알 수 없는 변환 오류", e);
             throw new CustomException(ErrorCode.AUDIO_CONVERSION_FAILED, e);
 
         } finally {
-            // 입력 파일 삭제
             cleanupFile(inputAudio);
         }
     }
 
+    /**
+     * 확장자 또는 MIME 타입 기반으로 실제 확장자 추론
+     */
+    private String resolveExtension(MultipartFile file) {
+        String filename = file.getOriginalFilename();
+
+        // 1) 확장자 존재 시 그대로 사용
+        if (filename != null && filename.contains(".")) {
+            return filename.substring(filename.lastIndexOf('.') + 1)
+                    .toLowerCase();
+        }
+
+        // 2) 확장자가 없으면 MIME 기반 추론
+        String mime = file.getContentType();
+        log.info("[AudioConverter] MIME 타입 감지: {}", mime);
+
+        if (mime == null) {
+            throw new CustomException(ErrorCode.UNSUPPORTED_AUDIO_FORMAT);
+        }
+
+        return switch (mime) {
+            case "audio/x-caf" -> "caf";   // iPad 기본 녹음 형식
+            case "audio/mp4", "audio/m4a" -> "m4a";
+            case "audio/aac" -> "aac";
+            case "audio/wav", "audio/wave" -> "wav";
+            case "audio/webm" -> "webm";
+            case "audio/mpeg" -> "mp3";
+            default -> throw new CustomException(ErrorCode.UNSUPPORTED_AUDIO_FORMAT);
+        };
+    }
+
+    /**
+     * FFmpeg 변환 실행 (16kHz mono WAV)
+     */
     private void executeFfmpeg(File input, File output) throws IOException, InterruptedException {
         String[] command = {
                 FFMPEG_PATH, "-y",
                 "-i", input.getAbsolutePath(),
-                "-ac", "1",       // mono
-                "-ar", "16000",   // 16kHz
+                "-ac", "1",            // mono
+                "-ar", "16000",        // 16kHz
                 output.getAbsolutePath()
         };
 
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
 
-        // FFmpeg 로그 읽기 (비동기)
+        Process process = pb.start();
         readStream(process.getInputStream());
 
         int exitCode = process.waitFor();
         if (exitCode != 0) {
-            log.error("[AudioConverter] FFmpeg 비정상 종료 exitCode={}", exitCode);
+            log.error("[AudioConverter] FFmpeg 종료 코드 오류: {}", exitCode);
             throw new CustomException(ErrorCode.AUDIO_CONVERSION_FAILED);
         }
     }
@@ -107,13 +127,11 @@ public class AudioConverter {
     private void readStream(InputStream inputStream) {
         new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // 필요하면 FFmpeg 로그 디버깅용으로 사용
-                    // log.debug("[FFmpeg] {}", line);
+                while (reader.readLine() != null) {
+                    // FFmpeg 로그 무시 (필요시 디버깅 가능)
                 }
             } catch (IOException e) {
-                log.error("[AudioConverter] 스트림 읽기 실패", e);
+                log.error("[AudioConverter] FFmpeg 로그 읽기 실패", e);
             }
         }).start();
     }
@@ -123,7 +141,7 @@ public class AudioConverter {
             try {
                 Files.deleteIfExists(file.toPath());
             } catch (IOException e) {
-                log.warn("[AudioConverter] 파일 삭제 실패: {}", file.getAbsolutePath());
+                log.warn("[AudioConverter] 임시 파일 삭제 실패: {}", file.getAbsolutePath());
             }
         }
     }
