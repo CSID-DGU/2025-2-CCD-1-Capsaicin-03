@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# OS 패키지
+# OS 패키지 설치
 RUN apt-get update && apt-get install -y \
     build-essential \
     ffmpeg \
@@ -14,4 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000", "--timeout", "120"]
+# worker=2
+CMD ["gunicorn",
+     "-k", "uvicorn.workers.UvicornWorker",
+     "-w", "2",
+     "--bind", "0.0.0.0:8000",
+     "--timeout", "120",
+     "app.main:app"]
