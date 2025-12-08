@@ -41,9 +41,17 @@ export const postConversationTurn = async ({
   if (!audioBlob) throw new Error("전송할 오디오 데이터가 없습니다.");
 
   const formData = new FormData();
-  // 브라우저 녹음 파일(webm/blob)을 파일 객체로 변환하여 추가
-  const audioFile = new File([audioBlob], "user_response.webm", { type: "audio/webm" });
-  formData.append('audio', audioFile);
+  const mimeType = audioBlob.type; 
+  
+  let ext = 'webm'; 
+  if (mimeType.includes('mp4') || mimeType.includes('aac')) {
+    ext = 'mp4';
+  } else if (mimeType.includes('ogg')) {
+    ext = 'ogg';
+  } else if (mimeType.includes('wav')) {
+    ext = 'wav';
+  }
+  formData.append('audio', audioBlob, `user_response.${ext}`);
 
   try {
     const response = await apiClient.post('/api/conversations/turn', formData, {
@@ -64,6 +72,7 @@ export const postConversationTurn = async ({
     throw error;
   }
 };
+
 export const failConversation = async (conversationId) => {
     try {
         const response = await apiClient.patch(`/api/conversations/${conversationId}/fail`);

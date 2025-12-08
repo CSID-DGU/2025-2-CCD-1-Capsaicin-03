@@ -405,7 +405,6 @@ const AIChat = () => {
                                 transform: isRecording ? 'scale(1.1)' : 'scale(1)',
                                 transition: 'all 0.2s ease'
                             }}
-                            // 1. 마우스 이벤트: 터치 환경(isTouchRef가 true)이면 실행하지 않음 (Ghost Click 방지)
                             onMouseDown={() => {
                                 if (isTouchRef.current) return; 
                                 handleStartRecording();
@@ -414,23 +413,20 @@ const AIChat = () => {
                                 if (isTouchRef.current) return;
                                 stopRecording();
                             }}
-                            // 마우스가 버튼 밖으로 나갔을 때도 녹음 끊기
                             onMouseLeave={() => {
                                 if (!isTouchRef.current && isRecording) stopRecording();
                             }}
 
-                            // 2. 터치 이벤트: 여기가 실행되면 마우스 이벤트는 무시하도록 설정
                             onTouchStart={(e) => {
                                 e.preventDefault(); 
                                 e.stopPropagation();
-                                isTouchRef.current = true; // "나 지금 터치 중이야!" 표시
+                                isTouchRef.current = true; 
                                 handleStartRecording();
                             }}
                             onTouchEnd={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 stopRecording();
-                                // 터치가 끝났어도 잠시동안은 마우스 이벤트가 들어올 수 있으므로 isTouchRef를 바로 끄지 않음
                             }}
                             onTouchMove={(e) => {
                                 e.preventDefault();
@@ -690,21 +686,19 @@ const styles = {
         cursor: 'pointer', 
         boxShadow: '0 4px 20px rgba(255, 160, 122, 0.5)',
         flexShrink: 0,
-        touchAction: 'none',        // 핵심: 꾹 누르거나 드래그 시 브라우저 기본 동작(스크롤 등) 차단
-        userSelect: 'none',         // 텍스트/요소 선택 방지
-        WebkitUserSelect: 'none',   // 사파리 대응
-        WebkitTouchCallout: 'none', // iOS 롱프레스 메뉴 차단
+        touchAction: 'none',        
+        userSelect: 'none',         
+        WebkitUserSelect: 'none',   
+        WebkitTouchCallout: 'none', 
         WebkitUserDrag: 'none',
     },
     micIcon: { 
         width: '70%',    
         height: '70%',
         objectFit: 'contain',
-        pointerEvents: 'none',      // 핵심: 이미지가 터치 이벤트를 받지 않고 버튼으로 통과시킴
-        userSelect: 'none',         // 이미지 선택 방지
-        WebkitUserSelect: 'none',   // 사파리/크롬 대응
-        WebkitTouchCallout: 'none', // 꾹 눌렀을 때 메뉴 호출 방지
-        WebkitUserDrag: 'none',
+        pointerEvents: 'none',     
+        WebkitUserSelect: 'none',   
+        WebkitTouchCallout: 'none', 
     },
     dialogueGuidanceText: {
         margin: '0', 
