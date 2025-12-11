@@ -1,6 +1,6 @@
-# 🌱 나무록무록 (Namurokmurok)
+# 🌱 나무럭무럭 (Namurokmurok)
 
-> **SEL(Social Emotional Learning) 교육을 위한 AI 음성 대화 플랫폼**  
+> **SEL(Social Emotional Learning) 교육을 위한 AI Agent 음성 대화 플랫폼**  
 > 동화 속 캐릭터와의 대화를 통해 아동의 감정 인식 및 표현 능력을 향상시키는 교육용 서비스
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -12,7 +12,7 @@
 
 ## 📌 프로젝트 소개
 
-**나무록무록**은 동화 기반 SEL 교육을 제공하는 AI 음성 대화 플랫폼입니다.  
+**나무럭무럭**은 동화 기반 SEL 교육을 제공하는 AI 음성 대화 플랫폼입니다.  
 아동이 동화 속 캐릭터와 자연스러운 음성 대화를 나누며 감정을 이해하고 표현하는 방법을 학습합니다.
 
 ### 주요 기능
@@ -28,13 +28,13 @@
 ## 🏗️ 시스템 아키텍처
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Frontend   │────▶│   Backend   │────▶│  AI Engine  │
-│   (React)   │     │ (Spring)    │     │  (FastAPI)  │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                    │                    │
-       │                    │                    │
-       ▼                    ▼                    ▼
+┌─────────────┐     ┌─────────────┐     ┌───────────────┐
+│  Frontend   │────▶│   Backend   │────▶│  AI Agent    │
+│   (React)   │     │   (Spring)  │     │   (FastAPI)   │
+└─────────────┘     └─────────────┘     └───────────────┘
+       │                    │                  │
+       │                    │                  │
+       ▼                    ▼                  ▼
   Supabase            PostgreSQL           OpenAI API
    (Auth)              (MySQL)             Redis Cache
 ```
@@ -54,7 +54,7 @@
 - **Database**: MySQL (JPA/Hibernate)
 - **API**: RESTful API
 
-#### AI Engine
+#### AI Agent Engine
 - **Framework**: FastAPI
 - **LLM**: OpenAI GPT-4o-mini
 - **STT**: OpenAI Whisper
@@ -82,13 +82,13 @@
 │   │   └── test/
 │   └── build.gradle
 │
-└── AI/                   # FastAPI AI 대화 엔진
+└── AI/                   # FastAPI AI Agent 대화 엔진
     ├── app/
     │   ├── api/          # API 라우터
     │   ├── core/         # Agent & Orchestrator
     │   ├── models/       # 데이터 모델
     │   ├── services/     # STT/TTS 서비스
-    │   ├── tools/        # AI 도구들
+    │   ├── tools/        # AI Agent 도구들
     │   └── utils/        # 유틸리티
     ├── requirements.txt
     └── docker-compose.yml
@@ -105,7 +105,7 @@
 - MySQL 8.0+
 - Redis (선택)
 
-### 1. AI Engine 실행
+### 1. AI Agent Engine 실행
 
 ```bash
 cd AI
@@ -202,7 +202,7 @@ npm run dev
 
 ## 📊 API 엔드포인트
 
-### AI Engine (FastAPI)
+### AI Agent Engine (FastAPI)
 ```
 POST   /api/v1/dialogue/init                    # 대화 초기화
 POST   /api/v1/dialogue/stage/{stage_name}      # Stage별 대화 실행
@@ -225,7 +225,7 @@ GET    /api/sessions/{id}/feedback  # 피드백 조회
 
 ### 환경 변수 설정
 
-#### AI Engine (.env)
+#### AI Agent Engine (.env)
 ```env
 OPENAI_API_KEY=sk-...
 SUPERTONE_API_KEY=...
@@ -254,9 +254,9 @@ VITE_AI_API_URL=http://localhost:8000
 ## 📖 문서
 
 자세한 문서는 각 디렉토리의 README를 참조하세요:
-- [AI Engine 상세 가이드](./AI/README.md)
-- [AI 아키텍처 결정 사항](./AI/ARCHITECTURE_DECISIONS.md)
-- [AI 빠른 시작](./AI/QUICKSTART.md)
+- [AI Agent 상세 가이드](./AI/README.md)
+- [AI Agent 아키텍처 결정 사항](./AI/ARCHITECTURE_DECISIONS.md)
+- [AI Agent 빠른 시작](./AI/QUICKSTART.md)
 - [Backend 가이드](./Backend/README.md)
 - [Frontend 가이드](./Frontend/README.md)
 
@@ -266,7 +266,7 @@ VITE_AI_API_URL=http://localhost:8000
 
 **Capsaicin Team**
 - 김서연: Frontend 개발
-- 김현정: AI Engine 개발
+- 김현정: AI Agent 개발
 - 유정인: 기획, PM, 디자인
 - 장주리: Backend 개발
 
