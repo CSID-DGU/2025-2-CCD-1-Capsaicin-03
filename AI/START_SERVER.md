@@ -8,7 +8,7 @@ OPENAI_API_KEY=sk-proj-your-real-key-here
 
 ## 2. 서버 실행
 ```bash
-cd /Users/uj/Dev/2025-2-CCD-1-Capsaicin-03/AI
+cd /Users/betty/2025-2-CCD-1-Capsaicin-03/AI
 source venv/bin/activate
 cd app
 python main.py
@@ -17,7 +17,7 @@ python main.py
 ## 3. 테스트
 새 터미널에서:
 ```bash
-cd /Users/uj/Dev/2025-2-CCD-1-Capsaicin-03/AI
+cd /Users/betty/2025-2-CCD-1-Capsaicin-03/AI
 ./test_request.sh
 ```
 
