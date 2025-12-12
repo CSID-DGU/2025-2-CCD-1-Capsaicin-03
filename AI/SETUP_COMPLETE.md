@@ -31,7 +31,7 @@ OPENAI_API_KEY=""
 또는 수동으로:
 
 ```bash
-cd /Users/uj/Dev/2025-2-CCD-1-Capsaicin-03/AI
+cd /Users/betty/2025-2-CCD-1-Capsaicin-03/AI
 source venv/bin/activate
 export PYTHONPATH=$(pwd)
 python app/main.py
@@ -86,7 +86,7 @@ redis-cli ping
 
 ### 모듈 import 오류
 ```bash
-export PYTHONPATH=/Users/uj/Dev/2025-2-CCD-1-Capsaicin-03/AI
+export PYTHONPATH=/Users/betty/2025-2-CCD-1-Capsaicin-03/AI
 ```
 
 ### 의존성 오류
